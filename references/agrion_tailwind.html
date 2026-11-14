@@ -1,0 +1,1537 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta name="theme-color" content="#385C39"/>
+  <meta name="description" content="Agrion V3.1 Tailwind: protótipo interativo e mobile first de planejamento agrícola, mapa, registros de campo, inteligência e acompanhamento."/>
+  <title>Agrion V3.1 · Tailwind CSS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <!-- CSS compilado a partir do Tailwind v4: ver agrion_tailwind_source.css -->
+  <style id="agrion-tailwind-compiled">/*! tailwindcss v4.1.10 | MIT License | https://tailwindcss.com */
+@layer properties;
+:root, :host {
+  --spacing: 0.25rem;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+}
+:root {
+  --primary: #385C39;
+  --primary-dark: #29452B;
+  --accent: #D8E889;
+  --bg: #F8F8F1;
+  --surface: #fff;
+  --soft: #E9EFDA;
+  --ink: #242C20;
+  --muted: #596451;
+  --border: #DFE5D7;
+  --warning: #906523;
+  --warning-bg: #FFF1D8;
+  --error: #9B4037;
+  --error-bg: #FFF0EB;
+  --radius: 18px;
+  --shadow: 0 12px 36px rgba(29,60,33,.065);
+  --head: "Plus Jakarta Sans","Inter",system-ui,sans-serif;
+  --body: "Inter",system-ui,sans-serif;
+}
+@layer components {
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    margin: calc(var(--spacing) * 0);
+    color: var(--ink);
+    background: var(--bg);
+    font: 15px/1.5 var(--body);
+    -webkit-font-smoothing: antialiased;
+  }
+  button,input,textarea,select {
+    font: inherit;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    opacity: .48;
+    cursor: not-allowed;
+  }
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible {
+    outline: 3px solid #91A962;
+    outline-offset: 2px;
+  }
+  h1,h2,h3,h4,p {
+    margin: calc(var(--spacing) * 0);
+  }
+  h1,h2,h3,h4 {
+    font-family: var(--head);
+    --tw-leading: 1.2;
+    line-height: 1.2;
+    --tw-tracking: -.035em;
+    letter-spacing: -.035em;
+  }
+  h1 {
+    font-size: clamp(26px, 3vw, 38px);
+  }
+  h2 {
+    font-size: clamp(23px, 2.4vw, 30px);
+  }
+  h3 {
+    font-size: 18px;
+  }
+  h4 {
+    font-size: 15px;
+  }
+  p {
+    --tw-leading: 1.6;
+    line-height: 1.6;
+  }
+  small {
+    font-size: 12px;
+  }
+  .muted {
+    color: var(--muted);
+  }
+  .tiny {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .eyebrow {
+    --tw-tracking: .13em;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--primary);
+    font-size: 11px;
+    --tw-font-weight: var(--font-weight-extrabold);
+    font-weight: var(--font-weight-extrabold);
+  }
+  .app {
+    display: grid;
+    grid-template-columns: 258px minmax(0,1fr);
+    min-height: 100vh;
+  }
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 31px 18px 24px;
+    background: #F2F5E9;
+    border-right: 1px solid var(--border);
+    z-index: 5;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 0 12px 28px;
+  }
+  .brand-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 43px;
+    height: 43px;
+    border-radius: 14px;
+    background: var(--primary);
+    color: white;
+  }
+  .brand-name {
+    font: 800 23px/1 var(--head);
+    --tw-tracking: -.055em;
+    letter-spacing: -.055em;
+  }
+  .brand-tag {
+    font-size: 10px;
+    color: var(--muted);
+    --tw-font-weight: var(--font-weight-semibold);
+    font-weight: var(--font-weight-semibold);
+    margin-top: 4px;
+  }
+  .navlabel {
+    font-size: 10px;
+    color: #7D8973;
+    --tw-font-weight: var(--font-weight-extrabold);
+    font-weight: var(--font-weight-extrabold);
+    --tw-tracking: .14em;
+    letter-spacing: .14em;
+    padding: 15px 15px 9px;
+    text-transform: uppercase;
+  }
+  .navitem {
+    background: transparent;
+    border: 0;
+    display: flex;
+    gap: 13px;
+    align-items: center;
+    width: 100%;
+    padding: 13px 15px;
+    margin: 2px 0;
+    border-radius: 14px;
+    text-align: left;
+    color: var(--muted);
+    font-weight: 650;
+  }
+  .navitem:hover {
+    background: #E4EBD8;
+  }
+  .navitem.active {
+    color: var(--primary);
+    background: #DBE8CE;
+  }
+  .navitem.active svg {
+    stroke-width: 2.4;
+  }
+  .navitem svg {
+    flex-shrink: 0;
+  }
+  .side-bottom {
+    margin-top: auto;
+    padding: 14px 11px;
+  }
+  .demo-stamp {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 650;
+  }
+  .side-note {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 9px;
+  }
+  .workspace {
+    min-width: calc(var(--spacing) * 0);
+  }
+  .content {
+    max-width: 1110px;
+    width: 100%;
+    margin-inline: auto;
+    padding: 28px clamp(20px, 3.5vw, 45px) 100px;
+  }
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 30px;
+  }
+  .bread {
+    font-size: 12px;
+    color: var(--muted);
+    --tw-font-weight: var(--font-weight-semibold);
+    font-weight: var(--font-weight-semibold);
+  }
+  .top-actions {
+    display: flex;
+    gap: 9px;
+    align-items: center;
+  }
+  .chip,.icon-button {
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--ink);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 999px;
+    padding: 9px 13px;
+    font-weight: 650;
+    font-size: 12px;
+  }
+  .chip.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+  .chip:hover,.icon-button:hover {
+    border-color: #B6CBAE;
+    background: #F1F6EA;
+  }
+  .icon-button {
+    padding: 10px;
+    border-radius: 13px;
+    min-height: 40px;
+    min-width: 40px;
+  }
+  .grid {
+    display: grid;
+    gap: 16px;
+  }
+  .two {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+  .three {
+    grid-template-columns: repeat(3,minmax(0,1fr));
+  }
+  .main-cols {
+    grid-template-columns: minmax(0,1.28fr) minmax(285px,.72fr);
+  }
+  .section-gap {
+    display: grid;
+    gap: 18px;
+  }
+  .page-intro {
+    margin-bottom: 24px;
+  }
+  .page-intro h1 {
+    margin: 5px 0 9px;
+  }
+  .page-intro p {
+    max-width: 670px;
+    color: var(--muted);
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 3px 18px rgba(31,60,36,.023);
+  }
+  .card-soft {
+    background: var(--soft);
+    border-color: transparent;
+  }
+  .card-plain {
+    background: transparent;
+    box-shadow: none;
+  }
+  .card-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .card-title h3 {
+    font-size: 17px;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .between {
+    justify-content: space-between;
+  }
+  .align-start {
+    align-items: flex-start;
+  }
+  .grow {
+    flex: 1;
+    min-width: calc(var(--spacing) * 0);
+  }
+  .label {
+    display: block;
+    font-size: 12px;
+    --tw-font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-bold);
+    margin: 0 0 7px;
+  }
+  .field {
+    width: 100%;
+    border: 1px solid #D9E2D1;
+    background: #fff;
+    border-radius: 13px;
+    min-height: 46px;
+    padding: 12px 14px;
+    color: var(--ink);
+    outline: none;
+  }
+  .field:focus {
+    border-color: var(--primary);
+  }
+  textarea.field {
+    min-height: 90px;
+    resize: vertical;
+  }
+  .field-group {
+    display: grid;
+    gap: 5px;
+    margin-top: 16px;
+  }
+  .form-help {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    border: 1px solid transparent;
+    border-radius: 13px;
+    padding: 12px 17px;
+    min-height: 46px;
+    font-size: 13px;
+    font-weight: 750;
+    transition: transform .15s,background .15s;
+    text-decoration: none;
+    white-space: normal;
+    text-align: center;
+  }
+  .btn:active {
+    transform: scale(.99);
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+  }
+  .btn-primary:hover {
+    background: var(--primary-dark);
+  }
+  .btn-secondary {
+    background: #fff;
+    border-color: #C6D8BE;
+    color: var(--primary);
+  }
+  .btn-secondary:hover {
+    background: #F5F9F0;
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--primary);
+  }
+  .btn-lime {
+    background: var(--accent);
+    color: #243824;
+  }
+  .btn-lime:hover {
+    background: #CCE17C;
+  }
+  .btn-block {
+    width: 100%;
+  }
+  .btn-sm {
+    min-height: 39px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    background: var(--soft);
+    border-radius: 99px;
+    color: var(--primary);
+    font-size: 11px;
+    --tw-font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-bold);
+  }
+  .pill-neutral {
+    background: #F2F4ED;
+    color: #62705D;
+  }
+  .pill-warning {
+    background: var(--warning-bg);
+    color: var(--warning);
+  }
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    margin: 24px 0 13px;
+  }
+  .section-head h3 {
+    font-size: 17px;
+  }
+  .text-link {
+    border: 0;
+    background: transparent;
+    color: var(--primary);
+    font-size: 12px;
+    font-weight: 750;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px;
+    cursor: pointer;
+  }
+  .hero {
+    border-radius: 25px;
+    background: var(--primary);
+    color: white;
+    padding: 31px;
+    position: relative;
+    overflow: hidden;
+    min-height: 225px;
+    display: flex;
+    align-items: center;
+  }
+  .hero:before {
+    content: "";
+    position: absolute;
+    right: -80px;
+    top: -130px;
+    width: 365px;
+    height: 365px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 40%,rgba(216,232,137,.28),rgba(216,232,137,.035) 62%,transparent 63%);
+  }
+  .hero:after {
+    content: "";
+    position: absolute;
+    right: 48px;
+    bottom: -110px;
+    width: 240px;
+    height: 240px;
+    border: 1px solid rgba(235,251,215,.19);
+    border-radius: 50%;
+  }
+  .hero-copy {
+    position: relative;
+    z-index: 1;
+    max-width: 560px;
+  }
+  .hero h2 {
+    font-size: clamp(26px, 3vw, 39px);
+    max-width: 580px;
+    margin: 12px 0;
+  }
+  .hero p {
+    color: #E3EBDD;
+    max-width: 430px;
+  }
+  .hero .btn {
+    margin-top: 20px;
+  }
+  .hero-illustration {
+    position: absolute;
+    width: 270px;
+    height: 210px;
+    right: 20px;
+    bottom: -10px;
+    opacity: .8;
+  }
+  .callout {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 13px 15px;
+    border-radius: 13px;
+    background: var(--soft);
+    color: var(--primary);
+    font-size: 12px;
+  }
+  .callout-warning {
+    background: var(--warning-bg);
+    color: #654B20;
+  }
+  .callout-error {
+    background: var(--error-bg);
+    color: var(--error);
+  }
+  .stepper {
+    display: flex;
+    gap: 6px;
+    margin: 14px 0 21px;
+  }
+  .stepper span {
+    display: block;
+    background: #E1E8D8;
+    flex: 1;
+    height: 5px;
+    border-radius: 99px;
+  }
+  .stepper span.on {
+    background: var(--primary);
+  }
+  .choice {
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 15px;
+    padding: 15px 16px;
+    text-align: left;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--ink);
+    min-height: 57px;
+  }
+  .choice.selected {
+    border: 2px solid var(--primary);
+    padding: 14px 15px;
+    background: #FBFDF8;
+  }
+  .choice strong {
+    display: block;
+    font-size: 13px;
+  }
+  .choice p {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .choice .radio-mark {
+    border: 1.5px solid #ACBDA4;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  .choice.selected .radio-mark {
+    border: 5px solid var(--primary);
+  }
+  .choice-stack {
+    display: grid;
+    gap: 9px;
+  }
+  .crop-card {
+    position: relative;
+    overflow: hidden;
+  }
+  .crop-card:hover,.selectable:hover {
+    border-color: #AEC7A4;
+  }
+  .crop-thumb {
+    width: 56px;
+    height: 58px;
+    border-radius: 13px;
+    background: #E7EDD9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+  }
+  .crop-thumb svg {
+    width: 28px;
+    height: 28px;
+  }
+  .crop-card .btn {
+    margin-top: 10px;
+  }
+  .mini-tag {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .sequence {
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+    gap: 7px;
+    margin: 13px 0;
+  }
+  .sequence-item {
+    text-align: center;
+    border-radius: 11px;
+    background: #F1F5E9;
+    padding: 12px 7px;
+    min-width: calc(var(--spacing) * 0);
+  }
+  .sequence-item b {
+    font-size: 12px;
+    display: block;
+    margin-top: 4px;
+    overflow-wrap: anywhere;
+  }
+  .sequence-item small {
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .selectable {
+    cursor: pointer;
+  }
+  .selectable.selected {
+    border: 2px solid var(--primary);
+    padding: 19px;
+    background: #FCFDF9;
+  }
+  .metric-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    table-layout: fixed;
+  }
+  .metric-table th,.metric-table td {
+    padding: 11px 7px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+  .metric-table th {
+    text-align: left;
+    color: var(--muted);
+    --tw-font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-bold);
+  }
+  .metric-table th:first-child {
+    width: 27%;
+  }
+  .metric-table td {
+    color: var(--ink);
+  }
+  .metric-table tr:last-child td {
+    border: 0;
+  }
+  .tabline {
+    display: flex;
+    gap: 5px;
+    overflow-x: auto;
+    padding: 3px 0 11px;
+    scrollbar-width: none;
+  }
+  .tabline::-webkit-scrollbar {
+    display: none;
+  }
+  .tab {
+    border: 0;
+    border-radius: 99px;
+    background: #EDF2E5;
+    color: #62705D;
+    padding: 9px 13px;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: 750;
+  }
+  .tab.active {
+    background: var(--primary);
+    color: #fff;
+  }
+  .map-frame {
+    position: relative;
+    background: #DCE5D5;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid #D8E2CE;
+  }
+  .map-frame svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .map-legend {
+    position: absolute;
+    left: 13px;
+    bottom: 14px;
+    background: rgba(255,255,255,.93);
+    border-radius: 9px;
+    padding: 7px 10px;
+    font-size: 10px;
+    --tw-font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-bold);
+    color: var(--primary);
+  }
+  .map-area {
+    fill: #91B379;
+    stroke: #F8F8F1;
+    stroke-width: 4;
+    cursor: pointer;
+  }
+  .map-area:hover {
+    fill: #83AB6A;
+  }
+  .map-area.selected {
+    fill: #A4C08F;
+    stroke: #385C39;
+    stroke-width: 4;
+  }
+  .map-point {
+    fill: var(--primary);
+    stroke: #fff;
+    stroke-width: 4;
+  }
+  .timeline {
+    position: relative;
+    margin: 10px 0 0;
+    padding-left: 30px;
+  }
+  .timeline:before {
+    content: "";
+    position: absolute;
+    left: 9px;
+    top: 13px;
+    bottom: 13px;
+    width: 2px;
+    background: #E1EAD9;
+  }
+  .event {
+    position: relative;
+    padding: 5px 0 23px;
+  }
+  .event:before {
+    content: "";
+    position: absolute;
+    left: -27px;
+    top: 10px;
+    width: 13px;
+    height: 13px;
+    border: 3px solid #F8F8F1;
+    border-radius: 100%;
+    background: var(--primary);
+  }
+  .event-content {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    background: #fff;
+    cursor: pointer;
+  }
+  .event-content:hover {
+    border-color: #A7C09A;
+  }
+  .event-content h4 {
+    margin-bottom: 5px;
+  }
+  .data-box {
+    padding: 12px;
+    border-radius: 12px;
+    background: #F2F6EC;
+  }
+  .data-box b {
+    font-size: 12px;
+  }
+  .record-photo {
+    max-height: 250px;
+    width: 100%;
+    object-fit: cover;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+  }
+  .file-target {
+    display: grid;
+    gap: 9px;
+    place-items: center;
+    text-align: center;
+    border: 1.5px dashed #B7CDA9;
+    border-radius: 16px;
+    padding: 25px 15px;
+    background: #F8FAF4;
+    color: var(--primary);
+    cursor: pointer;
+  }
+  .file-target input {
+    position: absolute;
+    opacity: 0%;
+    pointer-events: none;
+    width: 1px;
+    height: 1px;
+  }
+  .file-target small {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .article-type {
+    font-size: 10px;
+    --tw-tracking: .1em;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--primary);
+    --tw-font-weight: var(--font-weight-extrabold);
+    font-weight: var(--font-weight-extrabold);
+  }
+  .article-card {
+    display: grid;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .article-card:hover {
+    border-color: #A7C09A;
+  }
+  .chat-bubble {
+    max-width: 88%;
+    padding: 13px 15px;
+    border-radius: 17px;
+    font-size: 13px;
+    --tw-leading: 1.6;
+    line-height: 1.6;
+  }
+  .chat-bubble.user {
+    margin-left: auto;
+    background: var(--primary);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .chat-bubble.system {
+    background: white;
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .empty {
+    padding: 28px;
+    text-align: center;
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    color: var(--muted);
+    border: 1px dashed #D3DDCB;
+    border-radius: 17px;
+    background: #FEFFFB;
+  }
+  .empty h3 {
+    color: var(--ink);
+  }
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+  }
+  .statusline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .flow-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(26,42,25,.45);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal {
+    background: #fff;
+    padding: 25px;
+    border-radius: 24px;
+    width: min(420px, 100%);
+    box-shadow: 0 35px 90px rgba(0,0,0,.14);
+  }
+  .modal h3 {
+    font-size: 20px;
+    margin: 11px 0;
+  }
+  .modal p {
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 9px;
+    justify-content: flex-end;
+    margin-top: 22px;
+  }
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 99;
+    padding: 13px 17px;
+    border-radius: 13px;
+    max-width: 370px;
+    box-shadow: var(--shadow);
+    background: var(--primary);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 650;
+  }
+  .mobile-nav {
+    display: none;
+  }
+  .mobile-head {
+    display: none;
+  }
+  .look-caption {
+    font-size: 11px;
+    color: #697763;
+  }
+  .footer-note {
+    font-size: 11px;
+    color: #697763;
+    margin-top: 24px;
+    padding: 15px 0;
+    border-top: 1px solid var(--border);
+  }
+  .empty-thumb {
+    background: #F5F8EF;
+    height: 180px;
+    border-radius: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .nowrap {
+    white-space: nowrap;
+  }
+  .stack {
+    display: grid;
+    gap: 10px;
+  }
+  .hint-label {
+    font-size: 12px;
+    color: #8A7450;
+    background: #FFF6E5;
+    padding: 6px 9px;
+    border-radius: 8px;
+  }
+  .compact {
+    padding: 15px;
+  }
+  .lowercase {
+    text-transform: none;
+  }
+  .note-status {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .bottom-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 19px;
+  }
+  .divider-space {
+    margin: 18px 0;
+  }
+  .flex-wrap {
+    flex-wrap: wrap;
+  }
+  .hide {
+    display: none !important;
+  }
+  @media (max-width:1030px) {
+    .sidebar {
+      width: 220px;
+    }
+    .app {
+      grid-template-columns: 220px minmax(0,1fr);
+    }
+    .main-cols {
+      grid-template-columns: 1fr;
+    }
+    .hero-illustration {
+      opacity: .28;
+      right: -35px;
+    }
+    .two-collapsible {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width:820px) {
+    .app {
+      display: block;
+    }
+    .sidebar {
+      display: none;
+    }
+    .content {
+      max-width: 680px;
+      padding: 17px 17px 113px;
+    }
+    .topbar {
+      margin-bottom: 20px;
+    }
+    .bread {
+      display: none;
+    }
+    .mobile-head {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+    }
+    .mobile-head .brand-name {
+      font-size: 19px;
+    }
+    .mobile-nav {
+      display: flex;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 30;
+      justify-content: space-around;
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+      background: rgba(255,255,255,.97);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -5px 20px rgba(40,60,40,.035);
+    }
+    .mobile-nav button {
+      border: 0;
+      background: transparent;
+      color: #667761;
+      flex: 1;
+      min-width: calc(var(--spacing) * 0);
+      display: grid;
+      place-items: center;
+      gap: 3px;
+      padding: 5px 2px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 650;
+    }
+    .mobile-nav button.active {
+      color: var(--primary);
+      background: #EDF4E7;
+    }
+    .mobile-nav button svg {
+      width: 21px;
+      height: 21px;
+    }
+    .hero {
+      padding: 23px;
+      min-height: 220px;
+    }
+    .hero h2 {
+      font-size: 29px;
+    }
+    .three {
+      grid-template-columns: repeat(2,minmax(0,1fr));
+    }
+    .toast {
+      bottom: 91px;
+      left: 15px;
+      right: 15px;
+      max-width: none;
+    }
+    .top-actions .chip {
+      padding: 8px 9px;
+    }
+    .card {
+      padding: 17px;
+    }
+  }
+  @media (max-width:460px) {
+    .content {
+      padding: 15px 13px 110px;
+    }
+    .hero {
+      padding: 22px;
+      min-height: 220px;
+    }
+    .hero h2 {
+      font-size: 25px;
+    }
+    .hero-copy {
+      max-width: 100%;
+    }
+    .hero-illustration {
+      opacity: .14;
+    }
+    .grid {
+      gap: 10px;
+    }
+    .two,.three {
+      grid-template-columns: 1fr;
+    }
+    .two.on-mobile-two {
+      grid-template-columns: repeat(2,minmax(0,1fr));
+    }
+    .main-cols {
+      grid-template-columns: 1fr;
+    }
+    .sequence {
+      gap: 5px;
+    }
+    .sequence-item {
+      padding: 9px 3px;
+    }
+    .card {
+      padding: 16px;
+    }
+    .bottom-actions>* {
+      flex: 1;
+    }
+    .metric-table {
+      font-size: 11px;
+    }
+    .metric-table th,.metric-table td {
+      padding: 10px 5px;
+    }
+    .top-actions .text-condition {
+      display: none;
+    }
+    .home-cards {
+      grid-template-columns: repeat(2,minmax(0,1fr));
+    }
+    .navitem {
+      font-size: 13px;
+    }
+    .stepper {
+      margin-bottom: 13px;
+    }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    *,*:before,*:after {
+      scroll-behavior: auto !important;
+      transition: none !important;
+    }
+  }
+}
+@property --tw-leading {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-tracking {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-font-weight {
+  syntax: "*";
+  inherits: false;
+}
+@layer properties {
+  @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
+    *, ::before, ::after, ::backdrop {
+      --tw-leading: initial;
+      --tw-tracking: initial;
+      --tw-font-weight: initial;
+    }
+  }
+}
+</style>
+</head>
+<body>
+  <div id="app" aria-live="polite"></div>
+  <script>
+  'use strict';
+  const $=id=>document.getElementById(id);
+  const icons={
+    leaf:'<path d="M20 4c-10 0-16 5-16 12a5 5 0 0 0 5 5c7 0 12-6 11-17Z"/><path d="M6 18c4-5 8-8 13-10"/>',
+    sprout:'<path d="M12 22V11"/><path d="M12 13C6 13 3 10 3 5c6 0 9 3 9 8Z"/><path d="M12 17c6 0 9-3 9-8-6 0-9 3-9 8Z"/>',
+    home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M9 21v-8h6v8"/>',
+    calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
+    compare:'<path d="M3 7h18M3 17h18"/><path d="m7 3-4 4 4 4M17 13l4 4-4 4"/>',
+    map:'<path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Z"/><path d="M9 3v15M15 6v15"/>',
+    pin:'<path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
+    journal:'<rect x="5" y="3" width="15" height="18" rx="2"/><path d="M9 3v18M12 8h5M12 12h5"/>',
+    brain:'<path d="M12 18V5a3 3 0 0 0-5-2 5 5 0 0 0-4 7 4 4 0 0 0 1 7 3 3 0 0 0 5 3M12 18V5a3 3 0 0 1 5-2 5 5 0 0 1 4 7 4 4 0 0 1-1 7 3 3 0 0 1-5 3"/>',
+    news:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h6v5H7zM16 8h2M16 12h2M7 16h11"/>',
+    camera:'<path d="M3 7h4l2-3h6l2 3h4v13H3Z"/><circle cx="12" cy="13" r="4"/>',
+    check:'<path d="m5 12 5 5L20 7"/>',
+    circlecheck:'<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+    arrow:'<path d="M4 12h16M13 5l7 7-7 7"/>',
+    back:'<path d="M20 12H4M11 19l-7-7 7-7"/>',
+    chevron:'<path d="m9 18 6-6-6-6"/>',
+    plus:'<path d="M12 5v14M5 12h14"/>',
+    droplet:'<path d="M12 3S5 11 5 15a7 7 0 0 0 14 0c0-4-7-12-7-12Z"/>',
+    satellite:'<rect x="9" y="9" width="6" height="6" rx="1" transform="rotate(45 12 12)"/><path d="m7 7-4-1-1-4 4 1 1 4ZM17 17l4 1 1 4-4-1-1-4ZM7 17l-4 1-1 4 4-1 1-4ZM17 7l4-1 1-4-4 1-1 4Z"/>',
+    upload:'<path d="M12 16V3M7 8l5-5 5 5M4 16v5h16v-5"/>',
+    wifi:'<path d="M2 9c6-6 14-6 20 0M5 13c4-4 10-4 14 0M9 17c2-2 4-2 6 0"/><circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"/>',
+    wifioff:'<path d="M2 2 22 22M2 9c3-3 6-4 10-4M22 9c-2-2-4-3-6-4M5 13c2-2 4-3 7-3M19 13l-2 2M9 17l3-1M12 20h.01"/>',
+    sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+    book:'<path d="M12 6c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1ZM12 6v15"/>',
+    chart:'<path d="M4 20V4M4 20h17M8 15l4-4 3 2 5-7"/>',
+    shield:'<path d="m12 2 8 4v6c0 5-3 8-8 10-5-2-8-5-8-10V6Z"/><path d="m9 12 2 2 4-4"/>',
+    alert:'<path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v5M12 18h.01"/>',
+    clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/>',
+    eye:'<path d="M2 12S6 5 12 5s10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+    clipboard:'<rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 4V2h6v2M9 11h6M9 15h6"/>',
+    edit:'<path d="m3 21 4-1 13-13-3-3L4 17l-1 4ZM15 6l3 3"/>',
+    send:'<path d="m22 2-7 20-3-10-10-3 20-7ZM12 12l10-10"/>',
+    cross:'<path d="M18 6 6 18M6 6l12 12"/>',
+    reset:'<path d="M3 11a9 9 0 1 1 3 7M3 4v7h7"/>',
+    filter:'<path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z"/>',
+    settings:'<circle cx="12" cy="12" r="3"/><path d="m19 12 2-2-2-4-3 1-2-3h-4L8 7 5 6l-2 4 2 2-2 2 2 4 3-1 2 3h4l2-3 3 1 2-4-2-2Z"/>',
+    menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+    spark:'<path d="m12 2 2.6 7.4L22 12l-7.4 2.6L12 22l-2.6-7.4L2 12l7.4-2.6L12 2Z"/>',
+    save:'<path d="M4 3h14l3 3v15H3V3h1ZM7 3v7h10V3M7 21v-8h10v8"/>',
+    image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="2"/><path d="m21 16-5-5L5 21"/>',
+    search:'<circle cx="10" cy="10" r="7"/><path d="m15 15 7 7"/>',
+    expand:'<path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/>',
+    info:'<circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7h.01"/>',
+    archive:'<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v12h14V9M10 13h4"/>',
+    location:'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>',
+    microscope:'<path d="M7 21h13M11 4l5 5M14 2l7 7-3 3-7-7 3-3ZM10 12l-2 2a5 5 0 0 0 5 7"/>',
+    users:'<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M18 14c2 1 3 3 3 5"/>',
+  };
+  function icon(name,size=19){return `<svg aria-hidden="true" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">${icons[name]||icons.info}</svg>`}
+  function safe(v){return String(v??'').replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]))}
+  function id(){return 'r-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7)}
+  const STORAGE='flora-demo-v3-1';const seed={page:'home',onboarded:false,step:0,farm:'',region:'',area:'',experience:'undecided',crops:[],soil:'unknown',goal:'balanced',market:'unknown',irrigation:'unknown',discoverSelected:[],focusCrop:'Milho',planId:'b',compareA:'a',compareB:'b',planSaved:false,season:'none',mapLayer:'records',mapField:'Talhão 1',intelFilter:'all',article:null,bookmarks:[],assistantContext:'Propriedade',assistantReturn:'home',messages:[],recordType:'meter',recordField:'Talhão 1',recordNote:'',recordPH:'',recordMoisture:'',recordTemp:'',recordLight:'',recordLat:null,recordLong:null,recordLocationAccuracy:null,offlineSim:false,filterDiary:'all',viewRecord:null,detailTab:'differences',modal:null};
+  let state={...seed};try{const s=JSON.parse(localStorage.getItem(STORAGE));if(s && typeof s==='object'){state={...seed,...s,page:'home',modal:null};}}catch(e){}
+  let records=[],photoFile=null,previewURL=null,toastText='',toastTimer=null,photoURLs=new Map(),db=null,idbUnavailable=false;
+  function persist(){const obj={...state};delete obj.modal;try{localStorage.setItem(STORAGE,JSON.stringify(obj))}catch(e){console.warn('Local preferences not saved',e)}}
+  const briefCrops=[{name:'Milho',description:'Avaliar calendário, água, solo, custos e comercialização.',icon:'sprout'},{name:'Soja',description:'Avaliar condições agronômicas, logística e mercado.',icon:'leaf'},{name:'Feijão',description:'Avaliar exigências climáticas, manejo e riscos.',icon:'droplet'},{name:'Trigo',description:'Avaliar época, temperatura, solo e demanda regional.',icon:'sun'},{name:'Café',description:'Avaliar implantação, clima e horizonte de investimento.',icon:'sprout'},{name:'Hortaliças',description:'Avaliar água, mão de obra e acesso ao mercado.',icon:'leaf'}];
+  const stories=[{id:'science',type:'Ciência e cultivo',crop:'Milho',title:'Pesquisa sobre práticas de conservação do solo',summary:'Exemplo de estudo que precisaria ser contextualizado antes de orientar decisões.',context:'A propriedade pode ter culturas ou práticas relacionadas ao tema, mas a aplicabilidade exige conferir região, cultivo, método e resultados.',action:'Consultar premissas agronômicas do planejamento.',icon:'book'},{id:'market',type:'Mercado',crop:'Soja',title:'Mudança hipotética na demanda por commodities',summary:'Cenário fictício para demonstrar a relação entre mercado e planejamento.',context:'Mudanças na demanda podem afetar premissas de preços, mas não determinam automaticamente a rentabilidade da propriedade.',action:'Investigar preços de referência, custos e canais de venda.',icon:'chart'},{id:'pests',type:'Pragas e insumos',crop:'Feijão',title:'Estudo ilustrativo sobre manejo integrado de pragas',summary:'Exemplo de publicação sobre prevenção, inspeções e condições de ocorrência.',context:'Informações técnicas podem orientar o monitoramento, não confirmar que uma infestação esteja ocorrendo na propriedade.',action:'Relacionar observações de campo e referências de manejo.',icon:'shield'}];
+  function plans(){const c=state.focusCrop||'Cultura a definir';return [{id:'a',name:'Referência inicial',seq:[c,c,'Cobertura'],hint:'Exemplo de repetição de cultura para comparação; não implica histórico real.'},{id:'b',name:'Rotação alternativa',seq:[c,'Leguminosa*','Cobertura'],hint:'Cultura intermediária ainda deve ser definida e validada.'},{id:'c',name:'Diversificação',seq:[c,'Outra cultura*','Cobertura'],hint:'Alternativa conceitual para investigar a compatibilidade agronômica.'}]}
+  function pselected(){return plans().find(x=>x.id===state.planId)||plans()[1]}
+  function notify(text){toastText=text;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toastText='';renderToast()},5000);renderToast()}
+  function renderToast(){const root=$('toastMount');if(root)root.innerHTML=toastText?`<div class="toast" role="status">${icon('info',16)} &nbsp;${safe(toastText)}</div>`:''}
+  function openDb(){return new Promise(resolve=>{try{const req=indexedDB.open('flora-demo-registros-v1',1);req.onupgradeneeded=()=>{const d=req.result;if(!d.objectStoreNames.contains('records'))d.createObjectStore('records',{keyPath:'id'})};req.onsuccess=()=>resolve(req.result);req.onerror=()=>resolve(null);req.onblocked=()=>resolve(null)}catch(e){resolve(null)}})}
+  function readAll(){return new Promise(resolve=>{if(!db)return resolve([]);try{const tx=db.transaction('records','readonly');const req=tx.objectStore('records').getAll();req.onsuccess=()=>resolve((req.result||[]).sort((a,b)=>b.created-a.created));req.onerror=()=>resolve([])}catch(e){resolve([])}})}
+  function addRecord(r){return new Promise((resolve,reject)=>{if(!db)return reject(new Error('Armazenamento local indisponível'));try{const tx=db.transaction('records','readwrite');tx.objectStore('records').put(r);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error||new Error('Falha ao salvar'));tx.onabort=()=>reject(tx.error||new Error('Gravação interrompida'))}catch(e){reject(e)}})}
+  function removeAllRecords(){return new Promise((resolve,reject)=>{if(!db)return resolve();const tx=db.transaction('records','readwrite');tx.objectStore('records').clear();tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})}
+  function getPhotoURL(r){if(!r||!r.photo)return null;if(!photoURLs.has(r.id))photoURLs.set(r.id,URL.createObjectURL(r.photo));return photoURLs.get(r.id)}
+  function prepareFile(file){photoFile=file;if(previewURL)URL.revokeObjectURL(previewURL);previewURL=file?URL.createObjectURL(file):null;render()}
+  function clearFile(){photoFile=null;if(previewURL){URL.revokeObjectURL(previewURL);previewURL=null}}
+  function navigate(page){state.page=page;state.modal=null;persist();render();window.scrollTo({top:0,behavior:'instant'})}
+  function beginAssistant(context,from){state.assistantContext=context;state.assistantReturn=from||state.page;navigate('assistant')}
+  function navItem(page,label,ico){return `<button type="button" class="navitem ${active(page)?'active':''}" data-action="nav" data-page="${page}" aria-current="${active(page)?'page':'false'}">${icon(ico,19)} ${label}</button>`}
+  function active(p){return state.page===p||(p==='plan'&&['discover','compare'].includes(state.page))||(p==='map'&&state.page==='recordDetail')||(p==='safra'&&state.page==='record')}
+  function btn(text,action,cls='btn-primary',extra=''){return `<button type="button" class="btn ${cls}" data-action="${action}" ${extra}>${text}</button>`}
+  function infoCard(text,kind=''){return `<div class="callout ${kind==='warning'?'callout-warning':kind==='error'?'callout-error':''}">${icon(kind==='warning'?'alert':'info',17)}<span>${text}</span></div>`}
+  function headerTitle(eyebrow,title,desc=''){return `<div class="page-intro"><div class="eyebrow">${eyebrow}</div><h1>${title}</h1>${desc?`<p>${desc}</p>`:''}</div>`}
+  function sectionHeader(title,button=''){return `<div class="section-head"><h3>${title}</h3>${button}</div>`}
+  function statusLabel(record){return `<span class="pill ${record.status==='local'?'pill-warning':'pill-neutral'}">${icon('save',12)} Salvo no dispositivo · sem envio</span>`}
+  function questionChip(text){return `<button type="button" class="chip" data-action="askSuggestion" data-text="${safe(text)}">${safe(text)}</button>`}
+  function fieldDrawing(){return `<svg viewBox="0 0 480 300" role="img" aria-label="Ilustração conceitual de talhões, sem localização geográfica real"><defs><pattern id="rows" patternUnits="userSpaceOnUse" width="13" height="13" patternTransform="rotate(-30)"><path d="M1 0v13" stroke="#4D7850" opacity=".2" stroke-width="3"/></pattern></defs><rect width="480" height="300" rx="16" fill="#DDE9D7"/><path d="M-15 75C130 55 180 140 500 118M35 -10C50 110 135 180 120 320" stroke="#F8F7E8" fill="none" stroke-width="20"/><path d="M100 58 274 34 325 133 146 171Z" class="map-area ${state.mapField==='Talhão 1'?'selected':''}" data-mapfield="Talhão 1"/><path d="M150 179 331 143 396 247 208 275Z" class="map-area ${state.mapField==='Talhão 2'?'selected':''}" data-mapfield="Talhão 2"/><path d="M100 58 274 34 325 133 146 171Z" fill="url(#rows)" pointer-events="none"/><path d="M150 179 331 143 396 247 208 275Z" fill="url(#rows)" pointer-events="none"/><text x="205" y="108" fill="#224B30" font-family="Inter, sans-serif" font-weight="800" font-size="14" text-anchor="middle" pointer-events="none">Talhão 1</text><text x="268" y="220" fill="#224B30" font-family="Inter, sans-serif" font-weight="800" font-size="14" text-anchor="middle" pointer-events="none">Talhão 2</text><path d="M405 46v-19m-8 8 8-8 8 8" stroke="#43684A" stroke-width="3" fill="none" stroke-linecap="round"/><text x="405" y="57" fill="#43684A" font-size="10" text-anchor="middle">N</text></svg>`}
+  function heroArt(){return `<svg class="hero-illustration" viewBox="0 0 270 220" aria-hidden="true"><circle cx="175" cy="102" r="97" fill="#D8E889" opacity=".13"/><path d="M32 211C110 165 186 151 276 162M11 206C101 138 170 127 276 137M40 189C105 126 188 105 276 109M88 193C158 155 206 156 277 170" fill="none" stroke="#C5E8B0" stroke-width="5" opacity=".55"/><path d="M172 190c-3-52 28-92 65-107-6 46-18 80-65 107Zm-5-13c-20-63-64-82-100-90 13 48 42 77 100 90Z" fill="#D8E889" opacity=".65"/><path d="M171 213c-4-66 7-103 60-124" fill="none" stroke="#D8E889" stroke-width="6" stroke-linecap="round"/></svg>`}
+  function home(){
+    if(!state.onboarded)return `${headerTitle('Bem-vindo à Agrion','Seu campo, suas próximas decisões.','Conheça sua propriedade, investigue culturas e compare estratégias com uma experiência feita para o agricultor.')}
+      <div class="hero">${heroArt()}<div class="hero-copy"><div class="eyebrow" style="color:#D8E889">COMECE POR AQUI</div><h2>Você não precisa saber o que plantar para começar.</h2><p>Informe sua região e seus objetivos. Depois, explore possibilidades e as condições que precisam ser avaliadas.</p>${btn(`Cadastrar minha propriedade ${icon('arrow',16)}`,'goOnboarding','btn-lime')}</div></div>
+      ${sectionHeader('Como a Agrion vai ajudar')}<div class="grid three">
+      ${[{ico:'pin',name:'Conhecer o local',text:'Defina sua propriedade, mesmo sem desenhar os talhões.'},{ico:'sprout',name:'Descobrir culturas',text:'Explore possibilidades com critérios claros e sem promessas.'},{ico:'compare',name:'Comparar estratégias',text:'Entenda sequências, riscos e evidências antes de decidir.'}].map(a=>`<div class="card">${icon(a.ico,24)}<h4 style="margin:12px 0 7px">${a.name}</h4><p class="muted" style="font-size:12px">${a.text}</p></div>`).join('')}</div>
+      <div class="footer-note">Protótipo de experiência. Nenhuma sugestão agrícola é gerada a partir de dados reais nesta versão.</div>`;
+    const displayFarm=safe(state.farm||'Minha propriedade');let greeting=state.planSaved?'Seu planejamento está ao seu alcance.':'Sua propriedade está pronta para explorar.';
+    return `${headerTitle('Visão geral',greeting,`${displayFarm} · ${safe(state.region||'Localização não definida')} · Contexto demonstrativo`)}
+      <div class="hero">${heroArt()}<div class="hero-copy"><div class="eyebrow" style="color:#D8E889">${state.planSaved?'PLANEJAMENTO SALVO':'PLANEJE SUA PRODUÇÃO'}</div><h2>${state.planSaved?'Cultive com informação, acompanhe com atenção.':'Descubra por onde começar.'}</h2><p>${state.planSaved?'Sua estratégia foi selecionada para acompanhamento. Registre observações e consulte o que merece ser investigado.':'Explore culturas e compare cenários antes de escolher uma estratégia agrícola.'}</p>${btn(`${state.planSaved?'Abrir meu planejamento':'Explorar culturas'} ${icon('arrow',16)}`,state.planSaved?'toPlan':'toDiscover','btn-lime')}</div></div>
+      <div class="grid two home-cards" style="margin-top:17px">
+        <button type="button" class="card selectable" data-action="nav" data-page="map" style="text-align:left;border-radius:17px"><div class="row between" style="margin-bottom:11px">${icon('map',23)}${icon('chevron',17)}</div><h3>Minha propriedade</h3><p class="muted" style="font-size:12px;margin-top:8px">Mapa, talhões e medições de campo</p></button>
+        <button type="button" class="card selectable" data-action="nav" data-page="safra" style="text-align:left;border-radius:17px"><div class="row between" style="margin-bottom:11px">${icon('journal',23)}${icon('chevron',17)}</div><h3>Minha Safra</h3><p class="muted" style="font-size:12px;margin-top:8px">${state.season==='active'?'Cultivo em andamento':state.season==='closed'?'Histórico encerrado':state.season==='planned'?'Estratégia planejada':'Registros e acompanhamento'}</p></button>
+      </div>
+      ${sectionHeader('Informações para acompanhar',`<button class="text-link" data-action="nav" data-page="intelligence">Ver inteligência ${icon('arrow',14)}</button>`)}
+      <div class="card"><div class="row align-start"> <div class="crop-thumb" style="width:45px;height:45px">${icon('book',23)}</div><div class="grow"><h4>Ciência, mercado e ambiente</h4><p class="muted" style="font-size:12px;margin-top:5px">Conteúdos relacionados ao contexto da produção. Fontes verificadas serão conectadas posteriormente.</p></div></div><div class="divider divider-space"></div>${infoCard('Esta demonstração contém apenas situações fictícias, identificadas como exemplos.')}<div style="margin-top:15px">${btn('Explorar inteligência '+icon('arrow',15),'toIntelligence','btn-secondary btn-sm')}</div></div>
+      ${sectionHeader('Ações rápidas')}<div class="grid two home-cards"><button type="button" class="btn btn-primary btn-block" data-action="newRecord">${icon('camera',18)} Novo registro</button><button type="button" class="btn btn-secondary btn-block" data-action="assistantFromHome">${icon('brain',18)} Perguntar</button></div>
+      ${records.length?`<div class="card" style="margin-top:17px"><div class="row between"><div><h4>${records.length} ${records.length===1?'registro salvo':'registros salvos'} neste dispositivo</h4><p class="tiny">Sem integração com servidor nesta versão.</p></div>${btn('Ver diário','toSafra','btn-secondary btn-sm')}</div></div>`:''}`;
+  }
+  function onboarding(){
+    const labels=['Propriedade','Produção','Solo','Objetivos'];const step=state.step;
+    let body='';
+    if(step===0)body=`<h2>Onde fica sua propriedade?</h2><p class="muted" style="margin-top:9px">A localização ajudará a consultar fontes ambientais regionais na versão conectada.</p>
+      <div class="field-group"><label class="label" for="farm">Nome da propriedade <span class="muted">(opcional)</span></label><input class="field" id="farm" data-bind="farm" value="${safe(state.farm)}" placeholder="Ex.: Sítio Esperança"></div>
+      <div class="field-group"><label class="label" for="region">Município e estado</label><input class="field" id="region" data-bind="region" value="${safe(state.region)}" placeholder="Ex.: Sorocaba, SP"><div class="form-help">Nesta versão, o texto não é geocodificado nem validado. No produto real, será preciso confirmar no mapa.</div></div>
+      <div class="field-group"><label class="label" for="area">Área cultivável em hectares <span class="muted">(opcional)</span></label><input class="field" type="number" min="0" step="any" id="area" data-bind="area" value="${safe(state.area)}" placeholder="Ex.: 5"></div>
+      <div class="callout" style="margin-top:18px">${icon('map',18)}<span>Desenhar os limites e talhões pode ficar para depois.</span></div>`;
+    if(step===1)body=`<h2>O que você pretende cultivar?</h2><p class="muted" style="margin-top:9px">Você pode começar mesmo sem ter uma cultura em mente.</p><div class="choice-stack" style="margin-top:22px">${[
+      ['existing','Já tenho uma produção','Quero analisar culturas que cultivo hoje.'],['interested','Tenho algumas culturas em mente','Quero investigar possibilidades específicas.'],['undecided','Ainda não sei o que plantar','Quero descobrir por onde posso começar.']].map(x=>`<button class="choice ${state.experience===x[0]?'selected':''}" data-action="experience" data-value="${x[0]}"><span class="grow"><strong>${x[1]}</strong><p>${x[2]}</p></span><span class="radio-mark" aria-hidden="true"></span></button>`).join('')}</div>
+      ${state.experience!=='undecided'?`<div style="margin-top:20px"><label class="label">Culturas conhecidas ou de interesse (opcional)</label><div class="flow-tags">${briefCrops.map(c=>`<button class="chip ${state.crops.includes(c.name)?'active':''}" data-action="toggleCrop" data-name="${c.name}">${state.crops.includes(c.name)?icon('check',12):icon('plus',12)} ${c.name}</button>`).join('')}</div></div>`:
+      `<div class="callout" style="margin-top:20px">${icon('spark',18)}<span><b>Sem problema.</b> O aplicativo mostrará culturas para investigar, usando critérios regionais, científicos e de mercado quando as fontes estiverem conectadas.</span></div>`}`;
+    if(step===2)body=`<h2>O que você sabe sobre o solo?</h2><p class="muted" style="margin-top:9px">Você não precisa conhecer pH, textura ou nutrientes para avançar. As análises deixarão claras as lacunas.</p><div class="choice-stack" style="margin-top:20px">${[
+      ['unknown','Ainda não conheço as características','Poderei acrescentar medições e análises depois.'],['some','Tenho informações parciais','Algumas observações ou medições já foram feitas.'],['lab','Tenho análise laboratorial','Desejo utilizar o documento futuramente.']].map(x=>`<button class="choice ${state.soil===x[0]?'selected':''}" data-action="soil" data-value="${x[0]}"><span class="grow"><strong>${x[1]}</strong><p>${x[2]}</p></span><span class="radio-mark"></span></button>`).join('')}</div>
+      <div class="card card-soft" style="margin-top:22px"><div class="row">${icon('camera',20)}<h4>Você poderá registrar leituras reais</h4></div><p class="muted" style="font-size:12px;margin-top:8px">Fotografe o medidor portátil, confirme os valores e associe as observações aos talhões. Leituras de baixo custo são indicativas.</p></div>`;
+    if(step===3)body=`<h2>O que é mais importante?</h2><p class="muted" style="margin-top:9px">As prioridades orientam a comparação, mas não substituem restrições agronômicas.</p><div class="choice-stack" style="margin-top:18px">${[
+      ['balanced','Equilibrar critérios','Economia, solo, água e riscos.'],['profit','Retorno econômico','Avaliar custos, preços e cenários.'],['soil','Saúde do solo','Considerar práticas e restrições do solo.'],['water','Disponibilidade de água','Avaliar sazonalidade e irrigação.'],['risk','Reduzir riscos','Investigar exposição climática e operacional.']].map(x=>`<button class="choice ${state.goal===x[0]?'selected':''}" data-action="goal" data-value="${x[0]}"><span class="grow"><strong>${x[1]}</strong><p>${x[2]}</p></span><span class="radio-mark"></span></button>`).join('')}</div>
+      <div class="grid two" style="margin-top:16px"><div><label class="label" for="irrigation">Irrigação disponível</label><select class="field" id="irrigation" data-bind="irrigation"><option value="unknown" ${state.irrigation==='unknown'?'selected':''}>Não informada</option><option value="yes" ${state.irrigation==='yes'?'selected':''}>Sim</option><option value="no" ${state.irrigation==='no'?'selected':''}>Não</option></select></div><div><label class="label" for="market">Comercialização</label><select class="field" id="market" data-bind="market"><option value="unknown" ${state.market==='unknown'?'selected':''}>Ainda não defini</option><option value="sale" ${state.market==='sale'?'selected':''}>Quero vender</option><option value="own" ${state.market==='own'?'selected':''}>Consumo próprio</option></select></div></div>`;
+    return `${headerTitle('Primeira experiência','Vamos conhecer sua produção.','Cadastro progressivo · informações podem ser complementadas depois')}
+      <div class="grid main-cols"><div class="card"><div class="row between"><div class="eyebrow">${labels[step]}</div><span class="tiny">Etapa ${step+1} de 4</span></div><div class="stepper">${labels.map((_,i)=>`<span class="${i<=step?'on':''}"></span>`).join('')}</div>${body}<div class="bottom-actions"><button class="btn btn-secondary" data-action="stepBack">${icon('back',16)} Voltar</button><button class="btn btn-primary" data-action="stepNext">${step===3?'Concluir cadastro':'Continuar'} ${icon('arrow',16)}</button></div></div>
+      <div class="section-gap"><div class="card card-soft"><div class="row">${icon('shield',20)}<h3>Você controla o planejamento</h3></div><p class="muted" style="margin-top:10px;font-size:13px">A plataforma ajuda a investigar alternativas, mas não toma decisões automaticamente nem garante lucro, produção ou adequação.</p></div><div class="card"><div class="eyebrow">Nossa sequência</div><div class="stack" style="margin-top:12px">${labels.map((x,i)=>`<div class="row">${icon(i<=step?'circlecheck':'clock',17)}<span style="font-size:13px;color:${i===step?'#385C39':'#596451'};font-weight:${i===step?800:500}">${x}</span></div>`).join('')}</div></div></div></div>`;
+  }
+  function discover(){
+    let candidates=briefCrops.filter(x=>state.discoverSelected.includes(x.name));
+    return `${headerTitle('Planejamento · Descoberta','O que posso plantar aqui?','Explore culturas candidatas e os fatores que precisam ser verificados antes de tomar uma decisão.')}
+      <div class="grid main-cols"><div class="section-gap"><div class="card card-soft"><div class="row align-start">${icon('pin',22)}<div class="grow"><h3>${safe(state.region||'Localização ainda não cadastrada')}</h3><p class="muted" style="font-size:12px;margin-top:4px">Objetivo: ${safe(goalName())} · ${state.irrigation==='yes'?'Irrigação informada':state.irrigation==='no'?'Sem irrigação informada':'Irrigação não informada'}</p></div></div></div>
+      ${infoCard('As culturas desta lista são exemplos para testar a interface. Ainda não consultamos dados NASA, solo, mercado ou um modelo agronômico para esta propriedade.','warning')}
+      ${sectionHeader('Culturas para investigar',`<span class="pill">${state.discoverSelected.length} selecionadas</span>`)}
+      <div class="grid two">${briefCrops.map(c=>`<div class="card crop-card"><div class="row align-start"><div class="crop-thumb">${icon(c.icon,26)}</div><div class="grow"><h3>${c.name}</h3><div class="mini-tag">Cultura ilustrativa · sem ranking</div></div></div><p class="muted" style="font-size:12px;margin-top:13px;min-height:40px">${c.description}</p><button class="btn ${state.discoverSelected.includes(c.name)?'btn-primary':'btn-secondary'} btn-sm btn-block" data-action="toggleDiscover" data-name="${c.name}">${state.discoverSelected.includes(c.name)?`${icon('check',15)} Selecionada`:`${icon('plus',15)} Investigar cultura`}</button></div>`).join('')}</div>
+      <div class="card"><h3>Como serão avaliadas?</h3><div class="grid two" style="margin-top:13px">${[['sun','Clima e calendário'],['droplet','Solo e água'],['chart','Mercado e custos'],['shield','Riscos e restrições']].map(x=>`<div class="row">${icon(x[0],18)}<span style="font-size:12px">${x[1]}</span></div>`).join('')}</div></div></div>
+      <div class="section-gap"><div class="card" style="height:max-content;position:sticky;top:24px"><h3>Seu próximo passo</h3><p class="muted" style="font-size:12px;margin:9px 0 16px">Escolha culturas que deseja estudar com mais profundidade. Não existe recomendação automática nesta demonstração.</p>${candidates.length?`<div class="flow-tags">${candidates.map(x=>`<span class="pill">${safe(x.name)}</span>`).join('')}</div>`:`<div class="empty" style="padding:20px">${icon('sprout',24)}<p style="font-size:12px">Nenhuma cultura selecionada.</p></div>`}
+      <div style="margin-top:18px">${btn(`Ir para o Planejador ${icon('arrow',16)}`,'fromDiscover','btn-primary btn-block',candidates.length?'':'disabled')}</div><div class="divider divider-space"></div>${btn('Editar propriedade','goOnboarding','btn-secondary btn-block btn-sm')}</div></div></div>`;
+  }
+  function goalName(){return ({balanced:'Equilibrar critérios',profit:'Retorno econômico',soil:'Saúde do solo',water:'Economia de água',risk:'Reduzir riscos'})[state.goal]||'Equilíbrio'}
+  function plan(){const ps=plans(),p=pselected(),a=ps.find(x=>x.id===state.compareA),b=ps.find(x=>x.id===state.compareB);
+    return `${headerTitle('Planejamento · Comparação','Compare suas estratégias.','Explore sequências agrícolas, condições necessárias, riscos e fontes. Nenhum resultado agronômico foi calculado.')}
+      <div class="row flex-wrap" style="margin-bottom:18px"><span class="pill">${icon('pin',13)} ${safe(state.region||'Região não definida')}</span><span class="pill">${icon('sprout',13)} ${safe(state.focusCrop)}</span><span class="pill">${icon('chart',13)} ${safe(goalName())}</span></div>
+      <div class="grid main-cols"><div class="section-gap">
+      ${infoCard('Todas as rotações abaixo são exemplos de interface. É indispensável verificar calendários, restrições, sucessões e evidências antes de recomendar qualquer sequência.','warning')}
+      ${sectionHeader('Estratégias disponíveis',`<button class="text-link" data-action="nav" data-page="discover">${icon('search',14)} Explorar culturas</button>`)}
+      ${ps.map(x=>`<button type="button" class="card selectable ${state.planId===x.id?'selected':''}" style="display:block;text-align:left;width:100%" data-action="selectPlan" data-id="${x.id}"><div class="row between"><div><div class="eyebrow" style="font-size:10px">ESTRATÉGIA ${x.id.toUpperCase()}</div><h3 style="margin-top:4px">${x.name}</h3></div>${icon(state.planId===x.id?'circlecheck':'chevron',22)}</div><div class="sequence">${x.seq.map((s,i)=>`<div class="sequence-item"><small>Ciclo ${i+1}</small><b>${safe(s)}</b></div>`).join('')}</div><p class="tiny">${safe(x.hint)}</p></button>`).join('')}
+      <div class="card"><div class="card-title"><h3>Comparação direta</h3><span class="pill pill-neutral">Duas por vez</span></div><div class="grid two on-mobile-two"><div><label class="label" for="compareA">Estratégia 1</label><select class="field" id="compareA" data-bind="compareA">${ps.map(x=>`<option value="${x.id}" ${state.compareA===x.id?'selected':''}>${x.name}</option>`).join('')}</select></div><div><label class="label" for="compareB">Estratégia 2</label><select class="field" id="compareB" data-bind="compareB">${ps.map(x=>`<option value="${x.id}" ${state.compareB===x.id?'selected':''}>${x.name}</option>`).join('')}</select></div></div>
+      <div class="tabline" style="margin-top:18px">${[['differences','Diferenças'],['indicators','Critérios'],['sources','Fontes']].map(x=>`<button class="tab ${state.detailTab===x[0]?'active':''}" data-action="detailTab" data-id="${x[0]}">${x[1]}</button>`).join('')}</div>
+      ${state.compareA===state.compareB?infoCard('Selecione duas estratégias diferentes.'):
+      state.detailTab==='differences'?`<table class="metric-table"><thead><tr><th>Aspecto</th><th>${a.name}</th><th>${b.name}</th></tr></thead><tbody><tr><td>Sequência</td><td>${a.seq.map(safe).join(' → ')}</td><td>${b.seq.map(safe).join(' → ')}</td></tr><tr><td>Calendário</td><td>Não avaliado</td><td>Não avaliado</td></tr><tr><td>Restrições</td><td>A verificar</td><td>A verificar</td></tr></tbody></table>`:
+      state.detailTab==='indicators'?`<div class="stack">${[['sun','Adequação ao clima'],['droplet','Necessidade hídrica'],['chart','Custos e preços'],['leaf','Efeitos agronômicos'],['shield','Riscos e limites']].map(x=>`<div class="data-box"><div class="row">${icon(x[0],16)}<b>${x[1]}</b></div><p class="tiny" style="margin-top:6px">${a.name}: não avaliado · ${b.name}: não avaliado</p></div>`).join('')}</div>`:
+      `<div class="stack"><p class="muted" style="font-size:13px">A versão conectada deverá documentar as fontes, datas, resoluções e limitações de cada análise.</p>${[['satellite','NASA POWER, GPM, SMAP ou HLS, conforme o indicador'],['book','Referências agronômicas e calendários regionais'],['chart','Preço de referência e custos locais verificáveis']].map(x=>`<div class="row">${icon(x[0],18)}<span style="font-size:12px">${x[1]}</span></div>`).join('')}<p class="tiny">Nenhuma dessas fontes foi consultada ou calculada neste arquivo.</p></div>`}
+      </div></div><div class="section-gap"><div class="card" style="height:max-content;position:sticky;top:24px"><div class="eyebrow">EM FOCO</div><h3 style="margin-top:9px">${p.name}</h3><p class="muted" style="font-size:12px;margin:11px 0">${safe(p.hint)}</p><div class="stack"><div class="data-box"><b>Viabilidade agronômica</b><p class="tiny">Ainda não avaliada</p></div><div class="data-box"><b>Economia e mercado</b><p class="tiny">Sem cálculo de retorno ou custos</p></div><div class="data-box"><b>Risco e incerteza</b><p class="tiny">Fontes e premissas não conectadas</p></div></div><div class="bottom-actions">${btn(`${icon('check',16)} ${state.planSaved&&state.planId===p.id?'Atualizar seleção':'Selecionar para acompanhar'}`,'savePlan','btn-primary btn-block')}${btn(`${icon('brain',16)} Perguntar sobre esta estratégia`,'assistantFromPlan','btn-secondary btn-block')}</div><p class="tiny" style="margin-top:10px">Selecionar um plano não equivale a iniciar uma safra.</p></div></div></div>`;
+  }
+  function mapPage(){
+    const inField=records.filter(r=>r.field===state.mapField);
+    const filtered=inField.filter(r=>state.mapLayer==='plants'?r.type==='plant'||r.type==='pest':state.mapLayer==='measurements'?r.type==='meter':false);
+    return `${headerTitle('Minha propriedade','Explore seu campo.','Selecione os talhões, consulte seus registros e alterne entre camadas ambientais.')}
+      <div class="grid main-cols"><div class="section-gap"><div class="tabline">${[['records','Visão geral'],['measurements','Solo'],['plants','Plantas'],['nasa','NASA']].map(x=>`<button class="tab ${state.mapLayer===x[0]?'active':''}" data-action="mapLayer" data-id="${x[0]}">${x[1]}</button>`).join('')}</div>
+      <div class="map-frame">${fieldDrawing()}<div class="map-legend">${icon('map',12)} Croqui ilustrativo · sem base geográfica</div></div>
+      ${infoCard('Os polígonos acima são um desenho fictício para testar a interação. Não são limites reais da propriedade. Nenhum ponto será posicionado no croqui usando coordenadas inventadas.')}
+      <div class="grid two on-mobile-two">${['Talhão 1','Talhão 2'].map(x=>`<button class="choice ${state.mapField===x?'selected':''}" data-action="mapField" data-name="${x}"><span class="grow"><strong>${x}</strong><p>${records.filter(r=>r.field===x).length} registros locais</p></span><span class="radio-mark"></span></button>`).join('')}</div>
+      ${state.mapLayer==='nasa'?`<div class="card"><div class="row">${icon('satellite',24)}<h3>Camadas ambientais</h3></div><p class="muted" style="margin:12px 0;font-size:13px">Os produtos NASA ainda não estão integrados ao protótipo. Quando conectados, serão mostrados com data, resolução espacial e abrangência correspondente.</p>${infoCard('SMAP fornece informação regional de umidade do solo e não equivale a medições de cada ponto de um talhão.','warning')}</div>`:
+      `<div class="card"><div class="card-title"><h3>${state.mapLayer==='measurements'?'Medições de solo':state.mapLayer==='plants'?'Observações de plantas':'Registros deste talhão'}</h3><span class="pill pill-neutral">${filtered.length|| (state.mapLayer==='records'?inField.length:0)}</span></div>
+      ${state.mapLayer==='records' ? (inField.length?inField.map(recordLine).join('') : `<div class="empty">${icon('pin',27)}<h3>Sem registros neste talhão</h3><p style="font-size:12px">Registre uma observação para iniciar o histórico.</p></div>`) :
+      (filtered.length?filtered.map(recordLine).join(''):`<div class="empty">${icon('pin',27)}<h3>Sem registros nesta camada</h3><p style="font-size:12px">Escolha outro filtro ou faça uma coleta.</p></div>`)}</div>`}
+      </div><div class="section-gap"><div class="card"><div class="eyebrow">AÇÕES DE CAMPO</div><h3 style="margin:9px 0">${safe(state.mapField)}</h3><p class="muted" style="font-size:12px;margin:10px 0 18px">As observações podem ser vinculadas ao talhão mesmo quando o GPS não está disponível. O sistema deve distingui-las de pontos geográficos precisos.</p>${btn(`${icon('camera',17)} Novo registro`,'newRecord','btn-primary btn-block')}<div style="margin-top:10px">${btn(`${icon('brain',17)} Perguntar sobre o talhão`,'assistantFromMap','btn-secondary btn-block')}</div></div>
+      <div class="card card-soft"><div class="row">${icon('image',21)}<h3>Mapas de calor</h3></div><p class="muted" style="font-size:12px;margin-top:10px">A interpolação só será habilitada com amostras suficientes e método validado. Por enquanto, trabalhamos com registros pontuais e a identificação de áreas não amostradas.</p></div></div></div>`;
+  }
+  function recordLine(r){return `<button type="button" class="event-content" style="display:block;width:100%;text-align:left;margin:9px 0" data-action="viewRecord" data-id="${safe(r.id)}"><div class="row align-start"><div class="crop-thumb" style="width:39px;height:39px">${icon(r.type==='meter'?'droplet':r.type==='plant'?'camera':r.type==='pest'?'alert':'journal',20)}</div><div class="grow"><h4>${r.type==='meter'?'Medição de solo':r.type==='plant'?'Foto de planta':r.type==='pest'?'Ocorrência / sintoma':'Observação'}</h4><div class="tiny">${safe(r.field)} · ${new Date(r.created).toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div><p style="font-size:12px;margin-top:5px">${safe(r.note||'Registro sem descrição')}</p><div class="tiny" style="margin-top:5px">Salvo neste dispositivo · não sincronizado</div></div>${icon('chevron',16)}</div></button>`}
+  function recordPage(){
+    const typ=state.recordType;
+    return `${headerTitle('Coleta de campo','Registre o que observou.','Fotografia, localização e valores confirmados ficam associados a um único registro agrícola.')}
+      <div class="grid main-cols"><div class="section-gap"><div class="card"><div class="eyebrow">TIPO DE OBSERVAÇÃO</div><div class="choice-stack" style="margin-top:14px">${[
+      ['meter','Fotografar medidor de solo','Leituras indicativas de pH, umidade, temperatura e luz.'],['plant','Fotografar planta','Acompanhamento visual, sem diagnóstico automático.'],['pest','Registrar sintoma ou praga','Ocorrência observada; identificação não confirmada.'],['note','Adicionar anotação','Observações e atividades de campo.']].map(x=>`<button class="choice ${typ===x[0]?'selected':''}" data-action="recordType" data-value="${x[0]}"><div class="grow"><strong>${x[1]}</strong><p>${x[2]}</p></div><span class="radio-mark"></span></button>`).join('')}</div>
+      <div style="margin-top:19px"><label class="label">Fotografia <span class="muted">(opcional)</span></label><label class="file-target" for="photoFile">${icon('camera',29)}<b>Fotografar ou escolher imagem</b><small>O navegador pode solicitar acesso à câmera.</small><input type="file" id="photoFile" accept="image/*" capture="environment" aria-label="Selecionar fotografia" /></label>${previewURL?`<div style="margin-top:13px"><img class="record-photo" src="${previewURL}" alt="Prévia da fotografia escolhida"><div style="margin-top:9px"><button class="text-link" data-action="removePhoto">${icon('cross',15)} Remover foto</button></div></div>`:''}</div>
+      ${typ==='meter'?`<div class="divider divider-space"></div><h3>Conferir leituras manualmente</h3><p class="muted" style="font-size:12px;margin-top:6px">A extração por IA não está conectada. Digite os valores observados no visor. Campos em branco ficam não informados.</p><div class="grid two" style="margin-top:10px">
+      ${[['recordPH','pH','Sem unidade'],['recordMoisture','Umidade','Escala do medidor'],['recordTemp','Temperatura','°C, se indicada'],['recordLight','Luminosidade','Escala do medidor']].map(x=>`<div class="field-group"><label class="label" for="${x[0]}">${x[1]}</label><input class="field" inputmode="decimal" id="${x[0]}" data-bind="${x[0]}" value="${safe(state[x[0]])}" placeholder="Não informado"><span class="form-help">${x[2]}</span></div>`).join('')}</div><div class="callout" style="margin-top:15px">${icon('info',18)}<span>Leituras de medidores portáteis econômicos são indicativas. Em especial, o pH não deve substituir análise laboratorial.</span></div>`:''}
+      <div class="field-group"><label class="label" for="recordNote">Descrição <span class="muted">(opcional se houver foto ou leitura)</span></label><textarea class="field" id="recordNote" data-bind="recordNote" placeholder="O que você observou?">${safe(state.recordNote)}</textarea></div>
+      <div class="field-group"><label class="label" for="recordField">Talhão</label><select class="field" id="recordField" data-bind="recordField">${['Talhão 1','Talhão 2'].map(x=>`<option ${state.recordField===x?'selected':''}>${x}</option>`).join('')}</select></div></div></div>
+      <div class="section-gap"><div class="card"><div class="row">${icon('pin',21)}<h3>Localização</h3></div><p class="muted" style="font-size:12px;margin:10px 0">Se o GPS estiver disponível, você pode associar uma posição real ao registro. Ela não será colocada automaticamente no mapa fictício.</p>${btn(`${icon('location',17)} Obter localização atual`,'getGPS','btn-secondary btn-block btn-sm')}
+      <div style="margin-top:10px" class="tiny">${state.recordLat!==null?`Coordenadas obtidas: ${Number(state.recordLat).toFixed(5)}, ${Number(state.recordLong).toFixed(5)}${state.recordLocationAccuracy?` · precisão estimada: ${Math.round(state.recordLocationAccuracy)} m`:''}`:'Sem coordenadas. O talhão será mantido como referência.'}</div></div>
+      <div class="card card-soft"><div class="row">${icon('save',21)}<h3>Armazenamento local</h3></div><p class="muted" style="font-size:12px;margin:10px 0">O registro será gravado no IndexedDB deste navegador, incluindo a fotografia, quando disponível. O status só mudará após a gravação ser concluída.</p><div class="callout">${icon(state.offlineSim?'wifioff':'info',17)}<span>${state.offlineSim?'Modo campo simulado ativo. Não existe sincronização remota nesta versão.':'Mesmo com conexão, esta versão não possui servidor; os registros permanecem apenas neste navegador.'}</span></div>
+      <div style="margin-top:17px">${btn(`${icon('save',17)} Salvar neste dispositivo`,'saveRecord','btn-primary btn-block',idbUnavailable?'disabled':'')}</div>${idbUnavailable?`<p class="tiny" style="margin-top:7px;color:#9B4037">Armazenamento IndexedDB indisponível: não é possível confirmar salvamento.</p>`:''}</div>
+      ${btn(`${icon('back',15)} Voltar à Safra`,'toSafra','btn-secondary btn-block')}</div></div>`;
+  }
+  function recordDetail(){const r=records.find(x=>x.id===state.viewRecord);if(!r)return `<div class="empty"><h3>Registro não encontrado</h3>${btn('Voltar ao diário','toSafra')}</div>`;
+    const url=getPhotoURL(r),metrics=r.measurements||{};
+    return `${headerTitle('Registro de campo','Detalhes da observação.','Informações gravadas neste dispositivo, sem envio para servidor externo.')}
+      <div class="grid main-cols"><div class="section-gap"><div class="card"><div class="row between"><div><div class="eyebrow">${safe(r.field)}</div><h2 style="margin-top:7px">${r.type==='meter'?'Medição de solo':r.type==='plant'?'Fotografia da planta':r.type==='pest'?'Ocorrência em investigação':'Anotação de campo'}</h2></div>${icon('pin',25)}</div>
+      <p class="muted" style="margin:12px 0;font-size:12px">${new Date(r.created).toLocaleString('pt-BR',{dateStyle:'long',timeStyle:'short'})}</p>${statusLabel(r)}
+      ${url?`<img class="record-photo" src="${url}" alt="Fotografia original associada ao registro" style="margin-top:18px">`:`<div class="empty-thumb" style="margin-top:16px">${icon('image',31)}</div>`}
+      ${r.note?`<div style="margin-top:18px"><h4>Descrição</h4><p style="font-size:13px;margin-top:8px">${safe(r.note)}</p></div>`:''}
+      ${Object.values(metrics).some(v=>v!==''&&v!==null)?`<div class="divider divider-space"></div><h4>Valores informados manualmente</h4><div class="grid two" style="margin-top:12px">${[['ph','pH',''],['moisture','Umidade','escala do medidor'],['temperature','Temperatura','°C (se indicada)'],['light','Luminosidade','escala do medidor']].filter(x=>metrics[x[0]]!==''&&metrics[x[0]]!=null).map(x=>`<div class="data-box"><div class="tiny">${x[1]}</div><b>${safe(metrics[x[0]])}</b><div class="tiny">${x[2]}</div></div>`).join('')}</div>`:''}</div></div>
+      <div class="section-gap"><div class="card"><h3>Origem e localização</h3><div class="stack" style="margin-top:13px"><div class="row">${icon('clipboard',17)}<span style="font-size:12px">Fonte: ${r.type==='meter'?'entrada manual do agricultor':'registro do usuário'}</span></div><div class="row">${icon('pin',17)}<span style="font-size:12px">${safe(r.field)}</span></div><div class="row align-start">${icon('location',17)}<span style="font-size:12px">${r.lat!==null&&r.lat!==undefined?`${Number(r.lat).toFixed(5)}, ${Number(r.long).toFixed(5)} · precisão ${r.accuracy?Math.round(r.accuracy)+' m':'não informada'}`:'Sem coordenadas GPS'}</span></div></div></div>
+      <div class="card card-soft"><h3>Investigue esta informação</h3><p class="muted" style="font-size:12px;margin:10px 0">Envie o contexto do registro para a interface do assistente. O modelo de IA ainda não está conectado.</p>${btn(`${icon('brain',17)} Abrir assistente`,'assistantFromRecord','btn-primary btn-block')}</div>
+      ${btn(`${icon('back',17)} Voltar ao diário`,'toSafra','btn-secondary btn-block')}</div></div>`;
+  }
+  function safra(){
+    const seasons={none:['Nenhuma safra ativa','Você pode planejar ou realizar observações independentes.'],planned:['Planejamento selecionado','O cultivo ainda não foi confirmado como iniciado.'],active:['Safra em andamento','O início do cultivo foi confirmado nesta demonstração.'],closed:['Safra encerrada','O histórico permanece disponível para consulta.']};const [title,desc]=seasons[state.season];let v=records.filter(r=>state.filterDiary==='all'||r.type===state.filterDiary);
+    return `${headerTitle('Minha Safra','Seu diário agrícola.','Acompanhe a produção e preserve as observações realizadas no campo.')}
+      <div class="grid main-cols"><div class="section-gap"><div class="card" style="background:var(--primary);color:#fff"><div class="row between"><span style="letter-spacing:.12em;font-size:10px;color:#CDE6BB;font-weight:800">ACOMPANHAMENTO DA PRODUÇÃO</span>${icon('sprout',25)}</div><h2 style="margin-top:17px;color:#fff">${state.planSaved?safe(state.focusCrop):'Sua próxima safra'}</h2><p style="color:#E2EFDB;font-size:13px;margin:8px 0 17px">${state.planSaved?safe(pselected().name)+' · ':''}${safe(title)}</p><span class="pill" style="background:#D8E889;color:#274126">${state.season==='planned'?'Planejada':state.season==='active'?'Em andamento':state.season==='closed'?'Encerrada':'Sem cultivo confirmado'}</span></div>
+      <div class="card"><div class="row align-start">${icon('info',20)}<div class="grow"><h3>${title}</h3><p class="muted" style="margin-top:6px;font-size:12px">${desc}</p></div></div><div class="bottom-actions">${state.season==='none'?btn('Explorar planejamento','toDiscover','btn-secondary') : state.season==='planned'?btn(`${icon('check',16)} Confirmar início do cultivo`,'askStartSeason','btn-primary'):state.season==='active'?btn(`${icon('archive',16)} Encerrar safra`,'askCloseSeason','btn-secondary'):btn('Rever planejamento','toPlan','btn-secondary')}</div></div>
+      ${sectionHeader('Diário de campo',`<span class="pill pill-neutral">${records.length} registros</span>`)}<div class="tabline">${[['all','Todos'],['meter','Solo'],['plant','Plantas'],['pest','Ocorrências'],['note','Notas']].map(x=>`<button class="tab ${state.filterDiary===x[0]?'active':''}" data-action="filterDiary" data-id="${x[0]}">${x[1]}</button>`).join('')}</div>
+      ${v.length?`<div class="timeline">${v.map(r=>`<div class="event"><div class="event-content" role="button" tabindex="0" data-action="viewRecord" data-id="${safe(r.id)}"><div class="row between align-start"><h4>${r.type==='meter'?'Medição de solo':r.type==='plant'?'Fotografia da planta':r.type==='pest'?'Ocorrência registrada':'Anotação de campo'}</h4>${icon('chevron',17)}</div><div class="tiny" style="margin-top:5px">${safe(r.field)} · ${new Date(r.created).toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div><p style="font-size:12px;margin-top:6px">${safe(r.note||'Registro com valores ou fotografia')}</p><span class="tiny">Salvo localmente</span></div></div>`).join('')}</div>`:`<div class="empty">${icon('journal',30)}<h3>Nenhum registro encontrado</h3><p style="font-size:12px">Registre uma medição, fotografia ou anotação para iniciar o histórico.</p>${btn(`${icon('plus',17)} Novo registro`,'newRecord','btn-primary btn-sm')}</div>`}</div>
+      <div class="section-gap"><div class="card"><h3>Ações de campo</h3><p class="muted" style="font-size:12px;margin:9px 0 15px">As observações serão compartilhadas com a área de mapa e poderão ser consultadas pelo assistente.</p>${btn(`${icon('camera',17)} Registrar observação`,'newRecord','btn-primary btn-block')}<div style="margin-top:9px">${btn(`${icon('map',17)} Ver no mapa`,'toMap','btn-secondary btn-block')}</div></div>
+      <div class="card card-soft"><h3>Evolução do cultivo</h3><p class="muted" style="font-size:12px;margin-top:9px">Gráficos de evolução aparecerão quando houver leituras com datas, unidades e instrumentos comparáveis. Não há dados suficientes para demonstrá-los com rigor nesta versão.</p></div></div></div>`;
+  }
+  function intelligence(){const subset=stories.filter(x=>state.intelFilter==='all'||x.id===state.intelFilter);
+    return `${headerTitle('Inteligência agrícola','Entenda o que importa.','Pesquisas, acontecimentos e mudanças econômicas conectados ao contexto da propriedade.')}
+      ${infoCard('Este feed contém cenários fictícios. Não representa notícias publicadas, alertas reais ou fontes consultadas. A versão conectada terá instituições, datas e links verificáveis.','warning')}
+      <div class="tabline" style="margin:18px 0 9px">${[['all','Para você'],['science','Ciência'],['market','Mercado'],['pests','Pragas']].map(x=>`<button class="tab ${state.intelFilter===x[0]?'active':''}" data-action="intelFilter" data-id="${x[0]}">${x[1]}</button>`).join('')}</div>
+      <div class="grid main-cols"><div class="section-gap">${subset.map(s=>`<button type="button" class="card article-card" style="text-align:left" data-action="openArticle" data-id="${s.id}"><div class="row between"><span class="article-type">${s.type}</span>${icon('chevron',19)}</div><h3>${safe(s.title)}</h3><p class="muted" style="font-size:13px">${safe(s.summary)}</p><div class="row between"><span class="pill">${icon('sprout',12)} ${s.crop}</span><span class="tiny">Exemplo fictício</span></div></button>`).join('')}</div><div class="section-gap"><div class="card card-soft"><div class="row">${icon('spark',22)}<h3>Por que apareceu para mim?</h3></div><p class="muted" style="font-size:12px;margin-top:10px">Ao conectar as fontes, a Agrion identificará culturas, regiões e temas relacionados à propriedade. A relevância será justificada, sem confundi-la com risco confirmado.</p></div><div class="card"><h3>Integrada à sua jornada</h3><div class="stack" style="margin-top:13px">${[['news','Informação contextualizada'],['brain','Investigar com assistente'],['compare','Consultar estratégias']].map(x=>`<div class="row">${icon(x[0],18)}<span style="font-size:12px">${x[1]}</span></div>`).join('')}</div></div></div></div>`;
+  }
+  function articlePage(){const s=stories.find(x=>x.id===state.article);if(!s)return intelligence();
+    return `<button class="btn btn-ghost btn-sm" style="margin-bottom:19px" data-action="toIntelligence">${icon('back',16)} Voltar às informações</button>${headerTitle(s.type,'O que essa informação significa?','Exemplo de como uma publicação pode ser relacionada à sua propriedade.')}
+      <div class="grid main-cols"><div class="section-gap"><div class="card"><span class="article-type">${s.type} · ${s.crop}</span><h2 style="margin:11px 0 13px">${safe(s.title)}</h2><p class="muted">${safe(s.summary)}</p><div class="divider divider-space"></div><div class="row">${icon('book',18)}<span class="tiny">Cenário de demonstração · sem publicação, fonte ou data reais</span></div></div>
+      <div class="card card-soft"><div class="row">${icon('spark',22)}<h3>Por que importa para você?</h3></div><p style="font-size:13px;margin-top:11px">${safe(s.context)}</p></div>
+      <div class="card"><div class="row">${icon('compare',20)}<h3>Relação com o planejamento</h3></div><p class="muted" style="font-size:13px;margin-top:10px">${safe(s.action)}</p><div style="margin-top:17px">${btn(`${icon('compare',16)} Abrir Planejador`,'toPlan','btn-secondary btn-sm')}</div></div></div>
+      <div class="section-gap"><div class="card"><h3>Próxima investigação</h3><p class="muted" style="font-size:12px;margin:10px 0 17px">Faça uma pergunta ao assistente com o contexto desta informação. A IA ainda não responde neste protótipo.</p>${btn(`${icon('brain',17)} Investigar com assistente`,'assistantFromArticle','btn-primary btn-block')}<div style="margin-top:9px">${btn(`${icon(state.bookmarks.includes(s.id)?'circlecheck':'book',16)} ${state.bookmarks.includes(s.id)?'Salvo para consultar':'Salvar referência'}`,'toggleBookmark','btn-secondary btn-block')}</div></div>${infoCard('Notícias e estudos deverão ser vinculados a fontes e datas verificadas. Mudanças de planejamento exigirão investigação e confirmação humana.','warning')}</div></div>`;
+  }
+  function assistant(){return `${headerTitle('Assistente Agrion','Pergunte com contexto.','Converse sobre registros, estratégias ou informações da sua propriedade.')}
+      <div class="grid main-cols"><div class="section-gap"><div class="card card-soft"><div class="row">${icon('brain',21)}<div class="grow"><h3>Contexto selecionado</h3><p class="muted" style="font-size:12px;margin-top:5px">${safe(state.assistantContext)}</p></div></div></div>
+      ${infoCard('Esta é a interface do assistente; não há IA, consulta a fontes ou resposta automática conectada. Suas perguntas ficam apenas no protótipo.','warning')}
+      <div class="card" style="min-height:230px"><div class="stack">${state.messages.length?state.messages.map(m=>`<div class="chat-bubble ${m.role==='user'?'user':'system'}">${safe(m.text)}</div>`).join(''):`<div class="empty" style="border:0;background:transparent">${icon('brain',33)}<h3>O que gostaria de investigar?</h3><p style="font-size:12px">Selecione uma pergunta abaixo ou escreva a sua.</p></div>`}</div></div>
+      <div class="flow-tags">${['O que devo observar neste talhão?','Como verificar as fontes da estratégia?','Como registrar um possível sintoma?'].map(questionChip).join('')}</div>
+      <div class="card"><label class="label" for="assistantInput">Sua pergunta</label><textarea id="assistantInput" class="field" placeholder="Pergunte sobre sua cultura, solo ou estratégia..." rows="3"></textarea><div class="bottom-actions">${btn(`${icon('send',17)} Registrar pergunta`,'sendQuestion','btn-primary')}${btn(`${icon('clipboard',17)} Criar registro`,'assistantToRecord','btn-secondary')}</div></div>
+      </div><div class="section-gap"><div class="card"><h3>O que a IA poderá consultar?</h3><div class="stack" style="margin-top:14px">${[['pin','Localização e dados autorizados'],['journal','Registros e observações'],['compare','Estratégias e premissas'],['book','Publicações verificáveis']].map(x=>`<div class="row">${icon(x[0],18)}<span style="font-size:12px">${x[1]}</span></div>`).join('')}</div><p class="tiny" style="margin-top:15px">No MVP, a resposta deverá citar fontes e sinalizar lacunas e incertezas.</p></div>${btn(`${icon('back',16)} Voltar à origem`,'assistantBack','btn-secondary btn-block')}</div></div>`}
+  function modalHtml(){if(!state.modal)return '';const config={start:{title:'Confirmar início do cultivo?',text:'Isso mudará o estado do planejamento para safra em andamento nesta demonstração. Não executará nenhuma ação agrícola real.',action:'confirmStart',button:'Confirmar início'},close:{title:'Encerrar esta safra?',text:'O histórico continuará armazenado neste navegador. O encerramento será apenas demonstrativo.',action:'confirmClose',button:'Encerrar safra'},reset:{title:'Reiniciar o protótipo?',text:'Isso apagará os dados do cadastro, as preferências e os registros e fotografias salvos neste navegador para esta demonstração.',action:'confirmReset',button:'Apagar dados locais'}}[state.modal];if(!config)return '';
+    return `<div class="modal-backdrop" role="presentation"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div style="color:var(--primary)">${icon('alert',27)}</div><h3 id="modalTitle">${config.title}</h3><p>${config.text}</p><div class="modal-actions"><button class="btn btn-secondary" data-action="cancelModal">Cancelar</button><button class="btn btn-primary" data-action="${config.action}">${config.button}</button></div></div></div>`;
+  }
+  const meta={home:'Início',onboarding:'Cadastro',discover:'Descobrir culturas',plan:'Planejamento',map:'Minha propriedade',record:'Novo registro',recordDetail:'Detalhe do registro',safra:'Minha Safra',intelligence:'Inteligência',article:'Detalhe da informação',assistant:'Assistente'};
+  function mainPage(){return ({home, onboarding, discover, plan, map:mapPage, record:recordPage,recordDetail,safra,intelligence,article:articlePage,assistant})[state.page]?.()||home()}
+  function render(){const navs=[['home','Início','home'],['plan','Planejar','compare'],['map','Mapa','map'],['safra','Safra','journal']];
+    $('app').innerHTML=`<div class="app"><aside class="sidebar" aria-label="Navegação principal"><div class="brand"><div class="brand-logo">${icon('sprout',26)}</div><div><div class="brand-name">Agrion<span style="color:#A8C96C">.</span></div><div class="brand-tag">Cultive decisões melhores.</div></div></div><div class="navlabel">EXPERIÊNCIA</div>${navs.map(n=>navItem(...n)).join('')}<div class="navlabel">INTELIGÊNCIA</div>${navItem('intelligence','Inteligência','news')}${navItem('assistant','Assistente','brain')}<div class="side-bottom"><div class="demo-stamp">${icon('spark',16)} Protótipo interativo V3.1</div><p class="side-note">Dados agrícolas demonstrativos. Sem integrações NASA, IA ou servidor.</p><button class="text-link" data-action="askReset" style="margin-top:11px">${icon('reset',15)} Reiniciar demonstração</button></div></aside>
+      <div class="workspace"><main class="content"><div class="topbar"><div class="mobile-head"><div class="brand-logo">${icon('sprout',22)}</div><div><div class="brand-name">Agrion<span style="color:#A8C96C">.</span></div><div class="brand-tag">PROTÓTIPO V3.1</div></div></div><div class="bread">AGRION / ${safe(meta[state.page]||'Início')} <span style="color:#9AA694">· EXPERIÊNCIA DE DEMONSTRAÇÃO</span></div><div class="top-actions"><button class="chip ${state.offlineSim?'active':''}" data-action="toggleOffline" title="Simula indisponibilidade de serviços online; não altera a conexão real">${icon(state.offlineSim?'wifioff':'wifi',15)} <span class="text-condition">${state.offlineSim?'Modo campo':'Modo demonstrativo'}</span><span class="tiny" style="color:inherit">${state.offlineSim?'Offline simulado':'Online simulado'}</span></button><button class="icon-button" data-action="toIntelligence" title="Inteligência agrícola" aria-label="Inteligência agrícola">${icon('news',18)}</button><button class="icon-button" data-action="assistantFromHome" title="Assistente Agrion" aria-label="Assistente Agrion">${icon('brain',18)}</button></div></div>
+      ${mainPage()}<div class="footer-note">Agrion · Protótipo V3.1 · Dados demonstrativos, sem consulta real à NASA ou geração de recomendações. Registros do usuário ficam neste navegador (IndexedDB), quando disponível.</div></main></div>
+      <nav class="mobile-nav" aria-label="Navegação inferior">${navs.map(n=>`<button type="button" class="${active(n[0])?'active':''}" aria-current="${active(n[0])?'page':'false'}" data-action="nav" data-page="${n[0]}">${icon(n[2],20)}<span>${n[1]}</span></button>`).join('')}</nav></div><div id="toastMount" aria-live="polite"></div>${modalHtml()}`;renderToast();}
+  async function perform(action,el){
+    switch(action){
+      case 'nav':navigate(el.dataset.page==='plan'?'plan':el.dataset.page);break;
+      case 'toPlan':navigate('plan');break;
+      case 'toDiscover':navigate('discover');break;
+      case 'toMap':navigate('map');break;
+      case 'toSafra':navigate('safra');break;
+      case 'toIntelligence':navigate('intelligence');break;
+      case 'goOnboarding':state.step=state.onboarded?0:state.step;navigate('onboarding');break;
+      case 'stepBack':if(state.step===0)navigate('home');else{state.step--;persist();render()}break;
+      case 'stepNext':{
+        if(state.step===0&&!state.region.trim()){notify('Informe pelo menos município e estado para continuar.');return}
+        if(state.step<3){state.step++;persist();render();window.scrollTo({top:0,behavior:'instant'});return}
+        state.onboarded=true;
+        if(state.experience==='undecided'||!state.crops.length){state.discoverSelected=[];navigate('discover')}
+        else{state.focusCrop=state.crops[0];state.discoverSelected=[...state.crops];navigate('plan')}
+        notify('Cadastro de demonstração salvo neste navegador. A localização não foi validada.');break;
+      }
+      case 'experience':state.experience=el.dataset.value;persist();render();break;
+      case 'soil':state.soil=el.dataset.value;persist();render();break;
+      case 'goal':state.goal=el.dataset.value;persist();render();break;
+      case 'toggleCrop':state.crops=state.crops.includes(el.dataset.name)?state.crops.filter(x=>x!==el.dataset.name):[...state.crops,el.dataset.name];persist();render();break;
+      case 'toggleDiscover':state.discoverSelected=state.discoverSelected.includes(el.dataset.name)?state.discoverSelected.filter(x=>x!==el.dataset.name):[...state.discoverSelected,el.dataset.name];persist();render();break;
+      case 'fromDiscover':if(!state.discoverSelected.length){notify('Escolha pelo menos uma cultura para investigar.');return}state.focusCrop=state.discoverSelected[0];state.planSaved=false;state.season='none';state.planId='b';navigate('plan');break;
+      case 'selectPlan':state.planId=el.dataset.id;persist();render();break;
+      case 'detailTab':state.detailTab=el.dataset.id;persist();render();break;
+      case 'savePlan':state.planSaved=true;state.season='planned';persist();navigate('safra');notify('Estratégia selecionada na demonstração. Nenhuma viabilidade agronômica foi validada.');break;
+      case 'mapLayer':state.mapLayer=el.dataset.id;persist();render();break;
+      case 'mapField':state.mapField=el.dataset.name;state.recordField=el.dataset.name;persist();render();break;
+      case 'newRecord':state.recordField=state.page==='map'?state.mapField:state.recordField;state.recordLat=null;state.recordLong=null;state.recordLocationAccuracy=null;navigate('record');break;
+      case 'recordType':state.recordType=el.dataset.value;persist();render();break;
+      case 'removePhoto':clearFile();render();break;
+      case 'getGPS':{
+        if(!navigator.geolocation){notify('Este navegador não oferece geolocalização. Selecione apenas o talhão.');return}
+        notify('Solicitando autorização para obter coordenadas no seu dispositivo.');
+        navigator.geolocation.getCurrentPosition(pos=>{state.recordLat=pos.coords.latitude;state.recordLong=pos.coords.longitude;state.recordLocationAccuracy=pos.coords.accuracy;persist();render();notify('Coordenadas obtidas. Ainda não serão posicionadas no mapa ilustrativo.');},err=>{notify('Localização indisponível ou permissão não concedida. Você pode continuar indicando somente o talhão.');},{enableHighAccuracy:true,timeout:10000,maximumAge:0});break;
+      }
+      case 'saveRecord':{
+        if(idbUnavailable){notify('O armazenamento persistente está indisponível neste navegador.');return}
+        const raw={ph:state.recordPH.trim(),moisture:state.recordMoisture.trim(),temperature:state.recordTemp.trim(),light:state.recordLight.trim()};
+        if(!state.recordNote.trim()&&!photoFile&&!(state.recordType==='meter'&&Object.values(raw).some(v=>v!==''))){notify('Acrescente uma fotografia, uma leitura ou uma descrição antes de salvar.');return}
+        const r={id:id(),created:Date.now(),type:state.recordType,field:state.recordField,note:state.recordNote.trim(),measurements:state.recordType==='meter'?raw:{},lat:state.recordLat,long:state.recordLong,accuracy:state.recordLocationAccuracy,photo:photoFile||null,status:'local'};
+        el.disabled=true;el.textContent='Gravando no dispositivo...';
+        try{await addRecord(r);records=await readAll();clearFile();state.recordNote='';state.recordPH='';state.recordMoisture='';state.recordTemp='';state.recordLight='';state.recordLat=null;state.recordLong=null;state.recordLocationAccuracy=null;persist();navigate('safra');notify('Registro gravado neste navegador. Sem sincronização com servidor.');}
+        catch(e){el.disabled=false;el.textContent='Tentar salvar novamente';notify('Não foi possível confirmar a gravação. O registro não foi marcado como salvo.');}
+        break;
+      }
+      case 'filterDiary':state.filterDiary=el.dataset.id;persist();render();break;
+      case 'viewRecord':state.viewRecord=el.dataset.id;navigate('recordDetail');break;
+      case 'askStartSeason':state.modal='start';render();break;
+      case 'askCloseSeason':state.modal='close';render();break;
+      case 'askReset':state.modal='reset';render();break;
+      case 'cancelModal':state.modal=null;render();break;
+      case 'confirmStart':state.season='active';state.modal=null;persist();render();notify('Início do cultivo confirmado na demonstração.');break;
+      case 'confirmClose':state.season='closed';state.modal=null;persist();render();notify('Safra encerrada nesta demonstração. Registros preservados.');break;
+      case 'confirmReset':{
+        try{await removeAllRecords();for(const url of photoURLs.values())URL.revokeObjectURL(url);photoURLs.clear();records=[];clearFile();state={...seed};persist();navigate('home');notify('Demonstração reiniciada. Dados locais apagados.');}
+        catch(e){state.modal=null;render();notify('Não foi possível apagar todos os registros locais.');}
+        break;
+      }
+      case 'intelFilter':state.intelFilter=el.dataset.id;persist();render();break;
+      case 'openArticle':state.article=el.dataset.id;navigate('article');break;
+      case 'toggleBookmark':if(!state.article)return;state.bookmarks=state.bookmarks.includes(state.article)?state.bookmarks.filter(x=>x!==state.article):[...state.bookmarks,state.article];persist();render();break;
+      case 'assistantFromArticle':{
+        const s=stories.find(x=>x.id===state.article);beginAssistant('Informação ilustrativa: '+(s?s.title:'sem conteúdo'),'article');break;
+      }
+      case 'assistantFromHome':beginAssistant('Visão geral da propriedade',state.page);break;
+      case 'assistantFromPlan':beginAssistant('Estratégia '+pselected().name+' · '+state.focusCrop,'plan');break;
+      case 'assistantFromMap':beginAssistant(state.mapField+' · registros da propriedade','map');break;
+      case 'assistantFromRecord':{
+        const r=records.find(x=>x.id===state.viewRecord);beginAssistant('Registro: '+(r?r.field+' — '+(r.note||'sem observação textual'):'observação'),'recordDetail');break;
+      }
+      case 'assistantBack':navigate(state.assistantReturn||'home');break;
+      case 'askSuggestion':{const box=$('assistantInput');if(box){box.value=el.dataset.text||'';box.focus()}break;}
+      case 'sendQuestion':{
+        const text=$('assistantInput')?.value.trim();if(!text){notify('Escreva uma pergunta antes de continuar.');return}
+        if(state.offlineSim){notify('Modo campo simulado: consultas online estão indisponíveis.');return}
+        state.messages=[...state.messages,{role:'user',text},{role:'system',text:'Pergunta registrada na demonstração. Não há modelo de IA conectado; nenhuma resposta ou recomendação foi gerada.'}].slice(-20);persist();render();break;
+      }
+      case 'assistantToRecord':{
+        const text=$('assistantInput')?.value.trim();state.recordNote=text||state.recordNote;state.recordType='note';navigate('record');notify('Rascunho preparado. Revise o conteúdo antes de salvar o registro.');break;
+      }
+      case 'toggleOffline':state.offlineSim=!state.offlineSim;persist();render();notify(state.offlineSim?'Modo campo ativado apenas para simulação. O navegador não foi desconectado.':'Simulação online ativada. Não existe servidor conectado.');break;
+      default:console.warn('Unknown action',action)
+    }
+  }
+  document.addEventListener('click',e=>{
+    const mapField=e.target.closest('[data-mapfield]');if(mapField){state.mapField=mapField.dataset.mapfield;state.recordField=state.mapField;persist();render();return}
+    const target=e.target.closest('[data-action]');if(!target)return;e.preventDefault();perform(target.dataset.action,target).catch(err=>{console.error(err);notify('Esta ação não pôde ser concluída.')});
+  });
+  document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.getAttribute('role')==='button'&&e.target.dataset.action){e.preventDefault();perform(e.target.dataset.action,e.target)}if(e.key==='Escape'&&state.modal){state.modal=null;render()}});
+  document.addEventListener('input',e=>{const node=e.target;if(node.dataset.bind){state[node.dataset.bind]=node.value;persist()}});
+  document.addEventListener('change',e=>{
+    if(e.target.id==='photoFile'){const f=e.target.files&&e.target.files[0];if(f&&f.size>15*1024*1024){notify('Selecione uma imagem de até 15 MB para esta demonstração.');return}if(f)prepareFile(f);return}
+    if(e.target.dataset.bind){state[e.target.dataset.bind]=e.target.value;persist();if(['compareA','compareB','irrigation','market','recordField'].includes(e.target.dataset.bind))render();}
+  });
+  (async function init(){db=await openDb();idbUnavailable=!db;records=await readAll();render();})();
+  </script>
+</body>
+</html>

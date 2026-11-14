@@ -1,0 +1,3 @@
+# Instruções para agentes
+
+Leia `README.md` e `docs/ARCHITECTURE.md` antes de mudanças relevantes; consulte `references/` antes de alterar a interface. Preserve Flask + HTML + JavaScript + Tailwind e as funcionalidades do protótipo. Não introduza frameworks sem autorização. Mantenha código modular e legível, evite dependências desnecessárias e proteja credenciais. Implemente testes para novas funcionalidades e atualize a documentação pertinente. Não apresente dados fictícios como reais nem faça operações destrutivas sem autorização. Priorize estabilidade do MVP e registre limitações e pendências ao concluir.
