@@ -1,0 +1,19 @@
+# Python
+__pycache__/ *.py[cod] *.egg-info/ .pytest_cache/
+# Ambientes virtuais
+venv/ .venv/ env/
+# Senhas e configurações privadas
+.env .env.*
+!.env.example
+*.pem *.key
+# Banco de dados local
+*.db *.sqlite *.sqlite3
+# Frontend
+node_modules/ dist/ build/
+# Editores
+.vscode/ .idea/
+# Sistema operacional
+.DS_Store Thumbs.db
+# Logs
+*.log
+logs/
