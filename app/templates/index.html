@@ -1197,6 +1197,40 @@
   }
 }
 </style>
+<style id="agrion-welcome-styles">
+  .welcome-page { min-height: 100vh; background: #F8F8F1; color: #242C20; }
+  .welcome-layout { width: 100%; max-width: 1440px; margin: 0 auto; }
+  .welcome-visual { height: clamp(270px, 77vw, 390px); position: relative; overflow: hidden; }
+  .welcome-visual picture, .welcome-visual img { display: block; width: 100%; height: 100%; }
+  .welcome-visual img { object-fit: cover; object-position: center 57%; }
+  .welcome-visual::after { content: ""; position: absolute; inset: auto 0 0; height: 43%; background: linear-gradient(0deg, #F8F8F1 1%, rgba(248,248,241,0)); pointer-events: none; }
+  .welcome-brand { position: absolute; top: max(24px, env(safe-area-inset-top)); left: max(25px, env(safe-area-inset-left)); z-index: 1; display: flex; align-items: center; gap: 9px; color: #29452B; font: 800 26px/1 var(--head); letter-spacing: -.055em; }
+  .welcome-brand-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 11px; background: #385C39; color: #D8E889; }
+  .welcome-copy { position: relative; z-index: 1; max-width: 640px; margin: -38px auto 0; padding: 0 25px max(34px, env(safe-area-inset-bottom)); }
+  .welcome-copy h1 { max-width: 590px; font-size: clamp(29px, 8.2vw, 42px); line-height: 1.12; letter-spacing: -.055em; }
+  .welcome-subtitle { max-width: 560px; margin-top: 15px; color: #596451; font-size: 14px; line-height: 1.5; }
+  .welcome-benefits { display: grid; gap: 20px; margin: 34px 0 32px; }
+  .welcome-benefit { display: flex; gap: 15px; align-items: center; }
+  .welcome-benefit-icon { display: grid; place-items: center; flex: 0 0 52px; height: 52px; border-radius: 15px; color: #385C39; background: #E9EFDA; }
+  .welcome-benefit h2 { font-size: 15px; line-height: 1.25; letter-spacing: -.025em; }
+  .welcome-benefit p { margin-top: 4px; color: #596451; font-size: 12px; line-height: 1.4; }
+  .welcome-actions { display: grid; gap: 10px; }
+  .welcome-actions .btn { width: 100%; border-radius: 16px; font-size: 14px; }
+  .welcome-actions .btn-secondary { border-color: #385C39; background: transparent; }
+  @media (min-width: 768px) {
+    .welcome-layout { display: grid; grid-template-columns: minmax(390px, 46%) minmax(0, 54%); min-height: 100vh; align-items: stretch; }
+    .welcome-visual { grid-column: 2; grid-row: 1; height: auto; min-height: 100vh; }
+    .welcome-visual img { object-position: 56% center; }
+    .welcome-visual::after { inset: 0 auto 0 0; width: 25%; height: auto; background: linear-gradient(90deg, #F8F8F1, rgba(248,248,241,0)); }
+    .welcome-brand { position: static; grid-column: 1; grid-row: 1; align-self: start; margin: 46px 0 0 clamp(32px, 5vw, 76px); }
+    .welcome-copy { grid-column: 1; grid-row: 1; align-self: center; width: 100%; margin: 45px 0 0; padding: 54px clamp(32px, 5vw, 76px) 55px; }
+    .welcome-copy h1 { font-size: clamp(38px, 3.3vw, 54px); }
+    .welcome-subtitle { font-size: 16px; }
+    .welcome-benefits { gap: 24px; margin: 36px 0; }
+    .welcome-benefit p { font-size: 13px; }
+    .welcome-actions { max-width: 400px; }
+  }
+</style>
 </head>
 <body>
   <div id="app" aria-live="polite"></div>
@@ -1206,6 +1240,7 @@
   const icons={
     leaf:'<path d="M20 4c-10 0-16 5-16 12a5 5 0 0 0 5 5c7 0 12-6 11-17Z"/><path d="M6 18c4-5 8-8 13-10"/>',
     sprout:'<path d="M12 22V11"/><path d="M12 13C6 13 3 10 3 5c6 0 9 3 9 8Z"/><path d="M12 17c6 0 9-3 9-8-6 0-9 3-9 8Z"/>',
+    chat:'<path d="M20 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4-.9L3 20l.9-4.5a9 9 0 0 1-.9-4A8.5 8.5 0 0 1 11.5 3H12a8 8 0 0 1 8 8.5Z"/><path d="M7.5 11.5h8"/>',
     home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M9 21v-8h6v8"/>',
     calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
     compare:'<path d="M3 7h18M3 17h18"/><path d="m7 3-4 4 4 4M17 13l4 4-4 4"/>',
@@ -1431,13 +1466,27 @@
   }
   const meta={home:'Início',onboarding:'Cadastro',discover:'Descobrir culturas',plan:'Planejamento',map:'Minha propriedade',record:'Novo registro',recordDetail:'Detalhe do registro',safra:'Minha Safra',intelligence:'Inteligência',article:'Detalhe da informação',assistant:'Assistente'};
   function mainPage(){return ({home, onboarding, discover, plan, map:mapPage, record:recordPage,recordDetail,safra,intelligence,article:articlePage,assistant})[state.page]?.()||home()}
+  function welcome(){
+    return `<main class="welcome-page"><div class="welcome-layout">
+      <div class="welcome-visual"><picture><source media="(min-width: 768px)" srcset="{{ url_for('static', filename='agrion-hero-desktop.jpg') }}"><img src="{{ url_for('static', filename='agrion-hero-mobile.jpg') }}" alt="Lavoura ao nascer do sol" fetchpriority="high"></picture></div>
+      <div class="welcome-brand"><span class="welcome-brand-icon">${icon('leaf',23)}</span><span>Agrion</span></div>
+      <div class="welcome-copy"><h1>O futuro da sua lavoura começa com uma conversa.</h1><p class="welcome-subtitle">Dados da NASA, conhecimento agrícola e inteligência artificial trabalhando juntos para ajudar você a tomar decisões melhores.</p>
+        <div class="welcome-benefits">
+          <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('chat',27)}</span><div><h2>Conte sobre sua lavoura</h2><p>O que você plantou, como foi a colheita e quais são seus objetivos.</p></div></div>
+          <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('sprout',28)}</span><div><h2>Descubra o que plantar</h2><p>Explore culturas e rotações considerando clima, solo e histórico da sua região.</p></div></div>
+          <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('chart',27)}</span><div><h2>Decida com mais confiança</h2><p>Compare riscos, oportunidades e potencial de retorno para sua próxima safra.</p></div></div>
+        </div><div class="welcome-actions"><button type="button" class="btn btn-primary" data-action="welcomeSoon">Começar meu planejamento ${icon('arrow',18)}</button><button type="button" class="btn btn-secondary" data-action="welcomeSoon">Já tenho uma conta</button></div>
+      </div></div></main><div id="toastMount" aria-live="polite"></div>`;
+  }
   function render(){const navs=[['home','Início','home'],['plan','Planejar','compare'],['map','Mapa','map'],['safra','Safra','journal']];
+    if(state.page==='home'){$('app').innerHTML=welcome();renderToast();return}
     $('app').innerHTML=`<div class="app"><aside class="sidebar" aria-label="Navegação principal"><div class="brand"><div class="brand-logo">${icon('sprout',26)}</div><div><div class="brand-name">Agrion<span style="color:#A8C96C">.</span></div><div class="brand-tag">Cultive decisões melhores.</div></div></div><div class="navlabel">EXPERIÊNCIA</div>${navs.map(n=>navItem(...n)).join('')}<div class="navlabel">INTELIGÊNCIA</div>${navItem('intelligence','Inteligência','news')}${navItem('assistant','Assistente','brain')}<div class="side-bottom"><div class="demo-stamp">${icon('spark',16)} Protótipo interativo V3.1</div><p class="side-note">Dados agrícolas demonstrativos; sem integrações NASA ou IA.</p><button class="text-link" data-action="askReset" style="margin-top:11px">${icon('reset',15)} Reiniciar demonstração</button></div></aside>
       <div class="workspace"><main class="content"><div class="topbar"><div class="mobile-head"><div class="brand-logo">${icon('sprout',22)}</div><div><div class="brand-name">Agrion<span style="color:#A8C96C">.</span></div><div class="brand-tag">PROTÓTIPO V3.1</div></div></div><div class="bread">AGRION / ${safe(meta[state.page]||'Início')} <span style="color:#9AA694">· EXPERIÊNCIA DE DEMONSTRAÇÃO</span></div><div class="top-actions"><button class="chip ${state.offlineSim?'active':''}" data-action="toggleOffline" title="Simula indisponibilidade de serviços online; não altera a conexão real">${icon(state.offlineSim?'wifioff':'wifi',15)} <span class="text-condition">${state.offlineSim?'Modo campo':'Modo demonstrativo'}</span><span class="tiny" style="color:inherit">${state.offlineSim?'Offline simulado':'Online simulado'}</span></button><button class="icon-button" data-action="toIntelligence" title="Inteligência agrícola" aria-label="Inteligência agrícola">${icon('news',18)}</button><button class="icon-button" data-action="assistantFromHome" title="Assistente Agrion" aria-label="Assistente Agrion">${icon('brain',18)}</button></div></div>
       ${mainPage()}<div class="footer-note">Agrion · Protótipo V3.1 · Dados demonstrativos, sem consulta real à NASA ou geração de recomendações. Registros do usuário ficam neste navegador (IndexedDB), quando disponível.</div></main></div>
       <nav class="mobile-nav" aria-label="Navegação inferior">${navs.map(n=>`<button type="button" class="${active(n[0])?'active':''}" aria-current="${active(n[0])?'page':'false'}" data-action="nav" data-page="${n[0]}">${icon(n[2],20)}<span>${n[1]}</span></button>`).join('')}</nav></div><div id="toastMount" aria-live="polite"></div>${modalHtml()}`;renderToast();}
   async function perform(action,el){
     switch(action){
+      case 'welcomeSoon':notify('Funcionalidade disponível em breve.');break;
       case 'nav':navigate(el.dataset.page==='plan'?'plan':el.dataset.page);break;
       case 'toPlan':navigate('plan');break;
       case 'toDiscover':navigate('discover');break;
@@ -1532,7 +1581,7 @@
     if(e.target.id==='photoFile'){const f=e.target.files&&e.target.files[0];if(f&&f.size>15*1024*1024){notify('Selecione uma imagem de até 15 MB para esta demonstração.');return}if(f)prepareFile(f);return}
     if(e.target.dataset.bind){state[e.target.dataset.bind]=e.target.value;persist();if(['compareA','compareB','irrigation','market','recordField'].includes(e.target.dataset.bind))render();}
   });
-  (async function init(){db=await openDb();idbUnavailable=!db;records=await readAll();render();})();
+  (async function init(){render();db=await openDb();idbUnavailable=!db;records=await readAll();if(state.page!=='home')render()})();
   </script>
 </body>
 </html>
