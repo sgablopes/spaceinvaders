@@ -42,3 +42,7 @@ No resumo sobre o mapa aparecem quatro informações: cultura atual, data de pla
 O menu mostra Mini Estação Meteorológica no lugar de Notícias e pesquisas. Selecionar esse item abre uma tela própria, fora do painel do menu, conservando o cabeçalho e oferecendo botão Voltar para a visão geral. A tela usa cartões da dashboard para chuva detectada, temperatura, umidade relativa e vento estimado. O ID inicial é `agrion-demo-001`; outro ID pode ser vinculado no navegador. Horário de recebimento, leituras antigas, ausência de leitura e indisponibilidade são indicados explicitamente. O monitoramento simulado foi removido.
 
 Planejamento também abre em tela inteira, com o mesmo cabeçalho e Voltar. Usa cartões marfim, seleção verde, etapas Culturas, Rotações, Comparar e Meu plano, fichas com abas e cronograma vertical. Comparação usa níveis qualitativos justificados; não exibe percentuais fictícios de recuperação do solo. O plano mantém checklist e andamento por ciclo. A tela permanece disponível durante consultas e falhas do Core.
+
+## Dashboard e telas por assunto
+
+A organização atual está documentada em [Dashboard](DASHBOARD_ORGANIZACAO.md). A visão geral concentra propriedade, resumo diário e indicadores compactos com ícones; clima, safra, análises, mercado, medições e cadastro têm telas próprias com cabeçalho e Voltar. Cartões claros, verde e marfim seguem os componentes existentes. O planejamento mantém seu layout aprovado.

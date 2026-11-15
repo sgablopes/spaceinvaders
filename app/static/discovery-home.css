@@ -22,6 +22,24 @@
 .agrion-home-loading p{margin:0;color:#385C39;font-weight:600;min-height:22px}
 .agrion-home-loading small{color:#66745E;font-size:12px}
 .agrion-dashboard{display:grid;gap:14px;margin-top:16px}
+.agrion-home-indicators{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.agrion-home-indicators>section{min-width:0;padding:16px}
+.agrion-dashboard>.agrion-property-overview{min-height:300px;padding-top:55px}
+.agrion-dashboard #agrionDashboard-daily{background:linear-gradient(120deg,#f0f5df,#fffef8)}
+.agrion-dashboard-card>.agrion-crop-icon{margin-bottom:10px}
+.agrion-summary-headline{font:700 18px/1.45 'Plus Jakarta Sans',sans-serif;color:#29452b}
+.agrion-summary-list{padding-left:20px;color:#52664e;font-size:14px;line-height:1.5;margin:12px 0}
+.agrion-summary-list li+li{margin-top:7px}
+.agrion-section-link{display:inline-flex;align-items:center;min-height:44px;gap:8px;border:0;background:transparent;color:#385c39;font:700 14px/1.4 Inter,sans-serif;cursor:pointer;padding:10px 0;text-align:left}
+.agrion-section-link:focus-visible{outline:2px solid #385c39;outline-offset:4px;border-radius:6px}
+.agrion-section-page{margin-top:24px;max-width:920px;margin-inline:auto}
+.agrion-section-heading{display:flex;align-items:center;gap:12px;padding:20px 0}
+.agrion-section-heading h1{font:800 clamp(23px,4vw,32px)/1.2 'Plus Jakarta Sans',sans-serif;color:#29452b;margin:0}
+.agrion-section-content{display:grid;gap:16px}
+.agrion-section-content .agrion-dashboard-card{background:#fffef8;padding:24px}
+.agrion-home-indicators .agrion-crop-row{display:block}.agrion-home-indicators .agrion-crop-row>.agrion-crop-icon{display:none}
+.agrion-home-main-copy{display:none}
+@media(max-width:420px){.agrion-home-indicators{gap:10px}.agrion-home-indicators>section{padding:13px}.agrion-home-indicators .agrion-dashboard-muted{font-size:13px}.agrion-section-content .agrion-dashboard-card{padding:18px}}
 .agrion-property-overview{position:relative;isolation:isolate;overflow:hidden;border-radius:20px;background:#385c39;color:#fff;min-height:390px;padding:90px 15px 16px}.agrion-overview-map{position:absolute;inset:0;z-index:-2;background:#607b58}.agrion-property-overview::after{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,rgba(15,36,19,.05) 0%,rgba(15,36,19,.82) 52%,rgba(15,36,19,.95) 100%)}.agrion-overview-overlay{position:relative;z-index:500;color:white}.agrion-overview-overlay h2{font:800 21px/1.2 'Plus Jakarta Sans',sans-serif;margin:0}.agrion-overview-overlay>p{font-size:13px;margin:5px 0 12px;color:#e2eadb}.agrion-overview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.agrion-overview-item{min-width:0;background:#ffffff1c;border:1px solid #ffffff28;border-radius:12px;padding:9px 10px}.agrion-overview-item small{display:block;font-size:11px;color:#dce9ce}.agrion-overview-item strong{display:block;font-size:13px;line-height:1.3;overflow-wrap:anywhere;margin-top:3px}.agrion-overview-map-status{position:absolute;z-index:501;top:10px;left:10px;color:white;font-size:12px;text-shadow:0 1px 4px #000}.agrion-overview-map .leaflet-control-attribution{font-size:10px}.agrion-market-insight{color:#385c39;font-weight:600;line-height:1.5;font-size:15px}
 .agrion-overview-map .leaflet-bottom{top:0;bottom:auto}.agrion-overview-map .leaflet-control-attribution{margin-top:0}
 .agrion-dashboard-card{background:#fff;border:1px solid #e2e9db;border-radius:20px;padding:20px;box-shadow:0 4px 14px #385c3910}
