@@ -28,6 +28,36 @@ DIFFICULTIES = {"drought", "excess_rain", "pests", "diseases", "soil", "input_co
 GOALS = {"maximize_profit", "increase_yield", "restore_soil", "reduce_risk", "reduce_costs", "diversify", "other"}
 LANGUAGES = {"pt-BR", "en-US", "es-US"}
 VOICES = {"Zephyr", "Kore", "Orus", "Autonoe", "Umbriel", "Erinome", "Laomedeia", "Schedar", "Achird", "Sadachbia", "Puck", "Fenrir", "Aoede", "Enceladus", "Algieba", "Algenib", "Achernar", "Gacrux", "Zubenelgenubi", "Sadaltager", "Charon", "Leda", "Callirrhoe", "Iapetus", "Rasalgethi", "Alnilam", "Pulcherrima", "Forward", "Vindemiatrix", "Sulafat"}
+ESSENTIAL_FIELDS = ("last_crop", "previous_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal")
+
+
+def _live_state_instruction(base, state):
+    """Build a bounded system update from canonical browser profile statuses."""
+    if not isinstance(state, dict) or not isinstance(state.get("fields"), dict):
+        return None
+    fields = state["fields"]
+    if any(fields.get(field) not in {"pending", "confirmed", "uncertain", "unknown"} for field in ESSENTIAL_FIELDS):
+        return None
+    pending = [field for field in ESSENTIAL_FIELDS if fields[field] == "pending"]
+    uncertain = [field for field in ESSENTIAL_FIELDS if fields[field] == "uncertain"]
+    resolved = [field for field in ESSENTIAL_FIELDS if fields[field] in {"confirmed", "unknown"}]
+    closing = state.get("closing") is True
+    clarify = state.get("clarify") is True
+    confirmation_attempted = state.get("confirmation_attempted") is True
+    intro_complete = state.get("intro_complete") is True
+    if closing:
+        guidance = "Encerramento solicitado. Agradeça, explique que as informações foram salvas e despeça-se agora sem outra pergunta."
+    elif not intro_complete:
+        guidance = "Acolha a pessoa, apresente-se e pergunte se pode começar. Aguarde sua resposta e não force um roteiro."
+    elif clarify:
+        guidance = "A última resposta não resolveu a pergunta: reformule-a uma vez, com simplicidade; depois avance se continuar sem resposta. Não repita campo unknown. Nunca anuncie conclusão antes da autorização da ferramenta."
+    elif uncertain and not pending and not confirmation_attempted:
+        guidance = "Confirme brevemente uma informação incerta antes de concluir; não repita a confirmação."
+    else:
+        guidance = "Pergunte sobre um pendente por vez. Não repita campo unknown. Nunca anuncie conclusão antes da autorização da ferramenta."
+    return (base + "\nEstado atual do aplicativo: "
+        f"resolvidos={','.join(resolved) or 'nenhum'}; pendentes={','.join(pending) or 'nenhum'}; incertos={','.join(uncertain) or 'nenhum'}. "
+        + guidance)
 
 
 def _live_text_frame(message):
@@ -323,14 +353,19 @@ def register_socket(app):
             with connect(url, additional_headers={"Authorization": f"Bearer {credentials.token}"}, max_size=2**22) as upstream:
                 phase = "vertex_setup"
                 instruction = (f"Você é Agrion. Converse em {language}, em linguagem simples e acolhedora, uma pergunta por vez. "
-                    f"Pessoa: {name}. Propriedade: {property_name}. Comece perguntando a última cultura nesta área. "
-                    "Conheça última cultura, cultura imediatamente anterior, resultado da colheita, dificuldades, irrigação, mecanização e objetivo. "
-                    "Não invente dados nem recomendações. Respeite não sei. Seja breve. Se receber CLOSE_REQUESTED, agradeça e despeça-se sem nova pergunta. "
-                    "Quando tiver concluído, chame complete_initial_interview. Nunca cite JSON, ferramentas ou estados internos.")
+                    f"Pessoa: {name}. Propriedade: {property_name}. Apresente-se, explique brevemente que quer conhecer a lavoura para ajudar no planejamento, "
+                    "pergunte como a pessoa está e se pode começar. Aguarde a resposta, mas acolha informações agrícolas oferecidas espontaneamente. "
+                    "Converse naturalmente, sem roteiro rígido. Conheça última cultura, cultura imediatamente anterior, resultado da colheita, dificuldades, irrigação, mecanização e objetivo. "
+                    "Use o estado do aplicativo para escolher lacunas; se uma resposta não resolver a pergunta, reformule uma vez, sem insistir. "
+                    "Não repita campo marcado unknown. Não invente dados nem recomendações. Seja breve. "
+                    "Antes de dizer que a entrevista terminou, chame complete_initial_interview e aguarde autorização. Se recusada, pergunte sobre um campo pendente. "
+                    "Se receber CLOSE_REQUESTED, agradeça e despeça-se sem nova pergunta. Nunca cite JSON, ferramentas ou estados internos. "
+                    "Após uma resposta de ferramenta recusada, faça uma pergunta ao agricultor antes de chamar outra ferramenta. "
+                    "Não faça mais de duas chamadas consecutivas de ferramentas sem falar com o agricultor.")
                 speech_config = {"languageCode": language}
                 if voice:
                     speech_config["voiceConfig"] = {"prebuiltVoiceConfig": {"voiceName": voice}}
-                upstream.send(json.dumps({"setup": {"model": f"projects/{project}/locations/{location}/publishers/google/models/{os.getenv('GEMINI_LIVE_MODEL', 'gemini-3.8-live')}", "generationConfig": {"responseModalities": ["AUDIO"], "speechConfig": speech_config}, "systemInstruction": {"parts": [{"text": instruction}]}, "inputAudioTranscription": {}, "outputAudioTranscription": {}, "tools": [{"functionDeclarations": [{"name": "complete_initial_interview", "description": "Request interview completion when essential facts are resolved or farmer asks to stop", "parameters": {"type": "OBJECT", "properties": {"reason": {"type": "STRING"}}}}]}]}}))
+                upstream.send(json.dumps({"setup": {"model": f"projects/{project}/locations/{location}/publishers/google/models/{os.getenv('GEMINI_LIVE_MODEL', 'gemini-3.8-live')}", "generationConfig": {"responseModalities": ["AUDIO"], "speechConfig": speech_config}, "systemInstruction": {"parts": [{"text": instruction}]}, "inputAudioTranscription": {}, "outputAudioTranscription": {}, "tools": [{"functionDeclarations": [{"name": "complete_initial_interview", "description": "Request interview completion when essential facts are resolved or farmer asks to stop", "parameters": {"type": "OBJECT", "properties": {"reason": {"type": "STRING"}}}}, {"name": "get_interview_state", "description": "Read the current validated agricultural checklist before choosing the next question", "parameters": {"type": "OBJECT", "properties": {}}}]}]}}))
                 stop = threading.Event()
 
                 def browser_to_vertex():
@@ -340,7 +375,11 @@ def register_socket(app):
                             if message is None:
                                 break
                             obj = json.loads(message)
-                            if set(obj) <= {"realtimeInput", "clientContent", "toolResponse"} and len(message) <= 100000:
+                            if set(obj) == {"interviewState"} and len(message) <= 4096 and os.getenv('GEMINI_LIVE_MODEL', 'gemini-3.8-live') == 'gemini-3.8-live':
+                                updated = _live_state_instruction(instruction, obj["interviewState"])
+                                if updated:
+                                    upstream.send(json.dumps({"contextUpdate": {"systemInstruction": {"parts": [{"text": updated}]}}}))
+                            elif set(obj) <= {"realtimeInput", "clientContent", "toolResponse"} and len(message) <= 100000:
                                 upstream.send(message)
                     except Exception:
                         pass

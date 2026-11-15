@@ -4,7 +4,7 @@ from unittest.mock import patch
 from types import SimpleNamespace
 
 from app import create_app
-from app.api.discovery import FIELDS, GenerationExtraction, GenerationPatch, Patch, _live_text_frame, _origin_ok, _validate_value
+from app.api.discovery import FIELDS, GenerationExtraction, GenerationPatch, Patch, _live_state_instruction, _live_text_frame, _origin_ok, _validate_value
 
 
 class DiscoveryTests(unittest.TestCase):
@@ -26,6 +26,15 @@ class DiscoveryTests(unittest.TestCase):
     def test_vertex_binary_json_is_forwarded_as_text(self):
         self.assertEqual(_live_text_frame(b'{"setupComplete":{}}'), '{"setupComplete":{}}')
         self.assertEqual(_live_text_frame('{"setupComplete":{}}'), '{"setupComplete":{}}')
+
+    def test_live_state_update_only_uses_canonical_statuses(self):
+        fields = {field: 'pending' for field in ['last_crop', 'previous_crop', 'last_harvest_result', 'main_difficulties', 'irrigation', 'mechanization', 'primary_goal']}
+        fields['last_crop'] = 'confirmed'
+        text = _live_state_instruction('Agrion.', {'fields': fields, 'intro_complete': True, 'clarify': True})
+        self.assertIn('last_crop', text)
+        self.assertIn('reformule-a uma vez', text)
+        self.assertIn('despeça-se agora', _live_state_instruction('Agrion.', {'fields': fields, 'closing': True}))
+        self.assertIsNone(_live_state_instruction('Agrion.', {'fields': {**fields, 'last_crop': 'malicious'}}))
 
     def test_missing_vertex_configuration_is_explicit(self):
         with patch.dict(os.environ, {"GOOGLE_CLOUD_PROJECT": "", "GOOGLE_CLOUD_LOCATION": ""}):
