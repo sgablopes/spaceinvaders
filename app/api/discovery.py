@@ -27,7 +27,6 @@ FIELDS = {"last_crop", "previous_crop", "last_harvest_result", "main_difficultie
 DIFFICULTIES = {"drought", "excess_rain", "pests", "diseases", "soil", "input_costs", "labor", "machinery", "market", "other"}
 GOALS = {"maximize_profit", "increase_yield", "restore_soil", "reduce_risk", "reduce_costs", "diversify", "other"}
 LANGUAGES = {"pt-BR", "en-US", "es-US"}
-VOICES = {"Zephyr", "Kore", "Orus", "Autonoe", "Umbriel", "Erinome", "Laomedeia", "Schedar", "Achird", "Sadachbia", "Puck", "Fenrir", "Aoede", "Enceladus", "Algieba", "Algenib", "Achernar", "Gacrux", "Zubenelgenubi", "Sadaltager", "Charon", "Leda", "Callirrhoe", "Iapetus", "Rasalgethi", "Alnilam", "Pulcherrima", "Forward", "Vindemiatrix", "Sulafat"}
 ESSENTIAL_FIELDS = ("last_crop", "previous_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal")
 
 
@@ -44,13 +43,18 @@ def _live_state_instruction(base, state):
     closing = state.get("closing") is True
     clarify = state.get("clarify") is True
     confirmation_attempted = state.get("confirmation_attempted") is True
-    intro_complete = state.get("intro_complete") is True
+    intro_stage = state.get("intro_stage", 0)
+    harvest_estimate_pending = state.get("harvest_estimate_pending") is True
     if closing:
         guidance = "Encerramento solicitado. Agradeça, explique que as informações foram salvas e despeça-se agora sem outra pergunta."
-    elif not intro_complete:
-        guidance = "Acolha a pessoa, apresente-se e pergunte se pode começar. Aguarde sua resposta e não force um roteiro."
+    elif intro_stage == 0:
+        guidance = "Diga brevemente que é o Agrion e pergunte se a pessoa está bem. Aguarde a resposta antes de explicar a entrevista."
+    elif intro_stage == 1:
+        guidance = "Explique brevemente que conhecerá a área para ajudar no planejamento. Convide a pessoa a contar livremente o último plantio, a colheita e dificuldades; depois pergunte só o que faltar."
     elif clarify:
         guidance = "A última resposta não resolveu a pergunta: reformule-a uma vez, com simplicidade; depois avance se continuar sem resposta. Não repita campo unknown. Nunca anuncie conclusão antes da autorização da ferramenta."
+    elif harvest_estimate_pending:
+        guidance = "O resultado qualitativo da colheita já foi salvo. Peça uma estimativa em sacas, toneladas ou valor financeiro, conforme a pessoa souber. Não invente unidade ou valor; se ela não souber, registre isso e avance."
     elif uncertain and not pending and not confirmation_attempted:
         guidance = "Confirme brevemente uma informação incerta antes de concluir; não repita a confirmação."
     else:
@@ -77,6 +81,7 @@ class Patch(BaseModel):
     status: str
     confidence: str | None = None
     evidence_excerpt: str
+    evidence_turn_id: str | None = None
     unknown_reason: str | None = None
 
 
@@ -94,7 +99,7 @@ class GenerationPatch(Patch):
     value: dict | None = Field(description=(
         "Canonical object for the selected field; unknown answers use null. "
         "last_crop and previous_crop use crop as a string. "
-        "last_harvest_result uses qualitative_result (good, average, poor, no_harvest), or explicit quantity and unit. "
+        "last_harvest_result uses qualitative_result (good, average, poor, no_harvest), explicit quantity and unit, or financial_amount and currency. financial_kind identifies revenue or profit only if explicit. estimate_unavailable is true only if the farmer explicitly cannot give an estimate. "
         "main_difficulties uses categories (drought, excess_rain, pests, diseases, soil, input_costs, labor, machinery, market, other) and free_text as a list. "
         "irrigation uses water_regime (rainfed, irrigated, mixed, unknown), irrigation_method (none, manual, drip, sprinkler, center_pivot, furrow, other, unknown), and automated (true, false, null). "
         "mechanization uses work_mode (manual, mixed, mechanized, automated, unknown), equipment as a list, and automation_level (none, partial, high, unknown). "
@@ -103,6 +108,7 @@ class GenerationPatch(Patch):
     status: Literal["confirmed", "uncertain", "unknown"] = Field(description="confirmed for an explicit report, uncertain for an estimate or ambiguity, unknown only when the farmer explicitly does not know, remember, or answer.")
     confidence: Literal["high", "medium", "low"] | None = None
     evidence_excerpt: str = Field(description="Copy a short exact substring from the farmer's transcript, preserving spelling and accents.")
+    evidence_turn_id: str | None = Field(default=None, description="Turn ID of the farmer statement containing this evidence. Use the current turn ID for the current transcript.")
     unknown_reason: Literal["does_not_know", "does_not_remember", "declined"] | None = Field(default=None, description="Required when status is unknown; otherwise null.")
 
 
@@ -118,12 +124,17 @@ class CropValue(BaseModel):
 
 
 class HarvestValue(BaseModel):
-    qualitative_result: Literal["good", "average", "poor", "no_harvest"] | None
+    qualitative_result: Literal["good", "average", "poor", "no_harvest"] | None = None
     quantity: float | None = None
     unit: str | None = None
     crop: str | None = None
     bag_weight_kg: float | None = None
     notes: str | None = None
+    financial_amount: float | None = None
+    currency: Literal["BRL", "USD", "EUR"] | None = None
+    financial_kind: Literal["revenue", "profit", "unknown"] | None = None
+    estimate_unavailable: bool | None = None
+    basis: Literal["total", "per_hectare", "unknown"] | None = None
 
 
 class DifficultiesValue(BaseModel):
@@ -216,7 +227,14 @@ def _validate_value(patch):
     if patch.field in {"last_crop", "previous_crop"}:
         return set(value) <= {"crop", "period_label", "no_previous_cultivation"} and (isinstance(value.get("crop"), str) and bool(value["crop"].strip()) or patch.field == "previous_crop" and value.get("no_previous_cultivation") is True)
     if patch.field == "last_harvest_result":
-        return set(value) <= {"crop", "quantity", "unit", "bag_weight_kg", "qualitative_result", "notes"} and value.get("qualitative_result") in {None, "good", "average", "poor", "no_harvest"} and (value.get("quantity") is None or isinstance(value["quantity"], (int, float))) and (value.get("qualitative_result") is not None or value.get("quantity") is not None)
+        return (set(value) <= {"crop", "quantity", "unit", "bag_weight_kg", "qualitative_result", "notes", "financial_amount", "currency", "financial_kind", "estimate_unavailable", "basis"}
+            and value.get("qualitative_result") in {None, "good", "average", "poor", "no_harvest"}
+            and (value.get("quantity") is None or isinstance(value["quantity"], (int, float)) and isinstance(value.get("unit"), str) and bool(value["unit"].strip()))
+            and (value.get("financial_amount") is None or isinstance(value["financial_amount"], (int, float)) and value.get("currency") in {"BRL", "USD", "EUR"})
+            and value.get("financial_kind") in {None, "revenue", "profit", "unknown"}
+            and value.get("basis") in {None, "total", "per_hectare", "unknown"}
+            and value.get("estimate_unavailable") in {None, True, False}
+            and (value.get("qualitative_result") is not None or value.get("quantity") is not None or value.get("financial_amount") is not None or value.get("estimate_unavailable") is True))
     if patch.field == "main_difficulties":
         categories=value.get("categories", []);free_text=value.get("free_text", [])
         return set(value) <= {"categories", "free_text", "explicit_none"} and isinstance(categories, list) and set(categories) <= DIFFICULTIES and isinstance(free_text, list) and bool(categories or free_text or value.get("explicit_none") is True)
@@ -233,10 +251,13 @@ def _validate_value(patch):
 def extract():
     if not _origin_ok():
         return jsonify(error="origin_rejected"), 403
-    if request.content_length and request.content_length > 16000:
+    if request.content_length and request.content_length > 32000:
         return jsonify(error="invalid_request"), 422
     body = request.get_json(silent=True)
     if not isinstance(body, dict) or not _uuid(body.get("interview_id")) or not _uuid(body.get("property_id")) or not isinstance(body.get("turn_id"), str) or len(body["turn_id"]) > 100 or not isinstance(body.get("sequence"), int) or body["sequence"] < 1 or body.get("speaker") != "farmer" or not isinstance(body.get("transcript"), str) or not 1 <= len(body["transcript"]) <= 3000 or not isinstance(body.get("assistant_context", ""), str) or len(body.get("assistant_context", "")) > 1000 or not isinstance(body.get("profile_revision"), int) or body["profile_revision"] < 0 or not isinstance(body.get("profile_snapshot"), dict):
+        return jsonify(error="invalid_request"), 422
+    history = body.get("history", [])
+    if (not isinstance(history, list) or len(history) > 40 or any(not isinstance(turn, dict) or set(turn) != {"turn_id", "speaker", "text"} or not isinstance(turn["turn_id"], str) or len(turn["turn_id"]) > 100 or turn["speaker"] not in {"farmer", "agrion"} or not isinstance(turn["text"], str) or len(turn["text"]) > 500 for turn in history)):
         return jsonify(error="invalid_request"), 422
     if not _rate_limit("EXTRACTIONS", 120):
         return jsonify(error="rate_limited"), 429
@@ -254,9 +275,12 @@ def extract():
         client = genai.Client(**client_options)
         model = os.getenv("GEMINI_EXTRACTION_MODEL", "gemini-3.5-flash-lite")
         context = body.get("assistant_context", "")
-        contents = json.dumps({"farmer_transcript": body["transcript"], "previous_assistant_question": context, "profile_snapshot": body["profile_snapshot"]}, ensure_ascii=False)
+        contents = json.dumps({"current_turn_id": body["turn_id"], "farmer_transcript": body["transcript"], "previous_assistant_question": context, "ordered_history": history, "profile_snapshot": body["profile_snapshot"]}, ensure_ascii=False)
         instruction = ("Extraia somente fatos agrícolas explicitamente relatados pelo agricultor, em qualquer idioma. "
-            "A pergunta anterior esclarece a que campo uma resposta curta se refere, mas nunca serve como evidência. "
+            "A pergunta anterior e o histórico ordenado esclarecem respostas curtas. Reexamine falas anteriores do agricultor quando um campo ainda está pendente. "
+            "Cada patch deve trazer evidence_turn_id da fala do agricultor que contém a evidência; falas do Agrion nunca são evidência. "
+            "Não repita fatos já confirmados, exceto correção explícita. Para colheita, registre resultado qualitativo e também quantidade/unidade ou valor monetário/moeda quando ditos. "
+            "Se a pessoa explicitamente não souber estimar depois de informar um resultado qualitativo, use estimate_unavailable=true preservando o resultado. "
             "IDs e categorias permanecem canônicos em inglês. Uma fala pode gerar vários patches. "
             "Copie a evidência literalmente da fala do agricultor. Não invente fatos, datas, medidas ou equipamentos. "
             "Não sei é unknown; estimativa é uncertain. Não altere geometria nem faça recomendações.")
@@ -266,9 +290,11 @@ def extract():
         if not result.patches and context and len(body["transcript"]) < 150:
             retry_config = types.GenerateContentConfig(system_instruction=instruction + " A resposta curta do agricultor responde à pergunta anterior. Identifique o campo perguntado e extraia o valor explícito, se houver.", response_mime_type="application/json", response_schema=GenerationExtraction)
             result = Extraction.model_validate_json(client.models.generate_content(model=model, contents=contents, config=retry_config).text)
+        evidence = {turn["turn_id"]: turn["text"] for turn in history if turn["speaker"] == "farmer"}
+        evidence[body["turn_id"]] = body["transcript"]
         patches = []
         for patch in result.patches:
-            if not patch.evidence_excerpt or patch.evidence_excerpt not in body["transcript"]:
+            if not patch.evidence_excerpt or patch.evidence_excerpt not in evidence.get(patch.evidence_turn_id or body["turn_id"], ""):
                 continue
             if _validate_value(patch):
                 patches.append(patch)
@@ -290,7 +316,7 @@ def extract():
             if not schema or patch.status not in {"confirmed", "uncertain"}:
                 continue
             try:
-                repair_contents = json.dumps({"farmer_transcript": body["transcript"], "previous_assistant_question": context, "field": patch.field}, ensure_ascii=False)
+                repair_contents = json.dumps({"farmer_transcript": evidence[patch.evidence_turn_id or body["turn_id"]], "previous_assistant_question": context, "field": patch.field}, ensure_ascii=False)
                 repaired_response = client.models.generate_content(model=model, contents=repair_contents, config=types.GenerateContentConfig(
                     system_instruction="Preencha apenas o valor do campo indicado com fatos explícitos da fala do agricultor. A pergunta anterior esclarece o campo, mas não é evidência. Não invente dados; respeite o formato exigido pelo esquema.",
                     response_mime_type="application/json", response_schema=schema,
@@ -339,8 +365,8 @@ def register_socket(app):
                 ws.send(json.dumps({"error": "invalid_request"}))
                 return
             language = first.get("language", "pt-BR")
-            voice = first.get("voice", "")
-            if language not in LANGUAGES or voice not in VOICES | {""} or not _uuid(first.get("interview_id")) or not _uuid(first.get("property_id")):
+            voice = "Orus"
+            if language not in LANGUAGES or not _uuid(first.get("interview_id")) or not _uuid(first.get("property_id")):
                 ws.send(json.dumps({"error": "invalid_request"}))
                 return
             name = str(first.get("person_name", ""))[:100]
@@ -353,8 +379,8 @@ def register_socket(app):
             with connect(url, additional_headers={"Authorization": f"Bearer {credentials.token}"}, max_size=2**22) as upstream:
                 phase = "vertex_setup"
                 instruction = (f"Você é Agrion. Converse em {language}, em linguagem simples e acolhedora, uma pergunta por vez. "
-                    f"Pessoa: {name}. Propriedade: {property_name}. Apresente-se, explique brevemente que quer conhecer a lavoura para ajudar no planejamento, "
-                    "pergunte como a pessoa está e se pode começar. Aguarde a resposta, mas acolha informações agrícolas oferecidas espontaneamente. "
+                    f"Pessoa: {name}. Propriedade: {property_name}. Comece com uma frase curta: apresente-se e pergunte se a pessoa está bem. "
+                    "Depois da resposta, explique brevemente o objetivo e convide um relato livre sobre plantio, colheita e dificuldades. Acolha informações agrícolas oferecidas espontaneamente. "
                     "Converse naturalmente, sem roteiro rígido. Conheça última cultura, cultura imediatamente anterior, resultado da colheita, dificuldades, irrigação, mecanização e objetivo. "
                     "Use o estado do aplicativo para escolher lacunas; se uma resposta não resolver a pergunta, reformule uma vez, sem insistir. "
                     "Não repita campo marcado unknown. Não invente dados nem recomendações. Seja breve. "

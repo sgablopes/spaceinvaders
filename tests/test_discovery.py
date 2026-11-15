@@ -30,11 +30,37 @@ class DiscoveryTests(unittest.TestCase):
     def test_live_state_update_only_uses_canonical_statuses(self):
         fields = {field: 'pending' for field in ['last_crop', 'previous_crop', 'last_harvest_result', 'main_difficulties', 'irrigation', 'mechanization', 'primary_goal']}
         fields['last_crop'] = 'confirmed'
-        text = _live_state_instruction('Agrion.', {'fields': fields, 'intro_complete': True, 'clarify': True})
+        text = _live_state_instruction('Agrion.', {'fields': fields, 'intro_stage': 2, 'clarify': True})
         self.assertIn('last_crop', text)
         self.assertIn('reformule-a uma vez', text)
         self.assertIn('despeça-se agora', _live_state_instruction('Agrion.', {'fields': fields, 'closing': True}))
         self.assertIsNone(_live_state_instruction('Agrion.', {'fields': {**fields, 'last_crop': 'malicious'}}))
+
+    def test_history_patch_requires_evidence_in_named_farmer_turn(self):
+        import json
+        old_turn = 'farmer-earlier'
+        self.body['history'] = [
+            {'turn_id': old_turn, 'speaker': 'farmer', 'text': 'Foi banana.'},
+            {'turn_id': 'assistant-later', 'speaker': 'agrion', 'text': 'A última cultura foi banana?'},
+        ]
+        self.body['transcript'] = 'Sim, foi boa.'
+        generated = {'patches': [
+            {'field': 'last_crop', 'operation': 'set', 'value': {'crop': 'banana'}, 'status': 'confirmed', 'evidence_excerpt': 'Foi banana', 'evidence_turn_id': old_turn},
+            {'field': 'previous_crop', 'operation': 'set', 'value': {'crop': 'banana'}, 'status': 'confirmed', 'evidence_excerpt': 'banana', 'evidence_turn_id': 'assistant-later'},
+        ], 'warnings': []}
+        fake = SimpleNamespace(models=SimpleNamespace(generate_content=lambda **_: SimpleNamespace(text=json.dumps(generated))))
+        with patch.dict(os.environ, {'GOOGLE_CLOUD_PROJECT': 'test-project', 'GOOGLE_CLOUD_LOCATION': 'us-central1'}), patch('app.api.discovery.genai.Client', return_value=fake):
+            response = self.client.post('/api/interview/extract', json=self.body)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item['field'] for item in response.json['patches']], ['last_crop'])
+        self.assertEqual(response.json['patches'][0]['evidence_turn_id'], old_turn)
+
+    def test_harvest_allows_qualitative_and_explicit_estimates(self):
+        base = {'field': 'last_harvest_result', 'operation': 'set', 'status': 'confirmed', 'evidence_excerpt': 'Foi boa'}
+        self.assertTrue(_validate_value(Patch(**base, value={'qualitative_result': 'good'})))
+        self.assertTrue(_validate_value(Patch(**base, value={'quantity': 50, 'unit': 'sacas'})))
+        self.assertTrue(_validate_value(Patch(**base, value={'financial_amount': 12000, 'currency': 'BRL'})))
+        self.assertFalse(_validate_value(Patch(**base, value={'quantity': 50})))
 
     def test_missing_vertex_configuration_is_explicit(self):
         with patch.dict(os.environ, {"GOOGLE_CLOUD_PROJECT": "", "GOOGLE_CLOUD_LOCATION": ""}):

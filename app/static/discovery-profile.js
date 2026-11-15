@@ -6,17 +6,21 @@
   function create(property) {
     return {schema_version:'1.0.0',profile_id:crypto.randomUUID(),property_id:property.propertyId,person:{display_name:property.personName},property:{name:property.propertyName,area_hectares:property.areaHectares,geometry_source:'existing_property_registration'},fields:Object.fromEntries(ESSENTIAL.map(id=>[id,envelope()])),additional_fields:{},interview_history:[],revision:0,updated_at:new Date().toISOString()};
   }
-  function apply(profile, response, transcript) {
+  function apply(profile, response, transcript, history=[]) {
     if (response.base_profile_revision !== profile.revision) return {profile, applied:[]};
     const next=structuredClone(profile), applied=[];
     for (const patch of response.patches||[]) {
-      if (![...ESSENTIAL,...OPTIONAL].includes(patch.field) || !['set','merge'].includes(patch.operation) || !['confirmed','uncertain','unknown'].includes(patch.status) || !transcript.includes(patch.evidence_excerpt)) continue;
+      const sourceTurn=patch.evidence_turn_id||response.turn_id;
+      const evidenceText=sourceTurn===response.turn_id?transcript:history.find(x=>x.turn_id===sourceTurn&&x.speaker==='farmer')?.text;
+      if (![...ESSENTIAL,...OPTIONAL].includes(patch.field) || !['set','merge'].includes(patch.operation) || !['confirmed','uncertain','unknown'].includes(patch.status) || !evidenceText?.includes(patch.evidence_excerpt)) continue;
       const target=ESSENTIAL.includes(patch.field)?next.fields:next.additional_fields;
       const old=target[patch.field]||envelope();
-      if (old.evidence.some(x=>x.turn_id===response.turn_id)) continue;
+      if (old.evidence.some(x=>x.turn_id===sourceTurn)) continue;
       if (old.status==='confirmed' && patch.status==='uncertain' && patch.operation!=='set') continue;
-      const value=patch.operation==='merge' && old.value && patch.value ? {...old.value,...patch.value} : patch.value;
-      target[patch.field]={value,status:patch.status,source:'farmer_report',evidence:[...old.evidence,{turn_id:response.turn_id,excerpt:patch.evidence_excerpt.slice(0,180)}].slice(-5),confidence:patch.confidence,unknown_reason:patch.unknown_reason||null,updated_at:new Date().toISOString(),revision:old.revision+1};
+      const harvest=patch.field==='last_harvest_result'&&old.value;
+      const unavailable=harvest?.qualitative_result&&patch.status==='unknown';
+      const value=unavailable?{...old.value,estimate_unavailable:true}:harvest&&patch.value?{...old.value,...patch.value}:patch.operation==='merge' && old.value && patch.value ? {...old.value,...patch.value} : patch.value;
+      target[patch.field]={value,status:unavailable?'confirmed':patch.status,source:'farmer_report',evidence:[...old.evidence,{turn_id:sourceTurn,excerpt:patch.evidence_excerpt.slice(0,180)}].slice(-5),confidence:patch.confidence,unknown_reason:unavailable?null:patch.unknown_reason||null,updated_at:new Date().toISOString(),revision:old.revision+1};
       applied.push({field:patch.field,before:old,after:target[patch.field]});
     }
     if(applied.length){next.revision++;next.updated_at=new Date().toISOString();}
