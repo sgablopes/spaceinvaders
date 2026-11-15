@@ -10,6 +10,7 @@ from .nasa_schemas import DailyRequest, DailyResponse, ErrorResponse, PARAMETERS
 from .analysis_routes import analysis_capabilities
 from .meteomatics_routes import capability as meteomatics_capability
 from .weather_routes import capability as weather_capability
+from .aquacrop_routes import capability as aquacrop_capability
 
 PATH = "/v1/data/nasa-power/daily"
 
@@ -52,10 +53,10 @@ def register_nasa(app: FastAPI):
                 "when_to_use": "Obter dados reais da fonte regional para alimentar o AGRION e os indicadores existentes, sem forecast.",
                 "parameters": list(PARAMETERS), "limitations": ["Máximo 366 dias por consulta.", "Lacunas não são zeros.",
                 "UTC/LST explícitos; disponibilidade recente depende da fonte."]}, *analysis_capabilities(),
-                meteomatics_capability(request.app.state.meteomatics), weather_capability(request.app.state.weather)],
+                meteomatics_capability(request.app.state.meteomatics), weather_capability(request.app.state.weather), aquacrop_capability()],
                 "other_data_catalog": "/api/v1/datasets",
                 "pending": (["Configurar credenciais Meteomatics no serviço; Open-Meteo permanece alternativa"] if not request.app.state.meteomatics.configured else [])
-                    + ["Cálculo de ET₀ e seleção agronômica de Kc/limiares por estádio",
+                    + ["ETo automática em I07/I08 e seleção agronômica de Kc/limiares por estádio; ETo da simulação AquaCrop já implementada",
                        "I09 aptidão, I10 sucessão, I11 risco de plantio e I13 produtividade: métodos/dados validados pendentes",
                        "GEOS-FP: acesso pontual demonstrado; adaptador operacional e ciclos/unidades ainda pendentes",
                        "Integração do Flask pelo desenvolvedor principal"]}

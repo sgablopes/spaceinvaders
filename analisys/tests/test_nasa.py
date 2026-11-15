@@ -24,7 +24,8 @@ def synthetic_response(payload=None):
     """Fixture sintética, sem alegação de valores observados da NASA."""
     payload = payload or DailyRequest.model_validate(REQUEST)
     days = [payload.start_date + timedelta(days=i) for i in range((payload.end_date - payload.start_date).days + 1)]
-    values = {"T2M": 22, "T2M_MAX": 30, "T2M_MIN": 15, "PRECTOTCORR": 0, "RH2M": 60, "ALLSKY_SFC_SW_DWN": 20}
+    values = {"T2M": 22, "T2M_MAX": 30, "T2M_MIN": 15, "PRECTOTCORR": 0, "RH2M": 60, "ALLSKY_SFC_SW_DWN": 20,
+              "WS2M": 2, "T2MDEW": 12, "PS": 100.1}
     return {"header": {"sources": ["TEST_SYNTHETIC"], "api": {"version": "test-only"}, "fill_value": -999,
                        "time_standard": payload.time_standard, "start": payload.start_date.strftime("%Y%m%d"),
                        "end": payload.end_date.strftime("%Y%m%d")},

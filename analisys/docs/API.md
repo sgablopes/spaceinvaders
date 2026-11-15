@@ -39,12 +39,21 @@ python -B -m uvicorn src.main:app --host 127.0.0.1 --port 8001
 | `POST /v1/data/nasa-power/daily` | Temperaturas média/mínima/máxima, precipitação, umidade e radiação NASA POWER sob demanda |
 | `POST /v1/data/meteomatics/forecast` | Previsão UTC autenticada Meteomatics, dependente de credenciais e permissões |
 | `POST /v1/data/weather/forecast` | Previsão UTC com seleção auto/Meteomatics/Open-Meteo e alternativa automática sem mistura de valores |
+| `POST /v1/simulations/aquacrop` | Safra real do motor AquaCrop-OSPy 3.0.12, Maize de sequeiro; produtividade simulada e balanço hídrico com hipóteses explícitas |
 | `POST /v1/analysis/climate` | GDD, chuva, sequência seca e triagem de exposição térmica; séries próprias ou NASA |
 | `POST /v1/analysis/water` | ETc padrão e variação hídrica com ETo/Kc e fluxos explícitos |
 | `POST /v1/analysis/economics` | Margem do cenário declarado (I14); I13 pendente |
 | `POST /v1/analysis/agronomy` | I09/I10/I11 pendentes, com 501 explícito |
 
-HWSD tem somente um README nesta pasta; raster e MDB não estão disponíveis. O Parquet ECOCROP e o contrato climático mencionado anteriormente também não estão no disco. Cálculo FAO-56 de ETo, motor AquaCrop e recomendações agronômicas não foram implementados por esta API de consulta. A consulta NASA POWER foi acrescentada sem alterar os caminhos anteriores.
+HWSD tem somente um README nesta pasta; raster e MDB não estão disponíveis. O Parquet ECOCROP e o contrato climático mencionado anteriormente também não estão no disco. O motor AquaCrop-OSPy e ETo NASA/FAO-56 estão implementados separadamente das tabelas locais; recomendações agronômicas e FAO oficial 7.3 continuam pendentes. Os caminhos de consulta anteriores foram preservados.
+
+## Simulação AquaCrop
+
+`POST /v1/simulations/aquacrop`, operationId `simulate_aquacrop`, executa AquaCrop-OSPy **3.0.12** em processo isolado no serviço existente. Retorna `result.dry_yield_t_ha`, `fresh_yield_t_ha`, `daily`, `water_balance`, identificação do motor, parâmetros/hipóteses, clima e hashes. Categoria SIM em `/v1/capabilities`; as quatro operações IND existentes permanecem intactas.
+
+Maize genérico, uma safra de sequeiro com plantio em `start_date`; `soil`, `initial_water`, `co2`, `management` e referências são obrigatórios. Clima pode vir da NASA histórica com ETo FAO-56 calculada ou de série diária própria já contendo ETo. Sem lacunas, colheita parcial disfarçada ou substituição de falhas por números. O solo de biblioteca é hipótese explícita, não consulta de solo geolocalizado. Uma execução concorrente por processo, até 300 dias, timeout padrão 90 segundos.
+
+**Não é a distribuição oficial FAO 7.3**, que apresentou erros internos na auditoria. Consulte [DELIVERY_AQUACROP.md](DELIVERY_AQUACROP.md) para o JSON completo, unidades, método ETo, versões fixadas, resultados reais da execução e pendências de solo/calibração. Produtividade simulada não equivale a produção observada ou recomendação agronômica. As abas de entrada da planilha foram preservadas, inclusive vazias.
 
 ## NASA POWER diário
 
@@ -62,6 +71,8 @@ HWSD tem somente um README nesta pasta; raster e MDB não estão disponíveis. O
 ```
 
 Até 366 dias inclusivos, sem datas futuras; não fornece forecast. `result.series` contém valores diários, `result.parameters` declara unidades, `quality.missing_dates` identifica lacunas, `provenance` e hashes identificam fonte e versão consultadas. Sem `require_complete`, lacunas geram status `partial` e null; com ele, erro 404. Zero de chuva não é lacuna. UTC e LST não são convertidos nem equiparados.
+
+Além dos seis parâmetros padrão preservados, há seleções opcionais `WS2M` (vento 2 m, m/s), `T2MDEW` (ponto de orvalho, °C) e `PS` (pressão, kPa), adicionadas para a preparação de ETo. O endpoint NASA continua fornecendo dados, sem calcular ETo nele; o método é aplicado pela simulação e documentado separadamente. O limite de seleção agora é nove parâmetros; campos não selecionados permanecem null.
 
 O cache em memória tem TTL padrão 300 segundos e capacidade 128, configuráveis. São preservadas a data de acesso da fonte e a expiração; não existe fallback para cache vencido. Os parâmetros `NASA_POWER_TIMEOUT_SECONDS`, `NASA_POWER_MAX_RETRIES`, `NASA_POWER_CACHE_TTL_SECONDS` e `NASA_POWER_CACHE_ENTRIES` podem ser passados pelo ambiente ao processo/container. O Compose do serviço de dados já repassa essas quatro variáveis do host, mantendo os padrões quando ausentes.
 
@@ -236,7 +247,7 @@ python -B -m unittest discover -s tests -v
 python -B tools/verify_external.py
 ```
 
-O primeiro comando roda 71 testes determinísticos: os 12 iniciais, 11 da entrega NASA, 8 da conexão automática aos indicadores, 14 do conector Meteomatics, 13 dos indicadores e 13 da entrega meteorológica/GEOS-FP. As fontes locais reais são verificadas por contagens, nulos/zero, relações, quarentena, paginação, filtros, reuso do índice e hashes antes/depois. Mocks meteorológicos e raster de teste são **sintéticos**, cobrindo unidades, falhas externas, NoData, autenticação segura, cache e contrato HTTP, sem chamadas externas nos testes automatizados.
+O primeiro comando roda 82 testes determinísticos: os 12 iniciais, 11 da entrega NASA, 8 da conexão automática aos indicadores, 14 do conector Meteomatics, 13 dos indicadores, 13 da meteorologia/GEOS-FP e 11 da simulação/ETo. O motor AquaCrop é executado realmente nos testes de safra, com clima controlado identificado como sintético; não há chamadas externas na suíte. As fontes locais são verificadas por contagens, relações, paginação, índice e hashes; os testes também cobrem erros, unidades, cache, conservação hídrica e contratos.
 
 O segundo comando é opcional e acessa a rede real. Grava `.runtime/gaez-live-check.json`, identificando expressamente que são consultas externas reais. Esse relatório não é uma recomendação agronômica.
 
@@ -251,3 +262,5 @@ Com o serviço já iniciado, `python -B tools/verify_running.py` valida o acesso
 `python -B tools/verify_meteomatics.py` tenta a consulta forecast real usando apenas as credenciais configuradas no servidor. Sem elas, registra a indisponibilidade; `--probe-unauthenticated` verifica somente a exigência de login no provedor. A evidência em `.runtime/meteomatics-live-check.json` não declara previsão validada enquanto não houver consulta autenticada bem-sucedida.
 
 `python -B tools/verify_weather.py` valida HTTP real para ambas as fontes no Brasil/EUA, I03/I05 e I08 com chuva real/demais entradas controladas. Também induz ausência de credenciais em um objeto isolado para demonstrar a alternativa real Open-Meteo, sem mudar o container/conta em execução. `python -B tools/probe_geos_fp.py` consulta metadados e três tempos de uma célula OPeNDAP, com limite de tamanho; é prova de viabilidade, sem conector operacional ou download de campo global.
+
+`python -B tools/verify_aquacrop.py` executa uma safra Maize no container com NASA histórica real e ETo calculada, verifica fechamento hídrico e reproduz a simulação com a mesma série explícita. As hipóteses de solo/cultura/manejo são identificadas como cenário. Salva `.runtime/aquacrop-http-check.json`; não há resultado fictício nem preenchimento da planilha original.

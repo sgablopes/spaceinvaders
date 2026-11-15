@@ -16,6 +16,7 @@ from .meteomatics_routes import register_meteomatics
 from .open_meteo import OpenMeteo
 from .weather_service import Weather
 from .weather_routes import register_weather
+from .aquacrop_routes import register_aquacrop
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -42,6 +43,7 @@ def create_app(root: Path = ROOT, database: Path | None = None, gaez=None, nasa=
     async def lifespan(app):
         store.prepare()
         app.state.store = store
+        app.state.analysis_root = root.resolve()
         app.state.gaez = gaez or Gaez()
         app.state.nasa = nasa or NasaPower()
         app.state.meteomatics = meteomatics or Meteomatics()
@@ -55,8 +57,8 @@ def create_app(root: Path = ROOT, database: Path | None = None, gaez=None, nasa=
             app.state.meteomatics.close()
             app.state.open_meteo.close()
 
-    app = FastAPI(title="Agrion — Dados e análises agronômicas", version="1.4.0", lifespan=lifespan,
-                  description="Fontes locais, GAEZ v5, NASA POWER histórica e previsão Meteomatics com alternativa Open-Meteo. Quatro operações de análise preservadas. Previsões identificam fonte e limitações; não se misturam ao histórico.")
+    app = FastAPI(title="Agrion — Dados e análises agronômicas", version="1.5.0", lifespan=lifespan,
+                  description="Fontes locais, GAEZ v5, NASA POWER histórica e previsão Meteomatics/Open-Meteo. Quatro operações de análise preservadas. Simulação AquaCrop-OSPy 3.0.12 disponível em /v1/simulations/aquacrop: Maize de sequeiro com hipóteses explícitas, NASA/FAO-56 ou clima próprio; não é FAO oficial 7.3 nem produtividade observada.")
 
     @app.get("/health", tags=["serviço"])
     def health(request: Request) -> dict[str, Any]:
@@ -156,6 +158,7 @@ def create_app(root: Path = ROOT, database: Path | None = None, gaez=None, nasa=
     register_analysis(app)
     register_meteomatics(app)
     register_weather(app)
+    register_aquacrop(app)
     return app
 
 

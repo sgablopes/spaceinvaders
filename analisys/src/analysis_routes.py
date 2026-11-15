@@ -70,7 +70,7 @@ def register_analysis(app):
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request, exc):
-        if request.url.path.startswith(("/v1/analysis/", "/v1/indicators/")):
+        if request.url.path.startswith(("/v1/analysis/", "/v1/indicators/", "/v1/simulations/")):
             return error_response(ServiceError(422, "VALIDATION_ERROR", "Entrada inválida para esta operação.", details={"issue_count": len(exc.errors())}))
         return await previous_validation(request, exc)
 

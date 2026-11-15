@@ -153,7 +153,7 @@ def normalize(raw, payload, source_url, upstream_hash):
             else:
                 if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
                     raise ValueError("Número inválido.")
-                if (parameter.startswith("T2M") and not -100 <= value <= 100) or (parameter == "RH2M" and not 0 <= value <= 100) or (parameter in {"PRECTOTCORR", "ALLSKY_SFC_SW_DWN"} and value < 0):
+                if (parameter.startswith("T2M") and not -100 <= value <= 100) or (parameter == "RH2M" and not 0 <= value <= 100) or (parameter in {"PRECTOTCORR", "ALLSKY_SFC_SW_DWN", "WS2M"} and value < 0) or (parameter == "PS" and not 0 < value <= 120):
                     raise ValueError("Valor fora dos limites de sanidade.")
                 valid_values += 1
             row[field] = value

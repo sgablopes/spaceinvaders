@@ -40,6 +40,7 @@ Acesse `http://127.0.0.1:8001/docs` para testar os endpoints, `/health` para ver
 | `POST /v1/data/nasa-power/daily` | Clima diário histórico NASA POWER, com seleção de variáveis, UTC/LST e lacunas explícitas |
 | `POST /v1/data/meteomatics/forecast` | Previsão de temperatura, chuva, umidade, vento e radiação; exige credenciais do serviço e permissão do plano |
 | `POST /v1/data/weather/forecast` | Previsão automática: prefere Meteomatics, usa Open-Meteo na indisponibilidade, sem misturar valores; permite selecionar o provedor |
+| `POST /v1/simulations/aquacrop` | Executa AquaCrop-OSPy 3.0.12: Maize de sequeiro, produtividade simulada e balanço diário; clima NASA/FAO-56 ou série própria |
 | `POST /v1/analysis/climate` | I01 GDD, I02 chuva, I03 sequência seca e I05 triagem de exposição térmica; séries próprias ou NASA |
 | `POST /v1/analysis/water` | I07 ETc padrão e I08 variação hídrica; ETo/Kc e fluxos explícitos |
 | `POST /v1/analysis/economics` | I14 margem do cenário declarado; I13 produtividade pendente |
@@ -57,6 +58,8 @@ A [entrega dos indicadores](docs/DELIVERY_INDICATORS.md) acrescenta I03, triagem
 Meteomatics usa autenticação Basic HTTPS exclusivamente no servidor. As credenciais fornecidas foram validadas e configuradas no ambiente do container local, sem arquivos ou segredos versionados. Oito parâmetros horários e produtos diários passaram em consultas reais. Ao recriar o serviço, forneça `METEOMATICS_USERNAME` e `METEOMATICS_PASSWORD` pelo ambiente/gestor de segredos.
 
 Use `/v1/data/weather/forecast` para seleção automática e procedência explícita; I03/I05 e chuva forecast do I08 compartilham esse seletor. Open-Meteo foi validada em consultas reais e como alternativa mediante falha controlada. Sua API pública é não comercial, exige atribuição e tem cotas. Extremos térmicos são produtos diários UTC; não se presume equivalência aos extremos Meteomatics. A disponibilidade de ambas pode falhar. Consulte [DELIVERY_WEATHER.md](docs/DELIVERY_WEATHER.md) para métodos, diferenças, exemplos e avaliação GEOS-FP. O GEOS-FP teve acesso real por célula comprovado, mas ainda não integra o fallback operacional.
+
+O motor de simulação agora executa uma safra real de **AquaCrop-OSPy 3.0.12**, com NASA POWER e ETo FAO-56 calculada ou clima diário fornecido. O cenário Maize genérico foi concluído, com produtividade simulada e balanço hídrico fechado. Solo, profundidade, água inicial, CO₂ e manejo exigem hipóteses/referências explícitas. A distribuição oficial FAO 7.3 apresentou erros internos e continua pendente; não é confundida com o motor executado. Veja [DELIVERY_AQUACROP.md](docs/DELIVERY_AQUACROP.md) para o JSON de consumo, resultados, fontes e limitações. As abas originais da planilha continuam vazias e preservadas.
 
 Testes a partir de `analisys/`, com as dependências instaladas:
 
@@ -78,11 +81,11 @@ Para trabalho simultâneo com o desenvolvedor principal, use um checkout ou work
 
 ## Estado e pendências
 
-- API de consulta, índice local, container isolado e 71 testes aprovados, incluindo fontes locais, NASA, indicadores, Meteomatics, Open-Meteo e prova pontual GEOS-FP.
+- API de consulta, índice local, container isolado e 82 testes aprovados, incluindo fontes locais, NASA, indicadores, Meteomatics, Open-Meteo, GEOS-FP e simulação AquaCrop-OSPy.
 - Container saudável em `127.0.0.1:8001`; consultas HTTP locais e GAEZ real para milho e soja validadas. Veja [o registro de validação](docs/VALIDACAO.md).
 - Unidades/classes GAEZ exigem interpretação específica quando ausentes do GeoTIFF.
 - NASA POWER preservada. Meteomatics autenticada e Open-Meteo validadas por HTTP no Brasil/EUA; fallback sem mistura de provedores, também nos indicadores forecast.
-- Cálculo de ETo, HWSD raster/MDB, simulação AquaCrop e recomendações permanecem pendentes.
+- ETo NASA/FAO-56 e simulação AquaCrop-OSPy funcionais para Maize de biblioteca. HWSD/solo validado, FAO oficial 7.3, calibração local e recomendações continuam pendentes.
 - I01/I02 automáticos concluídos na API única, reutilizando o núcleo anterior. Consultas reais no Brasil, EUA e período recente passaram, com resultados equivalentes nas rotas agrupada e legadas. O projeto anterior permanece intacto.
 - I03/I05 com NASA real e I07/I08/I14 com entradas controladas validados por HTTP. I07/I08 exigem ETo fornecida; I05 permanece triagem geral, sem modelo de dano por estádio.
 - I03/I05 validados também com forecast real; I08 com chuva prevista real e demais entradas controladas. GEOS-FP: transporte pontual viável, normalização e validação de ciclos/variáveis ainda pendentes.
