@@ -25,7 +25,8 @@ _hit_lock = threading.Lock()
 FIELDS = {"last_crop", "previous_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal", "fertilization", "soil_management", "cover_crops", "other_crops", "water_access", "budget_constraints", "technical_resources"}
 DIFFICULTIES = {"drought", "excess_rain", "pests", "diseases", "soil", "input_costs", "labor", "machinery", "market", "other"}
 GOALS = {"maximize_profit", "increase_yield", "restore_soil", "reduce_risk", "reduce_costs", "diversify", "other"}
-LANGUAGES = {"pt-BR", "en-US", "es-ES"}
+LANGUAGES = {"pt-BR", "en-US", "es-US"}
+VOICES = {"Zephyr", "Kore", "Orus", "Autonoe", "Umbriel", "Erinome", "Laomedeia", "Schedar", "Achird", "Sadachbia", "Puck", "Fenrir", "Aoede", "Enceladus", "Algieba", "Algenib", "Achernar", "Gacrux", "Zubenelgenubi", "Sadaltager", "Charon", "Leda", "Callirrhoe", "Iapetus", "Rasalgethi", "Alnilam", "Pulcherrima", "Forward", "Vindemiatrix", "Sulafat"}
 
 
 def _live_text_frame(message):
@@ -188,7 +189,8 @@ def register_socket(app):
                 ws.send(json.dumps({"error": "invalid_request"}))
                 return
             language = first.get("language", "pt-BR")
-            if language not in LANGUAGES or not _uuid(first.get("interview_id")) or not _uuid(first.get("property_id")):
+            voice = first.get("voice", "")
+            if language not in LANGUAGES or voice not in VOICES | {""} or not _uuid(first.get("interview_id")) or not _uuid(first.get("property_id")):
                 ws.send(json.dumps({"error": "invalid_request"}))
                 return
             name = str(first.get("person_name", ""))[:100]
@@ -205,7 +207,10 @@ def register_socket(app):
                     "Conheça última cultura, cultura imediatamente anterior, resultado da colheita, dificuldades, irrigação, mecanização e objetivo. "
                     "Não invente dados nem recomendações. Respeite não sei. Seja breve. Se receber CLOSE_REQUESTED, agradeça e despeça-se sem nova pergunta. "
                     "Quando tiver concluído, chame complete_initial_interview. Nunca cite JSON, ferramentas ou estados internos.")
-                upstream.send(json.dumps({"setup": {"model": f"projects/{project}/locations/{location}/publishers/google/models/{os.getenv('GEMINI_LIVE_MODEL', 'gemini-3.8-live')}", "generationConfig": {"responseModalities": ["AUDIO"], "speechConfig": {"languageCode": language}}, "systemInstruction": {"parts": [{"text": instruction}]}, "inputAudioTranscription": {}, "outputAudioTranscription": {}, "tools": [{"functionDeclarations": [{"name": "complete_initial_interview", "description": "Request interview completion when essential facts are resolved or farmer asks to stop", "parameters": {"type": "OBJECT", "properties": {"reason": {"type": "STRING"}}}}]}]}}))
+                speech_config = {"languageCode": language}
+                if voice:
+                    speech_config["voiceConfig"] = {"prebuiltVoiceConfig": {"voiceName": voice}}
+                upstream.send(json.dumps({"setup": {"model": f"projects/{project}/locations/{location}/publishers/google/models/{os.getenv('GEMINI_LIVE_MODEL', 'gemini-3.8-live')}", "generationConfig": {"responseModalities": ["AUDIO", "TEXT"], "speechConfig": speech_config}, "systemInstruction": {"parts": [{"text": instruction}]}, "inputAudioTranscription": {"languageCodes": [language]}, "outputAudioTranscription": {"languageCodes": [language]}, "tools": [{"functionDeclarations": [{"name": "complete_initial_interview", "description": "Request interview completion when essential facts are resolved or farmer asks to stop", "parameters": {"type": "OBJECT", "properties": {"reason": {"type": "STRING"}}}}]}]}}))
                 stop = threading.Event()
 
                 def browser_to_vertex():
