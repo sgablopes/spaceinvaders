@@ -12,6 +12,7 @@
 .agrion-chat-empty{margin:auto;text-align:center;color:#596451}
 .agrion-chat-bubble{max-width:85%;padding:12px 15px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;border-radius:16px;background:#F1F4EA;align-self:flex-start}
 .agrion-chat-bubble.is-user{align-self:flex-end;background:#385C39;color:#fff}
+.agrion-chat-bubble h3{font:700 1em/1.4 'Plus Jakarta Sans',sans-serif;margin:8px 0 3px}.agrion-chat-bubble h3:first-child{margin-top:0}.agrion-chat-bubble ul{margin:4px 0;padding-left:22px}.agrion-chat-bubble li{padding-left:2px}
 .agrion-chat-form{display:flex;gap:10px;margin-top:12px;align-items:stretch}
 .agrion-chat-form textarea{flex:1;min-width:0;resize:vertical;border:1px solid #CBD6C5;border-radius:14px;padding:12px;font:inherit}
 .agrion-chat-form button{border-radius:14px;padding:0 22px}
