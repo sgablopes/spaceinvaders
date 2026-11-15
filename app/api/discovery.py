@@ -210,7 +210,7 @@ def register_socket(app):
                 speech_config = {"languageCode": language}
                 if voice:
                     speech_config["voiceConfig"] = {"prebuiltVoiceConfig": {"voiceName": voice}}
-                upstream.send(json.dumps({"setup": {"model": f"projects/{project}/locations/{location}/publishers/google/models/{os.getenv('GEMINI_LIVE_MODEL', 'gemini-3.8-live')}", "generationConfig": {"responseModalities": ["AUDIO", "TEXT"], "speechConfig": speech_config}, "systemInstruction": {"parts": [{"text": instruction}]}, "inputAudioTranscription": {"languageCodes": [language]}, "outputAudioTranscription": {"languageCodes": [language]}, "tools": [{"functionDeclarations": [{"name": "complete_initial_interview", "description": "Request interview completion when essential facts are resolved or farmer asks to stop", "parameters": {"type": "OBJECT", "properties": {"reason": {"type": "STRING"}}}}]}]}}))
+                upstream.send(json.dumps({"setup": {"model": f"projects/{project}/locations/{location}/publishers/google/models/{os.getenv('GEMINI_LIVE_MODEL', 'gemini-3.8-live')}", "generationConfig": {"responseModalities": ["AUDIO"], "speechConfig": speech_config}, "systemInstruction": {"parts": [{"text": instruction}]}, "inputAudioTranscription": {}, "outputAudioTranscription": {}, "tools": [{"functionDeclarations": [{"name": "complete_initial_interview", "description": "Request interview completion when essential facts are resolved or farmer asks to stop", "parameters": {"type": "OBJECT", "properties": {"reason": {"type": "STRING"}}}}]}]}}))
                 stop = threading.Event()
 
                 def browser_to_vertex():
