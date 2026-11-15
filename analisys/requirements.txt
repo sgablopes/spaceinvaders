@@ -3,3 +3,4 @@ uvicorn>=0.34,<1
 httpx>=0.28,<1
 openpyxl>=3.1,<4
 rasterio>=1.4,<2
+tzdata==2025.2

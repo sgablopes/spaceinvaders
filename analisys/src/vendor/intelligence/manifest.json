@@ -1,0 +1,70 @@
+{
+  "origin": "agrion-intelligence/app",
+  "files": {
+    "core/__init__.py": {
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "packaged_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "core/errors.py": {
+      "source_sha256": "f7fe60bf6989551d0d4b91cb4ff559e5377b009cc61bab2bf84892efcad278a8",
+      "packaged_sha256": "d7e1f8b3d53c1a16840fb851a00c9ec94724e2b8bbfe93758372433c686b4a0c"
+    },
+    "schemas/__init__.py": {
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "packaged_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "schemas/common.py": {
+      "source_sha256": "1e86abd477230a0955e7942115bafa028bb891c57dcef1dfe7f8e212cae5c2ab",
+      "packaged_sha256": "1e86abd477230a0955e7942115bafa028bb891c57dcef1dfe7f8e212cae5c2ab"
+    },
+    "schemas/gdd.py": {
+      "source_sha256": "7f34effec1e1a73688711a755711b6f435e0cd21d096e3e535f34e003fb92547",
+      "packaged_sha256": "6cbf0f9ca2b464102205782fa664b8c3d2554f6e2dc477dd851a344d932a3c72"
+    },
+    "schemas/rainfall.py": {
+      "source_sha256": "b48f77c240fe036a84da55eca67b324333741de24c4ba27fb5f50748f50f807f",
+      "packaged_sha256": "67156014f0a66807f549f4fac358d182aa856d50fb94aa29d07d2e870665ac11"
+    },
+    "schemas/indicators.py": {
+      "source_sha256": "ae00ca9363ca1181bd8fafa4676932a0c366b057a874f8c3a166c89374c1665f",
+      "packaged_sha256": "dc760c7c23a506ee9923800f6bce8bb7f14c377cb4a9a39037858950cc3b5452"
+    },
+    "schemas/analysis.py": {
+      "source_sha256": "04e653b586a45b50dc5fcf7f427dcf97b36669b5b8356c2d24e7ebb49b86e52a",
+      "packaged_sha256": "8aa800a3b5d6361a705cc7c87f276f446430e592f8ea03a98fccfdf06ec774b9"
+    },
+    "indicators/__init__.py": {
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "packaged_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "indicators/gdd.py": {
+      "source_sha256": "6239505ca6d754f48779e0f5dbb70b02d8a47431bf8ea08eca5cb6ea2702a534",
+      "packaged_sha256": "dc853690a047077537b564e2908e9f64e681b04b9e46901097af45065115ea6f"
+    },
+    "indicators/gdd_service.py": {
+      "source_sha256": "770ca8d1852ef4c3f3521c8f52cef7410b6938e88a312f6c64f8f61cd633bdba",
+      "packaged_sha256": "6e2f5844d1c5e0d22274334a9b3e1c947edd258f71b505af469363bcaf0df15e"
+    },
+    "indicators/rainfall_accumulation.py": {
+      "source_sha256": "4526c8c6bb9b610d767d6590c1b8823ec328260eef043c46d50be60f20d49a49",
+      "packaged_sha256": "cd47f225941b2fd6d4f238397ad14b0e72df3ef6de09fa5dce790e207438b721"
+    },
+    "indicators/rainfall_service.py": {
+      "source_sha256": "4fa9f4d15558a97755dfe68bba9fb2acd421d569d86ed6be3898fdfc52496521",
+      "packaged_sha256": "f356c2ce18d2e001641d94b6423f533e5a517898bef59207e39158598e526a55"
+    },
+    "indicators/analysis.py": {
+      "source_sha256": "081688ad63eb01698594738e24cc2b605dd4607ed95168b9968968a4958e208f",
+      "packaged_sha256": "cfb65d2119d1713d5bc3d2ca6cc0159860c05f6f14294f692d15b9e3056e9184"
+    },
+    "indicators/catalog.py": {
+      "source_sha256": "c46c7bd00913737c3318f40744d67ab53e93a1e625e369dd6e72d1d621c48bf8",
+      "packaged_sha256": "f28aef441e1549d359580ea9db13ce16104c872aea5a79539322e6513d816202"
+    }
+  },
+  "adaptations": [
+    "Imports absolutos remapeados para pacote isolado.",
+    "Orquestrador recebe bindings/response_model opcionais; comportamento padrão preservado.",
+    "Fórmulas e validações não alteradas."
+  ]
+}

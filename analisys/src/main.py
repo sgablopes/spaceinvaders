@@ -8,6 +8,11 @@ from pydantic import BaseModel
 
 from .gaez import ExternalError, Gaez
 from .store import FILES, Store
+from .nasa_power import NasaPower
+from .nasa_routes import register_nasa
+from .analysis_routes import register_analysis
+from .meteomatics import Meteomatics
+from .meteomatics_routes import register_meteomatics
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -27,7 +32,7 @@ class Page(BaseModel):
     items: list[Record]
 
 
-def create_app(root: Path = ROOT, database: Path | None = None, gaez=None):
+def create_app(root: Path = ROOT, database: Path | None = None, gaez=None, nasa=None, meteomatics=None):
     store = Store(root, database or root / ".runtime" / "catalog.sqlite3")
 
     @asynccontextmanager
@@ -35,13 +40,17 @@ def create_app(root: Path = ROOT, database: Path | None = None, gaez=None):
         store.prepare()
         app.state.store = store
         app.state.gaez = gaez or Gaez()
+        app.state.nasa = nasa or NasaPower()
+        app.state.meteomatics = meteomatics or Meteomatics()
         try:
             yield
         finally:
             app.state.gaez.close()
+            app.state.nasa.close()
+            app.state.meteomatics.close()
 
-    app = FastAPI(title="Agrion — Dados agronômicos", version="1.0.0", lifespan=lifespan,
-                  description="Consulta de fontes locais preservadas e GAEZ v5 externo. Não fornece recomendações automáticas.")
+    app = FastAPI(title="Agrion — Dados e análises agronômicas", version="1.2.0", lifespan=lifespan,
+                  description="Fontes locais, GAEZ v5, NASA POWER histórica e Meteomatics forecast autenticado. Quatro operações de análise previstas; I01 GDD e I02 chuva funcionam com séries próprias ou NASA automática. Previsões dependem de credenciais e acesso do plano Meteomatics; não se misturam ao histórico.")
 
     @app.get("/health", tags=["serviço"])
     def health(request: Request) -> dict[str, Any]:
@@ -51,9 +60,11 @@ def create_app(root: Path = ROOT, database: Path | None = None, gaez=None):
     @app.get("/api/v1/datasets", tags=["catálogo"])
     def datasets(request: Request) -> dict[str, Any]:
         return {"local": request.app.state.store.datasets(),
-                "external": [{"id": "gaez", "version": "5", "endpoint": "/api/v1/gaez/layers"}],
-                "unavailable": ["HWSD: raster e banco MDB não estão nesta pasta.",
-                                "NASA POWER e séries climáticas: não implementados nesta entrega."]}
+                "external": [{"id": "gaez", "version": "5", "endpoint": "/api/v1/gaez/layers"},
+                             {"id": "nasa_power", "endpoint": "/v1/data/nasa-power/daily", "method": "POST"},
+                             {"id": "meteomatics", "endpoint": "/v1/data/meteomatics/forecast", "method": "POST",
+                              "credentials_configured": request.app.state.meteomatics.configured}],
+                "unavailable": ["HWSD: raster e banco MDB não estão nesta pasta."]}
 
     def source_router(dataset):
         router = APIRouter(prefix=f"/api/v1/{dataset}", tags=[dataset])
@@ -133,6 +144,9 @@ def create_app(root: Path = ROOT, database: Path | None = None, gaez=None):
             raise HTTPException(422, str(exc))
 
     app.include_router(external)
+    register_nasa(app)
+    register_analysis(app)
+    register_meteomatics(app)
     return app
 
 

@@ -36,8 +36,64 @@ python -B -m uvicorn src.main:app --host 127.0.0.1 --port 8001
 | `/api/v1/conhecimento` | Biblioteca v0.4: 45 culturas, 149 fontes, 249 evidências, 75 sequências, 42 calendários, 48 registros fitossanitários, 20 registros de manejo e tabelas de associação |
 | `/api/v1/aquacrop` | Dicionário de 62 campos e estrutura das entradas; as cinco abas de entrada estão vazias |
 | `/api/v1/gaez` | Descoberta de camadas na API externa oficial e consulta do pixel remoto por coordenada |
+| `POST /v1/data/nasa-power/daily` | Temperaturas média/mínima/máxima, precipitação, umidade e radiação NASA POWER sob demanda |
+| `POST /v1/data/meteomatics/forecast` | Previsão UTC autenticada Meteomatics, dependente de credenciais e permissões |
+| `POST /v1/analysis/climate` | GDD e chuva acumulada, usando séries próprias ou NASA automaticamente |
+| `POST /v1/analysis/water`, `/agronomy`, `/economics` | Contratos dos demais grupos originais; métodos pendentes, com 501 explícito |
 
-HWSD tem somente um README nesta pasta; raster e MDB não estão disponíveis. O Parquet ECOCROP e o contrato climático mencionado anteriormente também não estão no disco. NASA POWER, cálculo FAO-56 de ETo, motor AquaCrop e recomendações agronômicas não foram implementados por esta API de consulta.
+HWSD tem somente um README nesta pasta; raster e MDB não estão disponíveis. O Parquet ECOCROP e o contrato climático mencionado anteriormente também não estão no disco. Cálculo FAO-56 de ETo, motor AquaCrop e recomendações agronômicas não foram implementados por esta API de consulta. A consulta NASA POWER foi acrescentada sem alterar os caminhos anteriores.
+
+## NASA POWER diário
+
+`POST /v1/data/nasa-power/daily`, operationId `get_nasa_power_daily_weather`, disponibiliza dados históricos/quase tempo real. O contrato completo, exemplos Python/curl, erros, proveniência e auditoria do consumidor estão em [DELIVERY_S01.md](DELIVERY_S01.md). A documentação técnica continua centralizada no mesmo `/docs` e `/openapi.json`; `/v1/capabilities` lista a operação INT e aponta para o catálogo das outras fontes.
+
+```json
+{
+  "location": {"latitude": -16.5, "longitude": -49.3},
+  "start_date": "2025-10-01",
+  "end_date": "2025-10-03",
+  "parameters": ["T2M_MAX", "T2M_MIN", "PRECTOTCORR"],
+  "time_standard": "UTC",
+  "require_complete": true
+}
+```
+
+Até 366 dias inclusivos, sem datas futuras; não fornece forecast. `result.series` contém valores diários, `result.parameters` declara unidades, `quality.missing_dates` identifica lacunas, `provenance` e hashes identificam fonte e versão consultadas. Sem `require_complete`, lacunas geram status `partial` e null; com ele, erro 404. Zero de chuva não é lacuna. UTC e LST não são convertidos nem equiparados.
+
+O cache em memória tem TTL padrão 300 segundos e capacidade 128, configuráveis. São preservadas a data de acesso da fonte e a expiração; não existe fallback para cache vencido. Os parâmetros `NASA_POWER_TIMEOUT_SECONDS`, `NASA_POWER_MAX_RETRIES`, `NASA_POWER_CACHE_TTL_SECONDS` e `NASA_POWER_CACHE_ENTRIES` podem ser passados pelo ambiente ao processo/container. O Compose do serviço de dados já repassa essas quatro variáveis do host, mantendo os padrões quando ausentes.
+
+## Indicadores com consulta automática
+
+`POST /v1/analysis/climate` recebe `include` e `inputs` tipados. I01/I02 reutilizam as fórmulas anteriores; omitir a série seleciona NASA automaticamente. Exemplo ilustrativo de GDD, com Tbase informada como hipótese explícita:
+
+```json
+{
+  "include": ["I01"],
+  "inputs": {
+    "gdd": {
+      "location": {"latitude": -16.5, "longitude": -49.3},
+      "crop_id": "maize", "base_temperature_c": 10,
+      "start_date": "2025-10-01", "end_date": "2025-10-03", "timezone": "UTC"
+    }
+  }
+}
+```
+
+Para chuva, selecione `include=["I02"]` e `inputs.rainfall` com `location`, `reference_date` e `day_basis` (`UTC` ou `LST`); não exige Tbase. Consulta os 90 dias até a referência e devolve as quatro somas retrospectivas. Ambos podem ser selecionados na mesma requisição, com períodos próprios. Não há conversão de LST para UTC nem substituição de lacunas por zero. GDD automático admite até 366 dias e somente UTC; períodos maiores continuam possíveis no modo manual conforme o contrato anterior.
+
+Fornecer `daily_temperatures`/`daily_precipitation` preserva o modo manual sem rede. Em automático a procedência é `NASA POWER`/`modeled_estimate`; em manual é `caller_supplied`. Sucesso parcial identifica cada ID indisponível sem valor substituto. `/v1/capabilities` inclui a operação INT existente e as quatro operações IND com seus estados; rotas legadas permanecem ocultas do OpenAPI. Os demais nove cálculos seguem 501.
+
+Métodos, schemas estendidos de saída, erros, exemplo completo I01/I02 e validação estão em [DELIVERY_AUTOMATIC_INDICATORS.md](DELIVERY_AUTOMATIC_INDICATORS.md). A API usa o núcleo versionado internamente, sem depender de arquivos da Área de Trabalho.
+
+## Previsão Meteomatics
+
+`POST /v1/data/meteomatics/forecast`, operationId `get_meteomatics_forecast`, é uma operação INT separada do histórico NASA, no mesmo Swagger/container. Recebe `location`, `start_time`, `end_time`, `step_hours` (1/3/6/24), `parameters`, `source` e `require_complete`. Timestamps têm fuso explícito e são normalizados para UTC; instantes e primeiros intervalos devem estar inteiramente no futuro. Por padrão o serviço limita o fim a 7 dias a partir de agora, sem garantir o horizonte autorizado pelo plano.
+
+Variáveis selecionáveis: `temperature`, `temperature_mean`, `temperature_min`, `temperature_max`, `precipitation`, `relative_humidity`, `wind_speed` e `solar_radiation`. Acumulados/extremos/médias abrangem o intervalo anterior encerrado em `valid_time`, com duração igual a `step_hours`. Vento é instantâneo a 10 m e radiação é fluxo instantâneo em W/m²; não se presume uma série diária pronta para AquaCrop. A previsão não alimenta automaticamente os indicadores retrospectivos NASA nesta entrega.
+
+As credenciais `METEOMATICS_USERNAME` e `METEOMATICS_PASSWORD` são lidas apenas do ambiente do serviço. O cliente AGRION não as envia no request; a API usa Basic Auth em HTTPS com host fixo, sem segredo na URL e sem repassar o campo `user` do provedor. Quando faltam, retorna 503 `METEOMATICS_CREDENTIALS_MISSING`; a NASA e as fontes locais continuam disponíveis. `/v1/capabilities` informa presença de configuração, sem atestar que a conta tem acesso.
+
+O conector tem cache limitado, retentativas controladas, resposta tipada com procedência/hashes e ausência representada por null/partial. Não há fallback para NASA ou valores fictícios. Configuração completa, tabela de unidades, fontes oficiais, tratamento de erros e exemplo Python que calcula os horários no momento da requisição estão em [DELIVERY_METEOMATICS.md](DELIVERY_METEOMATICS.md).
 
 ## Contrato das fontes locais
 
@@ -139,14 +195,14 @@ A resposta inclui `raw_value`, `value` após escala/offset declarados na banda, 
 
 ## Erros
 
-As respostas de erro usam `detail`, conforme FastAPI:
+As respostas de erro das rotas anteriores `/api/v1/...` usam `detail`, conforme FastAPI. A nova rota NASA `/v1/data/...` preserva seu contrato próprio com `error.code`, `message`, `retryable` e `details`, conforme [DELIVERY_S01.md](DELIVERY_S01.md).
 
 - 404: tabela/documento/camada inexistente ou coordenada fora da cobertura.
 - 422: parâmetros, filtros ou identificador de camada inválidos.
 - 502: falha da fonte externa ou da leitura remota GAEZ.
 - 504: timeout da consulta HTTP de catálogo/metadados GAEZ. Falhas de leitura GDAL são reportadas como 502.
 
-`/health` verifica o serviço e o índice local, sem fazer chamadas GAEZ. Indisponibilidade externa não impede a consulta das bases locais. Não são gerados valores fictícios como fallback.
+`/health` verifica o serviço e o índice local, sem fazer chamadas GAEZ, NASA ou Meteomatics. Indisponibilidade externa e credenciais Meteomatics ausentes não impedem a consulta das bases locais. Não são gerados valores fictícios como fallback.
 
 ## Armazenamento e atualização
 
@@ -167,8 +223,14 @@ python -B -m unittest discover -s tests -v
 python -B tools/verify_external.py
 ```
 
-O primeiro comando roda 12 testes determinísticos: fontes reais, contagens, nulos/zero, relações, exclusão da quarentena, paginação, filtros inválidos/injeção, reuso do índice, esquema OpenAPI e falhas externas. O teste de pixel utiliza raster **sintético**, cobrindo escala, NoData e limites espaciais. Os hashes dos arquivos originais são comparados antes e depois dos testes.
+O primeiro comando roda 45 testes determinísticos: os 12 iniciais, 11 da entrega NASA, 8 da conexão automática aos indicadores e 14 do conector Meteomatics. As fontes locais reais são verificadas por contagens, nulos/zero, relações, quarentena, paginação, filtros, reuso do índice e hashes antes/depois. Mocks meteorológicos e raster de teste são **sintéticos**, cobrindo unidades, falhas externas, NoData, autenticação segura, cache e contrato HTTP, sem chamadas externas nos testes automatizados.
 
 O segundo comando é opcional e acessa a rede real. Grava `.runtime/gaez-live-check.json`, identificando expressamente que são consultas externas reais. Esse relatório não é uma recomendação agronômica.
 
 Com o serviço já iniciado, `python -B tools/verify_running.py` valida o acesso HTTP em `127.0.0.1:8001`, incluindo pixels GAEZ reais de milho (`MZE`) e soja (`SOY`). Pode receber outra URL local como argumento. O relatório fica em `.runtime/http-check.json`. Consulte [VALIDACAO.md](VALIDACAO.md) para os resultados desta entrega.
+
+`python -B tools/verify_nasa.py` faz consultas NASA reais no Brasil, no exterior e em intervalo recente, verifica o cache e salva `.runtime/nasa-live-check.json`. A prova de reaproveitamento do consumidor original está descrita em [DELIVERY_S01.md](DELIVERY_S01.md); ela preserva seus arquivos e não cria novas operações de análise.
+
+`python -B tools/verify_automatic_indicators.py` valida o fluxo NASA → GDD/chuva diretamente por HTTP no container único, sem o consumidor externo; compara rotas agrupada e legadas e salva `.runtime/automatic-indicators-check.json`.
+
+`python -B tools/verify_meteomatics.py` tenta a consulta forecast real usando apenas as credenciais configuradas no servidor. Sem elas, registra a indisponibilidade; `--probe-unauthenticated` verifica somente a exigência de login no provedor. A evidência em `.runtime/meteomatics-live-check.json` não declara previsão validada enquanto não houver consulta autenticada bem-sucedida.

@@ -1,5 +1,7 @@
 # Validação da entrega — 15/11/2026
 
+Este é o registro da entrega inicial das bases locais e GAEZ. A continuação NASA POWER, com 23 testes da API de dados e auditoria do projeto de indicadores, está em [DELIVERY_S01.md](DELIVERY_S01.md); as pendências abaixo retratam a etapa inicial.
+
 ## Escopo
 
 Implementação executada na branch `analisys`, com alterações restritas a essa pasta. Os quatro arquivos de origem foram usados em leitura; os testes compararam suas SHA-256 antes e depois da carga e das consultas. O manifesto da biblioteca foi verificado antes da importação. Nenhum arquivo da aplicação principal foi alterado. Commit e push desta entrega foram solicitados pelo usuário; consulte o histórico Git para seus identificadores. Não houve merge ou deploy remoto.
