@@ -15,6 +15,7 @@ from flask_sock import Sock
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from websockets.exceptions import ConnectionClosed
 from websockets.sync.client import connect
 
 discovery_blueprint = Blueprint("discovery", __name__)
@@ -195,7 +196,6 @@ def register_socket(app):
                     "Não invente dados nem recomendações. Respeite não sei. Seja breve. Se receber CLOSE_REQUESTED, agradeça e despeça-se sem nova pergunta. "
                     "Quando tiver concluído, chame complete_initial_interview. Nunca cite JSON, ferramentas ou estados internos.")
                 upstream.send(json.dumps({"setup": {"model": f"projects/{project}/locations/{location}/publishers/google/models/{os.getenv('GEMINI_LIVE_MODEL', 'gemini-3.8-live')}", "generationConfig": {"responseModalities": ["AUDIO"], "speechConfig": {"languageCode": language}}, "systemInstruction": {"parts": [{"text": instruction}]}, "inputAudioTranscription": {}, "outputAudioTranscription": {}, "tools": [{"functionDeclarations": [{"name": "complete_initial_interview", "description": "Request interview completion when essential facts are resolved or farmer asks to stop", "parameters": {"type": "OBJECT", "properties": {"reason": {"type": "STRING"}}}}]}]}}))
-                phase = "relay"
                 stop = threading.Event()
 
                 def browser_to_vertex():
@@ -216,7 +216,16 @@ def register_socket(app):
                 for message in upstream:
                     if stop.is_set():
                         break
+                    if phase == "vertex_setup" and "setupComplete" in json.loads(message):
+                        phase = "relay"
                     ws.send(message)
+        except ConnectionClosed as error:
+            close = error.rcvd or error.sent
+            app.logger.warning("Discovery Live closed in %s (code=%s)", phase, close.code if close else "none")
+            try:
+                ws.send(json.dumps({"error": "vertex_connection_closed", "stage": phase, "code": close.code if close else None}))
+            except Exception:
+                pass
         except ConfigurationError:
             app.logger.warning("Discovery Live configuration failure in %s", phase)
             try:
