@@ -8,6 +8,7 @@ from app.api.health import health_blueprint
 from app.api.discovery import discovery_blueprint, register_socket
 from app.api.assistant import assistant_blueprint
 from app.api.dashboard import dashboard_blueprint
+from app.api.stations import stations_blueprint
 
 
 def create_app(test_config=None):
@@ -22,6 +23,7 @@ def create_app(test_config=None):
     app.register_blueprint(discovery_blueprint)
     app.register_blueprint(assistant_blueprint)
     app.register_blueprint(dashboard_blueprint)
+    app.register_blueprint(stations_blueprint)
     register_socket(app)
 
     @app.after_request

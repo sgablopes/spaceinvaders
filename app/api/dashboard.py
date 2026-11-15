@@ -9,7 +9,6 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from app.api.discovery import _origin_ok, _rate_limit
 from app.services.engine import AgrionEngine, EngineError
 from app.services.dashboard_data import forecast_section, rainfall_section, stage_section, daily_section, market_section, news_section
-from app.services.dashboard_monitor import evaluate as evaluate_monitor
 from app.services.tools import AnalysisTools
 
 dashboard_blueprint = Blueprint('dashboard', __name__)
@@ -57,20 +56,6 @@ def section(section):
     if not _rate_limit('DASHBOARD_'+section.upper(),30):return jsonify(error='rate_limited'),429
     result=operations[section](context)
     return jsonify(schema_version='1.0',property_id=property_data['id'],section=section,result=result)
-
-
-@dashboard_blueprint.post('/api/dashboard/monitor')
-def monitor():
-    if not _origin_ok():return jsonify(error='origin_rejected'),403
-    if request.content_length is not None and request.content_length>60000:return jsonify(error='request_too_large'),413
-    body=request.get_json(silent=True)
-    if not isinstance(body,dict) or set(body)!={'context','sample','active_alerts'} or not isinstance(body['context'],dict):return jsonify(error='invalid_request'),400
-    property_data=body['context'].get('property');profile=body['context'].get('agricultural_profile')
-    if not isinstance(property_data,dict) or not isinstance(property_data.get('id'),str) or not isinstance(profile,dict) or not isinstance(profile.get('fields'),dict):return jsonify(error='invalid_request'),400
-    if not _rate_limit('DASHBOARD_MONITOR',120):return jsonify(error='rate_limited'),429
-    try:result=evaluate_monitor(body['context'],body['sample'],body['active_alerts'])
-    except ValueError:return jsonify(error='invalid_request'),400
-    return jsonify(schema_version='1.0',property_id=property_data['id'],result=result)
 
 
 @dashboard_blueprint.post('/api/dashboard/market')

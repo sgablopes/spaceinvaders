@@ -8,15 +8,15 @@
   const brand=()=>`<div class="agrion-home-brand"><span class="agrion-home-brand-mark">${icon('leaf',35)}</span><strong>Agrion</strong></div>`;
   const owner=property=>`<div class="agrion-home-owner"><span class="agrion-home-owner-icon">${icon('home',27)}</span><div><span>${greeting()}, ${esc((property?.personName||'').trim().split(/\s+/)[0]||'você')}</span><strong>${esc(property?.propertyName||'Sua propriedade')}</strong></div></div>`;
   const features=[
-    ['sun','Clima','Condições, previsões e estação Agrion'],
+    ['sun','Clima','Condições e previsões'],
     ['sprout','Medições de campo','Histórico e análises'],
     ['calendar','Planejamento','Atividades e safras'],
     ['chart','Mercado agrícola','Preços e tendências'],
-    ['book','Notícias e pesquisas','Conteúdo relevante'],
+    ['sun','Mini Estação Meteorológica','Leituras da estação'],
     ['map','Minha propriedade','Mapa, talhões e dados']
   ];
   function markup(property){
-    const featureCards=features.map(([symbol,title,description])=>`<button class="agrion-home-feature" type="button" ${title==='Minha propriedade'?'id="agrionHomeProperty"':''}><span>${icon(symbol,34)}</span><strong>${title}</strong><small>${description}</small></button>`).join('');
+    const featureCards=features.map(([symbol,title,description])=>`<button class="agrion-home-feature" type="button" ${title==='Minha propriedade'?'id="agrionHomeProperty"':title==='Mini Estação Meteorológica'?'id="agrionHomeStation"':''}><span>${icon(symbol,34)}</span><strong>${title}</strong><small>${description}</small></button>`).join('');
     return `<main class="agrion-home">
       <div class="agrion-home-waiting">
         <div id="agrionHomeHeader">
@@ -41,17 +41,18 @@
     const panel=document.getElementById('agrionHomePanel'),content=document.getElementById('agrionHomePanelContent'),toggle=document.getElementById('agrionHomeMenuToggle');
     if(!panel||!content||!toggle)return;
     document.getElementById('agrionHomeProperty').onclick=()=>window.AgrionDiscovery.editProperty();
+    document.getElementById('agrionHomeStation').onclick=()=>window.AgrionStation.open(content);
     document.querySelector('.agrion-home-assistant').onclick=()=>window.AgrionDiscovery.openChat();
     document.getElementById('agrionDashboardRetry').onclick=()=>window.AgrionDashboard.start();
     document.getElementById('agrionDeleteData').onclick=eraseData;
     const header=document.getElementById('agrionHomeHeader');
     const positionPanel=()=>{if(!header.isConnected){window.removeEventListener('resize',positionPanel);return;}panel.style.setProperty('--agrion-menu-space',`${Math.max(160,window.innerHeight-header.getBoundingClientRect().bottom)}px`);};
     positionPanel();window.addEventListener('resize',positionPanel,{passive:true});
-    toggle.onclick=()=>{expanded=!expanded;panel.classList.toggle('is-expanded',expanded);content.inert=!expanded;toggle.setAttribute('aria-expanded',String(expanded));toggle.querySelector('span:nth-child(2)').textContent=expanded?'Fechar menu':'Menu';toggle.querySelector('.agrion-home-menu-arrow').textContent=expanded?'⌄':'⌃';document.body.classList.toggle('agrion-home-menu-open',expanded);};
+    toggle.onclick=()=>{expanded=!expanded;if(!expanded)window.AgrionStation.close();panel.classList.toggle('is-expanded',expanded);content.inert=!expanded;toggle.setAttribute('aria-expanded',String(expanded));toggle.querySelector('span:nth-child(2)').textContent=expanded?'Fechar menu':'Menu';toggle.querySelector('.agrion-home-menu-arrow').textContent=expanded?'⌄':'⌃';document.body.classList.toggle('agrion-home-menu-open',expanded);};
     window.AgrionDashboard.start();
   }
   function clearDatabase(name){return new Promise((resolve,reject)=>{const request=indexedDB.open(name);request.onerror=()=>reject(request.error);request.onblocked=()=>reject(new Error('blocked'));request.onsuccess=()=>{const db=request.result,names=Array.from(db.objectStoreNames);if(!names.length){db.close();resolve();return;}const tx=db.transaction(names,'readwrite');for(const store of names)tx.objectStore(store).clear();tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>{db.close();reject(tx.error);};tx.onabort=()=>{db.close();reject(tx.error||new Error('aborted'));};};});}
   async function eraseData(){if(!window.confirm('Apagar os dados do Agrion neste navegador? A propriedade, as conversas, análises e registros serão excluídos. Esta ação não pode ser desfeita. Feche outras abas do Agrion antes de continuar.'))return;const button=document.getElementById('agrionDeleteData'),status=document.getElementById('agrionDeleteStatus');button.disabled=true;status.textContent='Apagando dados…';window.AgrionDeletingData=true;window.AgrionHome.reset();try{for(const name of ['agrion-discovery','agrion-dashboard','flora-demo-registros-v1'])await clearDatabase(name);const keys=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key==='agrion-property-v1'||key==='flora-demo-v3-1'||key?.startsWith('agrion-chat-v1:'))keys.push(key);}for(const key of keys)localStorage.removeItem(key);window.location.reload();}catch(_){window.AgrionDeletingData=false;button.disabled=false;status.textContent='Não foi possível apagar todos os dados. Feche outras abas do Agrion e tente novamente.';}}
-  function reset(){expanded=false;window.AgrionDashboard.reset();document.body.classList.remove('agrion-home-menu-open');}
+  function reset(){expanded=false;window.AgrionStation.close();window.AgrionDashboard.reset();document.body.classList.remove('agrion-home-menu-open');}
   window.AgrionHome={markup,afterRender,reset};
 })();

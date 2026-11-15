@@ -36,6 +36,10 @@ Acesse `http://127.0.0.1:8000/`. O Compose publica somente no loopback. Logs: `d
 
 Para o Compose, copie `.env.example` para `.env` e preencha `MAPTILER_API_KEY`. O arquivo `.env` é ignorado pelo Git. Na VM, configure a mesma variável no diretório do projeto antes de executar `docker compose up -d --build`.
 
+## Mini Estação Meteorológica
+
+O endpoint `POST /api/v1/stations/telemetry` recebe leituras do ESP32 com chave por estação em `X-Station-Key`. Configure `AGRION_STATION_KEYS` no `.env` da VM e mantenha o volume Docker `station-data` para preservar o SQLite. A tela do menu abre inicialmente `agrion-demo-001` e consulta a leitura mais recente a cada cinco segundos. O ID permite consulta pública; a chave é exigida apenas para envio. Consulte [o contrato e as limitações](docs/ESTACAO_METEOROLOGICA.md).
+
 ## Testes
 
 ```bash

@@ -5,7 +5,9 @@ WORKDIR /opt/agrion
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
-    && useradd --create-home --uid 10001 agrion
+    && useradd --create-home --uid 10001 agrion \
+    && mkdir -p /var/lib/agrion \
+    && chown agrion:agrion /var/lib/agrion
 COPY --chown=agrion:agrion app/ app/
 USER agrion
 EXPOSE 8000

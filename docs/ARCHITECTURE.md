@@ -15,6 +15,8 @@ flowchart LR
 
 O Flask serve `app/templates/index.html` em `/`; o CSS e o JavaScript existentes estão incorporados. O navegador mantém dados demonstrativos localmente. A API atual expõe apenas `/api/health`. O simulador de conectividade na interface é independente do backend.
 
+A mini estação usa `POST /api/v1/stations/telemetry` para receber leituras autenticadas por `X-Station-Key` e SQLite em volume Docker persistente. Consultas públicas por ID retornam a última leitura ou um intervalo; o ID padrão no navegador é `agrion-demo-001`. O horário é o de recebimento no servidor (UTC). IDs conhecidos permitem leitura pública, conforme o contrato do MVP. A chave de envio vem de `AGRION_STATION_KEYS` no ambiente da VM e nunca vai ao navegador.
+
 O fluxo de primeiro acesso está em `app/static/property-flow.js`; a persistência isolada está em `app/static/property-store.js`. A geometria é um `Polygon` GeoJSON WGS84, com pares `[longitude, latitude]`. O cálculo de área usa integração geodésica sobre esfera WGS84 aproximada, em m² e hectares. O navegador grava um único registro versionado em `agrion-property-v1`, sem alterar `flora-demo-v3-1` ou o IndexedDB legado. A edição só substitui o registro após confirmação. No futuro, o GeoJSON poderá ser validado no servidor e convertido para `geometry(Polygon, 4326)` no PostGIS; ainda não há API de persistência.
 
 Gunicorn atende na porta 8000 do contêiner. O Compose publica `127.0.0.1:8000` na VM. Nginx existente deverá encaminhar o domínio configurado para esse endereço, preservando HTTPS. A alteração do virtual host exige inspeção e backup antes da validação com `nginx -t`.

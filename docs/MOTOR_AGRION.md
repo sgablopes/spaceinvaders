@@ -38,11 +38,9 @@ O modo `dashboard_daily` produz resumo, observações e recomendações em JSON 
 
 Snapshots ficam no IndexedDB separado `agrion-dashboard`, por propriedade, seção e assinatura do contexto. Bootstrap e análise diária são reutilizados no dia e fuso locais do navegador; previsão vale uma hora, chuva seis horas e fase 24 horas. Alterar o contexto invalida a reutilização. Se uma atualização falhar, o último resultado do mesmo contexto é exibido como antigo com horário. Chamadas simultâneas duplicadas são compartilhadas na mesma aba; não há coordenação entre abas, usuários ou dispositivos. A consulta no primeiro acesso mantém o carregamento.
 
-## Monitoramento experimental
+## Mini Estação Meteorológica
 
-O monitoramento começa desligado e, nesta etapa, aceita somente amostras explicitamente simuladas de vento e chuva, acionadas pelo usuário na dashboard. `POST /api/dashboard/monitor` envia a amostra e o contexto ao Core em modo próprio, com ferramentas e resposta estruturada; não altera as instruções do chat. O servidor valida horário, medidas e referências presentes nos resultados das ferramentas. Essa presença não comprova que a fonte sustente a conclusão. Uma análise indisponível não é apresentada como condição segura.
-
-Alertas simulados, reconhecimento e histórico ficam no IndexedDB local, por propriedade. Eventos repetidos são agrupados; uma resolução exige avaliação explícita com novas leituras das variáveis que originaram o alerta. Enquanto a simulação está ativa, a interface verifica a cada cinco segundos se há amostra pendente, sem chamar o servidor quando não há dados novos. Ao sair da tela ou interromper a simulação, o processamento no navegador é interrompido. Não há coleta de sensores reais, serviço em segundo plano nem sincronização entre dispositivos; a conexão da futura estação depende de implementação posterior.
+O monitoramento experimental foi substituído por leituras recebidas da estação. Consulte [o contrato da estação](ESTACAO_METEOROLOGICA.md) para envio autenticado, consulta por horário e persistência.
 
 O cadastro salva `centerPoint` como GeoJSON Point, em `[longitude, latitude]`, com `method` e `inside_polygon`. O método é o centroide planar por área do anel exterior em coordenadas WGS84, com longitudes ajustadas na mudança de antimeridiano; é uma aproximação e não considera anéis interiores. A geometria atual do cadastro é um único perímetro sem furos. O centroide de um polígono côncavo pode ficar fora da área, indicado por `inside_polygon: false`; não substituí-lo silenciosamente. Registros anteriores sem ponto recebem o cálculo ao serem lidos e a edição da geometria o recalcula. Um resultado de consulta nesse ponto não representa necessariamente toda a propriedade.
 

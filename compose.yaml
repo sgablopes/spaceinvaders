@@ -14,6 +14,8 @@ services:
       GOOGLE_CLOUD_ENGINE_LOCATION: ${GOOGLE_CLOUD_ENGINE_LOCATION:-us}
       GEMINI_ENGINE_MODEL: ${GEMINI_ENGINE_MODEL:-gemini-3.8-flash}
       AGRION_ANALYSIS_URL: ${AGRION_ANALYSIS_URL:-http://agrion-data:8000}
+      AGRION_STATION_KEYS: ${AGRION_STATION_KEYS:-}
+      AGRION_STATION_DB_PATH: /var/lib/agrion/stations.sqlite3
       GEMINI_LIVE_MODEL: ${GEMINI_LIVE_MODEL:-gemini-3.8-live}
       GEMINI_EXTRACTION_MODEL: ${GEMINI_EXTRACTION_MODEL:-gemini-3.5-flash-lite}
       AGRION_INTERVIEW_NORMAL_SECONDS: ${AGRION_INTERVIEW_NORMAL_SECONDS:-180}
@@ -35,7 +37,11 @@ services:
     networks:
       - default
       - agrion-analysis
+    volumes:
+      - station-data:/var/lib/agrion
 networks:
   agrion-analysis:
     external: true
     name: agrion-analisys-data
+volumes:
+  station-data:
