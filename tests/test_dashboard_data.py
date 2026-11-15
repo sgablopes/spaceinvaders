@@ -74,3 +74,11 @@ class DashboardDataTest(unittest.TestCase):
         class Engine:
             def run(self,**kwargs):return SimpleNamespace(text='{"summary":{"text":"X","source_urls":["https://inventada.org"]},"observations":[],"recommendations":[]}',tool_evidence=())
         self.assertEqual(dashboard.daily_section(self.context,Engine())['status'],'unavailable')
+
+    def test_daily_accepts_partial_farmer_context_and_contextual_suggestion(self):
+        class Engine:
+            def run(self,**kwargs):return SimpleNamespace(text='{"summary":{"text":"Milho informado pelo agricultor.","source_urls":[]},"observations":[],"recommendations":[{"text":"Acompanhe o desenvolvimento da cultura.","source_urls":[]}]}',tool_evidence=())
+        result=dashboard.daily_section(self.context,Engine())
+        self.assertEqual(result['status'],'ready')
+        self.assertEqual(result['summary']['source_kind'],'farmer_context')
+        self.assertEqual(result['recommendations'][0]['source_kind'],'farmer_context')

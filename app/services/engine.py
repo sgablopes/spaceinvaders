@@ -134,9 +134,11 @@ class AgrionEngine:
         daily_style = ('Investigue o contexto da propriedade usando as ferramentas realmente disponíveis. '
                        'Produza exclusivamente JSON sem markdown: {"summary": item|null, "observations": [item], "recommendations": [item]}, '
                        'onde cada item é {"text": string, "source_urls": [string]}. Cada texto tem até 300 caracteres; '
-                       'máximo quatro observações e três recomendações. Cada item deve citar ao menos uma URL exata recebida de uma ferramenta. '
+                       'máximo quatro observações e três recomendações. Use as fontes que estiverem disponíveis, mesmo se outras falharem. '
+                       'Resumo, observações e sugestões podem se basear em informações confirmadas fornecidas pelo agricultor, usando source_urls vazio quando não houver fonte externa. '
+                       'Para afirmações externas, cite URL exata recebida de ferramenta. As sugestões sem fontes externas devem ser gerais, prudentes e relacionadas aos dados conhecidos. '
                        'Diferencie hipóteses, dados históricos e previsões; não invente dados, fontes, fase, preços ou notícias. '
-                       'Recomendações devem ser cautelosas e fundamentadas. Se não houver fonte suficiente retorne listas vazias e summary null. ')
+                       'Apresente um parecer útil e sugestões proporcionais aos dados disponíveis; indique limitações específicas somente quando relevantes e não invente fatos. ')
         monitor_style = ('Avalie somente as leituras atuais e o histórico recebido; as leituras nesta etapa são simulações identificadas, nunca dados reais. '
                          'Use ferramentas disponíveis para fundamentar riscos e respostas. Não interprete ausência de leitura como resolução. '
                          'Produza somente JSON sem markdown: {"profile":{"variables":[string],"notes":string},"alerts":[item]}. '

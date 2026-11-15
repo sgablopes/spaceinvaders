@@ -112,7 +112,7 @@ def stage_section(context, engine=None):
 
 
 def daily_section(context, engine=None):
-    """Retorna apenas trechos que citam URLs recuperadas por ferramentas."""
+    """Aceita análise parcial baseada no contexto ou em fontes recuperadas."""
     try:
         result=(engine or AgrionEngine()).run(task='Analise a propriedade para o resumo diário e recomendações práticas com fontes.',context=context,mode='dashboard_daily')
         text=result.text.strip()
@@ -121,16 +121,18 @@ def daily_section(context, engine=None):
         if not isinstance(data,dict) or set(data)!={'summary','observations','recommendations'}:raise ValueError()
         if not isinstance(data['observations'],list) or len(data['observations'])>4 or not isinstance(data['recommendations'],list) or len(data['recommendations'])>3:raise ValueError()
         evidence=json.dumps(result.tool_evidence,ensure_ascii=False)
-        def validate(item):
+        fields=(context.get('agricultural_profile') or {}).get('fields') or {}
+        has_context=any(isinstance(v,dict) and v.get('status')=='confirmed' and isinstance(v.get('value'),dict) and bool(v['value']) for v in fields.values()) if isinstance(fields,dict) else False
+        def validate(item, allow_context=False):
             if not isinstance(item,dict) or set(item)!={'text','source_urls'}:return None
             value=item['text'];urls=item['source_urls']
-            if not isinstance(value,str) or not value.strip() or len(value)>300 or not isinstance(urls,list) or not 1<=len(urls)<=5:return None
+            if not isinstance(value,str) or not value.strip() or len(value)>300 or not isinstance(urls,list) or len(urls)>5 or not urls and not (allow_context and has_context):return None
             for url in urls:
                 if not isinstance(url,str) or len(url)>1000 or urlsplit(url).scheme not in {'http','https'} or not urlsplit(url).hostname or url not in evidence:return None
-            return {'text':value.strip(),'source_urls':urls}
-        summary=validate(data['summary']) if data['summary'] is not None else None
-        observations=[value for item in data['observations'] if (value:=validate(item))]
-        recommendations=[value for item in data['recommendations'] if (value:=validate(item))]
+            return {'text':value.strip(),'source_urls':urls,'source_kind':'external' if urls else 'farmer_context'}
+        summary=validate(data['summary'],True) if data['summary'] is not None else None
+        observations=[value for item in data['observations'] if (value:=validate(item,True))]
+        recommendations=[value for item in data['recommendations'] if (value:=validate(item,True))]
         if not summary and not observations and not recommendations:raise ValueError()
         return {'status':'ready','generated_at':datetime.now(timezone.utc).isoformat(),'summary':summary,'observations':observations,'recommendations':recommendations}
     except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError):
