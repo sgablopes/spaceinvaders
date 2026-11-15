@@ -1,0 +1,2 @@
+# O manifesto do núcleo importado registra bytes UTF-8/LF, inclusive no Windows.
+src/vendor/intelligence/** text eol=lf
