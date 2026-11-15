@@ -15,6 +15,10 @@ load('climate_tools');load('engine');dashboard=load('dashboard_data')
 
 
 class DashboardDataTest(unittest.TestCase):
+    def test_public_text_preserves_link_label_without_url_or_failed_query(self):
+        text='Acompanhe [a cultura](https://example.org/a). A consulta NASA POWER falhou. Saiba mais: https://example.org/b'
+        self.assertEqual(dashboard.public_text(text),'Acompanhe a cultura.')
+
     def test_market_uses_real_tool_price_and_keeps_zero(self):
         import json
         class Engine:
@@ -93,6 +97,20 @@ class DashboardDataTest(unittest.TestCase):
         self.assertEqual(result['phase_confidence']['value'],75)
         self.assertIsNone(result['harvest_confidence'])
 
+    def test_stage_retries_harvest_without_losing_phase(self):
+        class Engine:
+            calls=0
+            def run(self,**kwargs):
+                self.calls+=1
+                text={'phase':'Crescimento','reason':'Ciclo de milho','harvest_window':None,'source_urls':['https://example.org/cycle']}
+                if self.calls==2:text.update(harvest_window='Entre abril e maio',harvest_confidence=55,harvest_confidence_reason='Ciclo regional aproximado')
+                return SimpleNamespace(text=json.dumps(text),tool_evidence=({'result':{'url':'https://example.org/cycle'}},))
+        engine=Engine();result=dashboard.stage_section(self.context,engine)
+        self.assertEqual(engine.calls,2)
+        self.assertEqual(result['phase'],'Crescimento')
+        self.assertEqual(result['harvest_window'],'Entre abril e maio')
+        self.assertEqual(result['harvest_confidence']['value'],55)
+
     def test_news_needs_search_url_date_and_suggestions(self):
         class Engine:
             def run(self,**kwargs):return SimpleNamespace(text='{"items":[{"title":"Notícia","summary":"Resumo","date":"2026-11-01","url":"https://example.org/a"}]}',tool_evidence=({'tool':'pesquisar_internet','result':{'text':'Publicado em 2026-11-01','sources':[{'url':'https://example.org/a'}],'search_entry_point':'<div>Busca</div>'}},))
@@ -135,3 +153,12 @@ class DashboardDataTest(unittest.TestCase):
         self.assertEqual(result['status'],'ready')
         self.assertEqual(result['summary']['source_kind'],'farmer_context')
         self.assertEqual(result['recommendations'][0]['source_kind'],'farmer_context')
+
+    def test_daily_headline_and_public_text_remove_internal_failures(self):
+        class Engine:
+            def run(self,**kwargs):return SimpleNamespace(text=json.dumps({'headline':'Acompanhe o desenvolvimento da cebola','summary':{'headline':'Cebola em acompanhamento','text':'A cultura atual é cebola. A consulta NASA POWER falhou para a propriedade. Veja https://example.org/erro','source_urls':[]},'observations':[],'recommendations':[{'headline':'Observe a lavoura','text':'Acompanhe o campo nesta semana.','source_urls':[]}]}),tool_evidence=())
+        result=dashboard.daily_section(self.context,Engine())
+        self.assertEqual(result['headline'],'Acompanhe o desenvolvimento da cebola')
+        self.assertNotIn('falhou',result['summary']['text'])
+        self.assertNotIn('https://',result['summary']['text'])
+        self.assertEqual(result['recommendations'][0]['headline'],'Observe a lavoura')

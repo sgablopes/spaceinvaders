@@ -33,6 +33,8 @@ O cartão de monitoramento oferece uma simulação opcional de vento e chuva, de
 
 O desenvolvimento da cultura destaca a cultura atual e organiza fase, justificativa e colheita em linhas com ícones. Indicadores percentuais reais, como umidade prevista do ar, recebem barras acessíveis; não é criado percentual de avanço da safra sem dados que o sustentem.
 
-O resumo da propriedade usa mapa de satélite com o perímetro cadastrado e sobreposição legível de cultura, fase declarada, plantio, colheita estimada e objetivo. Quando o mapa não estiver disponível, as informações permanecem sobre fundo verde. Produção e mercado apresenta um insight curto; fontes e dados consultados permanecem no resultado interno.
+O resumo da propriedade usa mapa de satélite com o perímetro cadastrado e sobreposição legível de cultura, plantio, objetivo e colheita estimada. Quando o mapa não estiver disponível, as informações permanecem sobre fundo verde. Produção e mercado apresenta um insight curto; fontes e dados consultados permanecem no resultado interno.
 
-Fase e colheita estimadas apresentam, quando disponível, confiança subjetiva da IA e justificativa curta acessível por toque, teclado ou mouse. A seção de notícias apresenta fontes, datas e sugestões Google retornadas pela pesquisa.
+Fase e colheita estimadas apresentam, quando disponível, confiança subjetiva da IA e justificativa curta acessível por toque, teclado ou mouse. A seção de notícias apresenta datas confirmadas e sugestões Google retornadas pela pesquisa.
+
+No resumo sobre o mapa aparecem quatro informações: cultura atual, data de plantio, objetivo e colheita estimada. A fase declarada continua no perfil interno e pode ser usada nas análises, mas não ocupa um cartão no mapa. Análise diária, recomendações e notícias usam uma conclusão curta como título de um bloco expansível. Links de fontes não aparecem nos cartões; as sugestões de pesquisa do Google permanecem visíveis quando devolvidas pelo provedor. Textos públicos removem URLs embutidas e relatos de falhas de consulta; fontes estruturadas continuam no resultado para validação.

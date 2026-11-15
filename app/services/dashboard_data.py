@@ -2,6 +2,7 @@
 import json
 import logging
 import math
+import re
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
@@ -9,6 +10,18 @@ from .climate_tools import ClimateTools
 from .engine import AgrionEngine, EngineError
 
 logger=logging.getLogger(__name__)
+
+_URL_RE=re.compile(r'https?://[^\s<>]+',re.I)
+_FAILED_QUERY_RE=re.compile(r'(?:consulta|busca|api|ferramenta|serviço|fonte externa|nasa power|meteomatics).{0,100}(?:falh|indispon|não foi possível)|(?:falh|indispon|não foi possível).{0,100}(?:consulta|busca|api|ferramenta|serviço|fonte externa|nasa power|meteomatics)',re.I)
+
+
+def public_text(value):
+    """Remove links e relatos de erro de integração do texto exibido ao agricultor."""
+    if not isinstance(value,str):return ''
+    value=re.sub(r'\[([^\]]*)\]\(https?://[^)]+\)',r'\1',value)
+    value=_URL_RE.sub('',value)
+    sentences=re.split(r'(?<=[.!?])\s+|\n+',value)
+    return ' '.join(part.strip() for part in sentences if part.strip() and not _FAILED_QUERY_RE.search(part) and not re.fullmatch(r'(?:veja|acesse|fonte|link|saiba mais)\s*[:.]*',part.strip(),re.I)).strip()
 
 
 def search_entries(evidence):
@@ -111,18 +124,36 @@ def stage_section(context, engine=None):
         if text.startswith('```') and text.endswith('```'):text=text.split('\n',1)[1].rsplit('```',1)[0]
         gdd=_grounded_gdd(result.tool_evidence,context,date_text) if date_text else None
         data=json.loads(text)
+        evidence_items=list(result.tool_evidence)
+        if isinstance(data,dict) and not data.get('harvest_window') and date_text:
+            try:
+                follow=(engine or AgrionEngine()).run(task='A fase já foi estimada. Estime especificamente uma janela aproximada de colheita para a cultura e data de plantio informadas, usando referências de duração do ciclo. Devolva todos os campos do JSON; use intervalo e confiança menor se a referência for geral.',context=context,mode='dashboard_stage')
+                follow_text=follow.text.strip()
+                if follow_text.startswith('```') and follow_text.endswith('```'):follow_text=follow_text.split('\n',1)[1].rsplit('```',1)[0]
+                second=json.loads(follow_text)
+                candidate=second.get('harvest_window') if isinstance(second,dict) else None
+                second_urls=second.get('source_urls') if isinstance(second,dict) else None
+                second_evidence=json.dumps(follow.tool_evidence,ensure_ascii=False)
+                if isinstance(candidate,str) and candidate.strip() and isinstance(second_urls,list) and second_urls and all(isinstance(url,str) and url in second_evidence for url in second_urls):
+                    data['harvest_window']=candidate
+                    data['source_urls']=list(dict.fromkeys((data.get('source_urls') or [])+second_urls))[:5]
+                    data['harvest_confidence']=second.get('harvest_confidence')
+                    data['harvest_confidence_reason']=second.get('harvest_confidence_reason')
+                    evidence_items.extend(follow.tool_evidence)
+            except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError):
+                pass
         required={'phase','reason','harvest_window','source_urls'};optional={'phase_confidence','phase_confidence_reason','harvest_confidence','harvest_confidence_reason'}
         if not isinstance(data,dict) or not required.issubset(data) or set(data)-required-optional:raise ValueError()
-        phase,reason,window,urls=data['phase'],data['reason'],data['harvest_window'],data['source_urls']
+        phase,reason,window,urls=data['phase'],public_text(data['reason']),data['harvest_window'],data['source_urls']
         if (phase is not None and (not isinstance(phase,str) or not phase.strip() or len(phase)>240)) or not isinstance(reason,str) or not reason.strip() or len(reason)>240 or (window is not None and (not isinstance(window,str) or not window.strip() or len(window)>240)) or not (phase or window) or not isinstance(urls,list) or not 1<=len(urls)<=5:raise ValueError()
-        evidence=json.dumps(result.tool_evidence,ensure_ascii=False)
+        evidence=json.dumps(evidence_items,ensure_ascii=False)
         for url in urls:
             if not isinstance(url,str) or len(url)>1000 or urlsplit(url).scheme not in {'http','https'} or not urlsplit(url).hostname or url not in evidence:raise ValueError()
         def confidence(prefix):
             amount=data.get(prefix+'_confidence');why=data.get(prefix+'_confidence_reason')
             if type(amount) is not int or not 0<=amount<=100 or not isinstance(why,str) or not 1<=len(why.split())<=5 or len(why)>100:return None
             return {'value':amount,'reason':why.strip()}
-        return {'status':'ready','phase':phase.strip() if phase else None,'reason':reason.strip(),'harvest_window':window,'phase_confidence':confidence('phase') if phase else None,'harvest_confidence':confidence('harvest') if window else None,'source_urls':urls,'search_entry_points':search_entries(result.tool_evidence),'gdd':gdd,'value_kind':'estimate','generated_at':datetime.now(timezone.utc).isoformat()}
+        return {'status':'ready','phase':phase.strip() if phase else None,'reason':reason.strip(),'harvest_window':window,'phase_confidence':confidence('phase') if phase else None,'harvest_confidence':confidence('harvest') if window else None,'source_urls':urls,'search_entry_points':search_entries(evidence_items),'gdd':gdd,'value_kind':'estimate','generated_at':datetime.now(timezone.utc).isoformat()}
     except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError) as exc:
         logger.warning('Dashboard stage unavailable (%s)',type(exc).__name__)
         return {'status':'unavailable','gdd':gdd,'note':'Não foi possível concluir a estimativa de fase e colheita nesta consulta.','reason_code':'engine_unavailable' if isinstance(exc,EngineError) else 'invalid_result'}
@@ -145,6 +176,7 @@ def news_section(context,engine=None):
         for item in data['items']:
             if not isinstance(item,dict) or set(item)!={'title','summary','date','url'}:continue
             title,summary,day,url=(item[k] for k in ('title','summary','date','url'))
+            title,summary=public_text(title),public_text(summary)
             if not isinstance(title,str) or not 1<=len(title)<=180 or not isinstance(summary,str) or not 1<=len(summary)<=300 or not isinstance(url,str) or url not in urls:continue
             if day is not None:
                 if not isinstance(day,str) or len(day)!=10:continue
@@ -167,23 +199,27 @@ def daily_section(context, engine=None):
         text=result.text.strip()
         if text.startswith('```') and text.endswith('```'):text=text.split('\n',1)[1].rsplit('```',1)[0]
         data=json.loads(text)
-        if not isinstance(data,dict) or set(data)!={'summary','observations','recommendations'}:raise ValueError()
+        if not isinstance(data,dict) or not {'summary','observations','recommendations'}<=set(data) or set(data)-{'headline','summary','observations','recommendations'}:raise ValueError()
         if not isinstance(data['observations'],list) or len(data['observations'])>4 or not isinstance(data['recommendations'],list) or len(data['recommendations'])>3:raise ValueError()
         evidence=json.dumps(result.tool_evidence,ensure_ascii=False)
         fields=(context.get('agricultural_profile') or {}).get('fields') or {}
         has_context=any(isinstance(v,dict) and v.get('status')=='confirmed' and isinstance(v.get('value'),dict) and bool(v['value']) for v in fields.values()) if isinstance(fields,dict) else False
         def validate(item, allow_context=False):
-            if not isinstance(item,dict) or set(item)!={'text','source_urls'}:return None
-            value=item['text'];urls=item['source_urls']
+            if not isinstance(item,dict) or not {'text','source_urls'}<=set(item) or set(item)-{'headline','text','source_urls'}:return None
+            value=public_text(item['text']);urls=item['source_urls']
             if not isinstance(value,str) or not value.strip() or len(value)>300 or not isinstance(urls,list) or len(urls)>5 or not urls and not (allow_context and has_context):return None
             for url in urls:
                 if not isinstance(url,str) or len(url)>1000 or urlsplit(url).scheme not in {'http','https'} or not urlsplit(url).hostname or url not in evidence:return None
-            return {'text':value.strip(),'source_urls':urls,'source_kind':'external' if urls else 'farmer_context'}
+            headline=public_text(item.get('headline'))
+            if not headline:headline=value.split('.')[0].strip()[:85]
+            return {'headline':headline[:85],'text':value.strip(),'source_urls':urls,'source_kind':'external' if urls else 'farmer_context'}
         summary=validate(data['summary'],True) if data['summary'] is not None else None
         observations=[value for item in data['observations'] if (value:=validate(item,True))]
         recommendations=[value for item in data['recommendations'] if (value:=validate(item,True))]
         if not summary and not observations and not recommendations:raise ValueError()
-        return {'status':'ready','generated_at':datetime.now(timezone.utc).isoformat(),'summary':summary,'observations':observations,'recommendations':recommendations,'search_entry_points':search_entries(result.tool_evidence)}
+        headline=public_text(data.get('headline'))
+        if not headline:headline=(summary or (observations+recommendations)[0])['headline']
+        return {'status':'ready','generated_at':datetime.now(timezone.utc).isoformat(),'headline':headline[:85],'summary':summary,'observations':observations,'recommendations':recommendations,'search_entry_points':search_entries(result.tool_evidence)}
     except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError) as exc:
         logger.warning('Dashboard daily unavailable (%s)',type(exc).__name__)
         return {'status':'unavailable','note':'Não foi possível concluir a análise diária nesta consulta.','reason_code':'engine_unavailable' if isinstance(exc,EngineError) else 'invalid_result'}
@@ -198,7 +234,7 @@ def market_section(context, engine=None):
         data=json.loads(text)
         optional={'estimated_price','currency','unit','confidence','confidence_reason','source_urls'}
         if not isinstance(data,dict) or not {'summary','item_code'}<=set(data) or set(data)-{'summary','item_code'}-optional:raise ValueError()
-        summary=data['summary'];code=data['item_code']
+        summary=public_text(data['summary']);code=data['item_code']
         if not isinstance(summary,str) or not summary.strip() or len(summary)>500 or (code is not None and (not isinstance(code,str) or not code.isascii() or not code.isdigit())):raise ValueError()
         price=None
         candidates=set()
