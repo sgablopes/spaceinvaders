@@ -24,9 +24,8 @@
         <div id="agrionHomeHeader">
           <header class="agrion-home-top">${brand()}<button class="agrion-home-bell" type="button" aria-label="Notificações">${icon('alert',22)}</button></header>
           ${owner(property)}
-          <div class="agrion-home-waiting-photo">${picture()}</div>
         </div>
-        <section class="agrion-home-loading" aria-label="Preparando a visão geral"><div class="agrion-home-spinner" aria-hidden="true"></div><h1>Preparando sua visão geral</h1><p id="agrionHomeLoadingText" aria-live="polite">Organizando dados da propriedade…</p><small>As análises agrícolas estarão disponíveis em breve.</small></section>
+        <section class="agrion-home-loading" aria-label="Preparando a visão geral"><div class="agrion-home-waiting-photo" aria-hidden="true">${picture()}</div><div class="agrion-home-loading-content"><div class="agrion-home-spinner" aria-hidden="true"></div><h1>Preparando sua visão geral</h1><p id="agrionHomeLoadingText" aria-live="polite">Organizando dados da propriedade…</p><small>As análises agrícolas estarão disponíveis em breve.</small></div></section>
       </div>
       <section id="agrionHomePanel" class="agrion-home-panel ${expanded?'is-expanded':''}" aria-label="Menu Agrion">
         <button id="agrionHomeMenuToggle" class="agrion-home-menu-toggle" type="button" aria-controls="agrionHomePanelContent" aria-expanded="${expanded}"><span class="agrion-home-menu-grip" aria-hidden="true"></span><span>${expanded?'Fechar menu':'Menu'}</span><span class="agrion-home-menu-arrow" aria-hidden="true">${expanded?'⌄':'⌃'}</span></button>
