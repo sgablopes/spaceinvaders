@@ -28,6 +28,7 @@ class EngineTest(unittest.TestCase):
         self.assertIn('priorize consultar as ferramentas', calls[0][2])
         self.assertIn('referências identificáveis', calls[0][2])
         self.assertIn('Seja conciso', calls[0][2])
+        self.assertIn('até três frases curtas', calls[0][2])
 
     def test_invalid_requests_are_rejected(self):
         service = engine.AgrionEngine(generate=lambda *args: 'ok')
