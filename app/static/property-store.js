@@ -26,6 +26,10 @@
       const value = JSON.parse(localStorage.getItem(KEY));
       if (value?.version !== VERSION || typeof value.personName !== 'string') return null;
       if (value.geometry && !areaSquareMeters(value.geometry)) return null;
+      if (!value.propertyId) {
+        value.propertyId = crypto.randomUUID();
+        localStorage.setItem(KEY, JSON.stringify(value));
+      }
       return value;
     } catch (_) { return null; }
   }
@@ -38,7 +42,7 @@
     const area = geometry ? areaSquareMeters(geometry) : 0;
     if (geometry && !area) throw new Error('Desenhe um terreno válido antes de confirmar.');
     const record = {
-      version: VERSION, personName, propertyName,
+      version: VERSION, propertyId: value.propertyId || crypto.randomUUID(), personName, propertyName,
       geometry, areaSquareMeters: area, areaHectares: area / 10000,
       locationLabel: value.locationLabel || '',
       registeredAt: geometry ? (value.registeredAt || new Date().toISOString()) : null

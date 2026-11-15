@@ -15,3 +15,6 @@ A apresentação inicial usa `app/static/agrion-hero-mobile.jpg` até 767 px e `
 ## Primeiro acesso e propriedade
 
 A tela de boas-vindas mantém imagem, textos e benefícios, com um único botão **Entrar**. A identificação usa card claro, campos arredondados e botão verde. O mapa usa satélite como fundo, busca sobreposta e um painel de terreno: inferior no mobile e lateral no desktop. O polígono tem borda `#D8E889` e preenchimento semitransparente `#385C39`. Os controles de desenho seguem o mesmo padrão de botões do Agrion. Estilos adicionais ficam em `app/static/property-flow.css`; o CSS Tailwind compilado e as telas demonstrativas permanecem preservados.
+# Agrion Discovery
+
+O diálogo da entrevista usa a paleta Agrion (`#385C39`, `#D8E889`, `#F8F8F1`), tipografia Plus Jakarta Sans e Inter, botões arredondados, checklist com estados legíveis e largura móvel. A seleção de idioma fica antes do início da conversa. O conteúdo de fala e texto é inserido com `textContent`, sem HTML dinâmico vindo do usuário.

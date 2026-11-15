@@ -1,9 +1,10 @@
 import logging
 import os
 
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
 from app.api.health import health_blueprint
+from app.api.discovery import discovery_blueprint, register_socket
 
 
 def create_app(test_config=None):
@@ -13,10 +14,29 @@ def create_app(test_config=None):
 
     logging.basicConfig(level=os.environ.get("AGRION_LOG_LEVEL", "INFO").upper())
     app.register_blueprint(health_blueprint)
+    app.register_blueprint(discovery_blueprint)
+    register_socket(app)
+
+    @app.after_request
+    def discovery_no_cache(response):
+        if request.path.startswith("/api/interview/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.get("/")
     def index():
-        return render_template("index.html", maptiler_api_key=os.environ.get("MAPTILER_API_KEY", ""))
+        def seconds(name, default):
+            try:
+                value = int(os.environ.get(name, default))
+                return value if 1 <= value <= 3600 else default
+            except ValueError:
+                return default
+
+        return render_template("index.html", maptiler_api_key=os.environ.get("MAPTILER_API_KEY", ""), interview_limits={
+            "normal": seconds("AGRION_INTERVIEW_NORMAL_SECONDS", 180),
+            "grace": seconds("AGRION_INTERVIEW_GRACE_SECONDS", 120),
+            "absolute": seconds("AGRION_INTERVIEW_ABSOLUTE_SECONDS", 300),
+        })
 
     @app.errorhandler(404)
     def not_found(error):

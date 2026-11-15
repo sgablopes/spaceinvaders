@@ -9,4 +9,4 @@ RUN pip install --no-cache-dir -r requirements.txt \
 COPY --chown=agrion:agrion app/ app/
 USER agrion
 EXPOSE 8000
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--access-logfile", "-", "--error-logfile", "-", "app:create_app()"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "24", "--timeout", "360", "--access-logfile", "-", "--error-logfile", "-", "app:create_app()"]

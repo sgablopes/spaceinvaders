@@ -1,0 +1,29 @@
+(function () {
+  'use strict';
+  const ESSENTIAL = ['last_crop','previous_crop','last_harvest_result','main_difficulties','irrigation','mechanization','primary_goal'];
+  const OPTIONAL = ['fertilization','soil_management','cover_crops','other_crops','water_access','budget_constraints','technical_resources'];
+  const envelope = () => ({value:null,status:'pending',source:'farmer_report',evidence:[],confidence:null,unknown_reason:null,updated_at:null,revision:0});
+  function create(property) {
+    return {schema_version:'1.0.0',profile_id:crypto.randomUUID(),property_id:property.propertyId,person:{display_name:property.personName},property:{name:property.propertyName,area_hectares:property.areaHectares,geometry_source:'existing_property_registration'},fields:Object.fromEntries(ESSENTIAL.map(id=>[id,envelope()])),additional_fields:{},interview_history:[],revision:0,updated_at:new Date().toISOString()};
+  }
+  function apply(profile, response, transcript) {
+    if (response.base_profile_revision !== profile.revision) return {profile, applied:[]};
+    const next=structuredClone(profile), applied=[];
+    for (const patch of response.patches||[]) {
+      if (![...ESSENTIAL,...OPTIONAL].includes(patch.field) || !['set','merge'].includes(patch.operation) || !['confirmed','uncertain','unknown'].includes(patch.status) || !transcript.includes(patch.evidence_excerpt)) continue;
+      const target=ESSENTIAL.includes(patch.field)?next.fields:next.additional_fields;
+      const old=target[patch.field]||envelope();
+      if (old.evidence.some(x=>x.turn_id===response.turn_id)) continue;
+      if (old.status==='confirmed' && patch.status==='uncertain' && patch.operation!=='set') continue;
+      const value=patch.operation==='merge' && old.value && patch.value ? {...old.value,...patch.value} : patch.value;
+      target[patch.field]={value,status:patch.status,source:'farmer_report',evidence:[...old.evidence,{turn_id:response.turn_id,excerpt:patch.evidence_excerpt.slice(0,180)}].slice(-5),confidence:patch.confidence,unknown_reason:patch.unknown_reason||null,updated_at:new Date().toISOString(),revision:old.revision+1};
+      applied.push({field:patch.field,before:old,after:target[patch.field]});
+    }
+    if(applied.length){next.revision++;next.updated_at=new Date().toISOString();}
+    return {profile:next,applied};
+  }
+  function analysisInput(profile, property) {
+    return {schema_version:'1.0.0',property_id:property.propertyId,geometry:property.geometry,area_hectares:property.areaHectares,agricultural_profile:{...profile.fields,...profile.additional_fields},data_quality:{pending_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='pending'),uncertain_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='uncertain'),unknown_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='unknown')}};
+  }
+  window.AgrionProfile={ESSENTIAL,create,apply,analysisInput};
+})();

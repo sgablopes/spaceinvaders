@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.20.6/dist/leaflet-geoman.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='property-flow.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='discovery.css') }}">
   <!-- CSS compilado a partir do Tailwind v4: ver agrion_tailwind_source.css -->
   <style id="agrion-tailwind-compiled">/*! tailwindcss v4.1.10 | MIT License | https://tailwindcss.com */
 @layer properties;
@@ -1237,9 +1238,12 @@
 </head>
 <body>
   <div id="app" aria-live="polite"></div>
-  <script>window.AGRION_CONFIG = { maptilerKey: {{ maptiler_api_key|tojson }} };</script>
+  <script>window.AGRION_CONFIG = { maptilerKey: {{ maptiler_api_key|tojson }}, interviewLimits: {{ interview_limits|tojson }} };</script>
   <script src="{{ url_for('static', filename='property-store.js') }}"></script>
   <script src="{{ url_for('static', filename='property-flow.js') }}"></script>
+  <script src="{{ url_for('static', filename='discovery-profile.js') }}"></script>
+  <script src="{{ url_for('static', filename='discovery-repository.js') }}"></script>
+  <script src="{{ url_for('static', filename='discovery.js') }}"></script>
   <script>
   'use strict';
   const $=id=>document.getElementById(id);

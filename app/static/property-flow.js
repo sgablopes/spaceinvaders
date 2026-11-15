@@ -90,7 +90,7 @@
           <button type="button" class="btn btn-secondary" data-action="propertyClear">${icon('reset',17)} Limpar desenho</button>
           <button type="button" class="btn btn-primary property-confirm" id="propertyConfirm" data-action="propertyConfirm" disabled>Confirmar minha propriedade ${icon('arrow',17)}</button>`}
       </div><p class="property-footnote">Dados salvos somente neste navegador. Sem sincronização entre dispositivos.</p>
-    </section></div></main><div id="toastMount" aria-live="polite"></div>`;
+    </section></div>${confirmed ? '<button type="button" class="discovery-fab" data-action="propertyNext" aria-label="Conversar com Agrion" title="Conversar com Agrion">✦</button>' : ''}</main><div id="toastMount" aria-live="polite"></div>`;
   }
 
   function markup() { return view === 'identify' ? identifyMarkup() : mapMarkup(); }
@@ -200,10 +200,11 @@
         try {
           saved = store.save({ ...saved, locationLabel, geometry: polygon.toGeoJSON().geometry, registeredAt: saved?.registeredAt || new Date().toISOString() });
           setView('saved');
+          window.AgrionDiscovery?.invite();
         } catch (problem) { notify(problem.message); }
         break;
       case 'propertyEdit': setView('map'); break;
-      case 'propertyNext': notify('Funcionalidade disponível em breve.'); break;
+      case 'propertyNext': window.AgrionDiscovery?.open(); break;
     }
   }
 
