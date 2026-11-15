@@ -27,8 +27,16 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(_live_text_frame(b'{"setupComplete":{}}'), '{"setupComplete":{}}')
         self.assertEqual(_live_text_frame('{"setupComplete":{}}'), '{"setupComplete":{}}')
 
+    def test_current_crop_and_planting_date_validation(self):
+        base = {'operation': 'set', 'status': 'confirmed', 'confidence': 'high', 'evidence_excerpt': 'teste'}
+        for value in ({'date': '2026'}, {'date': '2026-04'}, {'date': '2024-02-29'}, {'not_planted': True}):
+            self.assertTrue(_validate_value(Patch(**base, field='planting_date', value=value)))
+        for value in ({'date': '2026-02-29'}, {'date': '2026-13'}, {'date': 'amanhã'}, {'date': '2026', 'not_planted': True}):
+            self.assertFalse(_validate_value(Patch(**base, field='planting_date', value=value)))
+        self.assertTrue(_validate_value(Patch(**base, field='current_crop', value={'crop': 'milho'})))
+
     def test_live_state_update_only_uses_canonical_statuses(self):
-        fields = {field: 'pending' for field in ['last_crop', 'previous_crop', 'last_harvest_result', 'main_difficulties', 'irrigation', 'mechanization', 'primary_goal', 'next_crop_preference', 'current_season_stage']}
+        fields = {field: 'pending' for field in ['last_crop', 'previous_crop', 'last_harvest_result', 'main_difficulties', 'irrigation', 'mechanization', 'primary_goal', 'next_crop_preference', 'current_crop', 'planting_date', 'current_season_stage']}
         fields['last_crop'] = 'confirmed'
         text = _live_state_instruction('Agrion.', {'fields': fields, 'intro_stage': 2, 'clarify': True})
         self.assertIn('last_crop', text)

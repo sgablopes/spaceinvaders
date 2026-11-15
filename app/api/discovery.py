@@ -1,6 +1,8 @@
 """Vertex AI backed Agrion Discovery endpoints. No Google credential reaches the browser."""
 
 import json
+import re
+from datetime import date
 import os
 import threading
 import time
@@ -24,10 +26,11 @@ sock = Sock()
 _hits = defaultdict(deque)
 _hit_lock = threading.Lock()
 FIELDS = {"last_crop", "previous_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal", "next_crop_preference", "current_season_stage", "fertilization", "soil_management", "cover_crops", "other_crops", "water_access", "budget_constraints", "technical_resources"}
+FIELDS.update({"current_crop", "planting_date"})
 DIFFICULTIES = {"drought", "excess_rain", "pests", "diseases", "soil", "input_costs", "labor", "machinery", "market", "other"}
 GOALS = {"maximize_profit", "increase_yield", "restore_soil", "reduce_risk", "reduce_costs", "diversify", "other"}
 LANGUAGES = {"pt-BR", "en-US", "es-US"}
-ESSENTIAL_FIELDS = ("last_crop", "previous_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal", "next_crop_preference", "current_season_stage")
+ESSENTIAL_FIELDS = ("last_crop", "previous_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal", "next_crop_preference", "current_crop", "planting_date", "current_season_stage")
 
 
 def _live_state_instruction(base, state):
@@ -95,7 +98,7 @@ class Extraction(BaseModel):
 
 
 class GenerationPatch(Patch):
-    field: Literal["last_crop", "previous_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal", "next_crop_preference", "current_season_stage", "fertilization", "soil_management", "cover_crops", "other_crops", "water_access", "budget_constraints", "technical_resources"] = Field(
+    field: Literal["last_crop", "previous_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal", "next_crop_preference", "current_crop", "planting_date", "current_season_stage", "fertilization", "soil_management", "cover_crops", "other_crops", "water_access", "budget_constraints", "technical_resources"] = Field(
         description="Agrion field ID. last_crop is the most recent crop; previous_crop is immediately before it; last_harvest_result is the last harvest outcome; main_difficulties are farming problems; primary_goal is the next-season goal; next_crop_preference is the farmer's preferred next crop; current_season_stage is the current season stage."
     )
     operation: Literal["set", "merge"] = Field(description="Use set for a new or corrected fact; merge only to add details to an existing fact.")
@@ -108,6 +111,7 @@ class GenerationPatch(Patch):
         "mechanization uses work_mode (manual, mixed, mechanized, automated, unknown), equipment as a list, and automation_level (none, partial, high, unknown). "
         "primary_goal uses category (maximize_profit, increase_yield, restore_soil, reduce_risk, reduce_costs, diversify, other) and optional description. "
         "next_crop_preference uses crop and no_preference; explicit no preference has crop=null and no_preference=true. "
+        "current_crop uses crop as a string. planting_date uses date as YYYY, YYYY-MM or YYYY-MM-DD, or not_planted=true when explicitly not yet planted. Never invent missing date components. "
         "current_season_stage uses stage (not_started, planning, soil_preparation, planting, growing, flowering, fruiting, harvesting, post_harvest, fallow, other) and optional notes."
     ))
     status: Literal["confirmed", "uncertain", "unknown"] = Field(description="confirmed for an explicit report, uncertain for an estimate or ambiguity, unknown only when the farmer explicitly does not know, remember, or answer.")
@@ -178,11 +182,17 @@ class SeasonStageValue(BaseModel):
     notes: str | None = None
 
 
+class PlantingDateValue(BaseModel):
+    date: str | None = None
+    not_planted: bool | None = None
+
+
 class UnknownReason(BaseModel):
     reason: Literal["does_not_know", "does_not_remember", "declined", "none"]
 
 
 RECOVERY_SCHEMAS = {"last_crop": CropValue, "previous_crop": CropValue, "last_harvest_result": HarvestValue, "main_difficulties": DifficultiesValue, "irrigation": IrrigationValue, "mechanization": MechanizationValue, "primary_goal": GoalValue, "next_crop_preference": CropPreferenceValue, "current_season_stage": SeasonStageValue}
+RECOVERY_SCHEMAS.update({"current_crop": CropValue, "planting_date": PlantingDateValue})
 
 
 def _uuid(value):
@@ -240,6 +250,22 @@ def _validate_value(patch):
         return True
     if patch.unknown_reason is not None or not isinstance(value, dict):
         return False
+    if patch.field == "current_crop":
+        return set(value) == {"crop"} and isinstance(value["crop"], str) and bool(value["crop"].strip())
+    if patch.field == "planting_date":
+        if not set(value) <= {"date", "not_planted"}:
+            return False
+        if value.get("not_planted") is True:
+            return value.get("date") is None
+        raw = value.get("date")
+        if not isinstance(raw, str) or not re.fullmatch(r"\d{4}(?:-(?:0[1-9]|1[0-2])(?:-(?:0[1-9]|[12]\d|3[01]))?)?", raw):
+            return False
+        try:
+            parts = [int(part) for part in raw.split('-')]
+            date(parts[0], parts[1] if len(parts)>1 else 1, parts[2] if len(parts)>2 else 1)
+            return True
+        except ValueError:
+            return False
     if patch.field in {"last_crop", "previous_crop"}:
         if not set(value) <= {"crop", "period_label", "no_previous_cultivation", "never_cultivated"}:
             return False
@@ -309,6 +335,7 @@ def extract():
             "Cada patch deve trazer evidence_turn_id da fala do agricultor que contém a evidência; falas do Agrion nunca são evidência. "
             "Se o agricultor disser que nunca cultivou esta área, registre last_crop.never_cultivated=true, previous_crop.no_previous_cultivation=true e last_harvest_result.qualitative_result=not_applicable, todos confirmados com evidência literal da fala. Não invente resultado nem dificuldades de safra passada. "
             "Se a pessoa disser que vai começar agora, registre current_season_stage=not_started ou planning conforme o que foi dito; não presuma uma cultura. "
+            "Registre current_crop apenas para a cultura que está plantada atualmente. Registre planting_date na precisão explicitamente informada (ano, mês ou dia); não invente componentes nem converta referência relativa sem data de referência. Se ainda não plantou, registre planting_date.not_planted=true e current_crop unknown com motivo does_not_know, usando a declaração como evidência. "
             "Registre next_crop_preference somente quando houver cultura preferida ou declaração explícita de nenhuma preferência. "
             "Não repita fatos já confirmados, exceto correção explícita. Para colheita, registre resultado qualitativo e também quantidade/unidade ou valor monetário/moeda quando ditos. "
             "Se a pessoa explicitamente não souber estimar depois de informar um resultado qualitativo, use estimate_unavailable=true preservando o resultado. "
@@ -457,6 +484,7 @@ def register_socket(app):
                     f"Pessoa: {name}. Propriedade: {property_name}. Comece com uma frase curta: apresente-se e pergunte se a pessoa está bem. "
                     "Depois da resposta, explique brevemente o objetivo e convide um relato livre sobre plantio, colheita e dificuldades. Acolha informações agrícolas oferecidas espontaneamente. "
                     "Converse naturalmente, sem roteiro rígido. Conheça última cultura, cultura imediatamente anterior, resultado da colheita, dificuldades, irrigação, mecanização, objetivo, preferência de plantio para a próxima safra e fase da safra atual. "
+                    "Pergunte qual é a cultura plantada atualmente e, logo depois, quando foi plantada, caso ainda não tenha sido informado. Se não houver plantio atual, aceite isso e não peça uma data de plantio. "
                     "Se a pessoa nunca cultivou essa área, aceite isso como resposta válida sobre culturas e colheita anteriores; pergunte sobre dificuldades para começar, recursos, preferência e estágio do planejamento. Não invente uma safra passada. "
                     "Use o estado do aplicativo para escolher lacunas; se uma resposta não resolver a pergunta, reformule uma vez, sem insistir. "
                     "Não repita campo marcado unknown. Não invente dados nem recomendações. Seja breve. "

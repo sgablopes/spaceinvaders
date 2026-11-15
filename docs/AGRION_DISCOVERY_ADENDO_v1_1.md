@@ -13,6 +13,8 @@ O idioma da conversa não altera IDs nem categorias. O Agrion pergunta os itens 
 
 ## Primeiro cultivo
 
+O perfil inclui também `current_crop` (cultura atualmente plantada) e `planting_date` (data de plantio). A data usa `date` em formato `AAAA`, `AAAA-MM` ou `AAAA-MM-DD`, preservando a precisão informada; `not_planted: true` registra que o plantio ainda não ocorreu. Perfis antigos recebem os campos pendentes sem apagar dados, e entrevistas já concluídas continuam acessíveis. Esses dados não calculam automaticamente a fase da safra.
+
 "Nunca plantei nesta área" é resposta explícita e confirmada. Registrar `last_crop` com `crop: null` e `never_cultivated: true`, `previous_crop` com `crop: null` e `no_previous_cultivation: true`, e `last_harvest_result` com `qualitative_result: "not_applicable"`. A mesma evidência literal pode justificar os três campos. `not_applicable` significa ausência de safra anterior nessa área; não representa uma lavoura plantada que deixou de produzir.
 
 "Vou começar agora" pode resolver `current_season_stage` como `not_started` ou `planning`, conforme o sentido da fala. Não presumir uma cultura preferida, recursos, dificuldades ou objetivo. Em vez de perguntar por dificuldades de uma colheita inexistente, perguntar por obstáculos para iniciar o cultivo.
