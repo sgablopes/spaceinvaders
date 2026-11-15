@@ -1,5 +1,7 @@
 # Arquitetura
 
+O planejamento de cultivos usa POST assíncrono e consultas curtas de andamento para evitar que a pesquisa exceda a espera do proxy. Trabalhos e resultados temporários ficam em SQLite compartilhado entre os workers do mesmo container; threads limitadas executam o Core. O plano escolhido continua no IndexedDB do navegador. Contrato, expiração e limites estão em `docs/PLANEJAMENTO_CULTIVOS.md`.
+
 ```mermaid
 flowchart LR
   B[Navegador: HTML, JS, Tailwind compilado] --> N[Nginx na VM: previsto]

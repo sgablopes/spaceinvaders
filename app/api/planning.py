@@ -1,10 +1,36 @@
 """Análise de planejamento independente da renderização da página."""
 import json
-from flask import Blueprint, jsonify, request
+import re
+import tempfile
+from pathlib import Path
+from flask import Blueprint, current_app, jsonify, request
 from app.api.discovery import _origin_ok, _rate_limit
 from app.services.planning import analyze
+from app.services import planning_jobs
 
 planning_blueprint = Blueprint('planning', __name__)
+
+
+def jobs_path():
+    return current_app.config.get('PLANNING_JOBS_PATH', str(Path(tempfile.gettempdir()) / 'agrion-planning-jobs.sqlite3'))
+
+
+@planning_blueprint.after_request
+def no_cache(response):
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@planning_blueprint.get('/api/planning/jobs/<job_id>')
+def planning_status(job_id):
+    if not _origin_ok():
+        return jsonify(error='origin_rejected'), 403
+    if not re.fullmatch(r'[a-f0-9]{64}', job_id):
+        return jsonify(error='not_found'), 404
+    data = planning_jobs.get(jobs_path(), job_id)
+    if data is None:
+        return jsonify(error='not_found'), 404
+    return jsonify(data)
 
 
 @planning_blueprint.post('/api/planning/analyze')
@@ -38,6 +64,12 @@ def planning_analysis():
         return jsonify(error='invalid_request'), 400
     if not _rate_limit('PLANNING', 12):
         return jsonify(error='rate_limited'), 429
+    if request.headers.get('Prefer') == 'respond-async':
+        try:
+            job_id = planning_jobs.submit(jobs_path(), merged, analyze)
+        except planning_jobs.CapacityError:
+            return jsonify(error='planning_busy'), 503, {'Retry-After': '5'}
+        return jsonify(property_id=prop['id'], job_id=job_id, status='running'), 202
     response = jsonify(property_id=prop['id'], result=analyze(merged))
     response.headers['Cache-Control'] = 'no-store'
     return response

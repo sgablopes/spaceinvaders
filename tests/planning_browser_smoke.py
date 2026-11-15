@@ -42,10 +42,15 @@ window.AgrionDashboardCache={get:async key=>structuredClone(memory.get(key)||nul
 window.AgrionContext={load:async()=>structuredClone(testContext)};
 window.AgrionDashboard={start:()=>{},reset:()=>{}};window.AgrionStation={close:()=>{}};
 window.AgrionSearchSuggestions={append:()=>{}};window.confirm=()=>true;
-window.fetch=async()=>({ok:true,json:async()=>({property_id:testContext.property.id,result:fail?{status:'unavailable'}:structuredClone(testAnalysis)})});
+let polls=0,posted=0;
+window.fetch=async(url,options)=>{
+if(options?.method==='POST'){check(options.headers.Prefer==='respond-async','async request');posted++;polls=0;return {ok:true,json:async()=>({property_id:testContext.property.id,job_id:'a'.repeat(64),status:'running'})};}
+polls++;return {ok:true,json:async()=>polls===1?{status:'running'}:{property_id:testContext.property.id,status:'completed',result:fail?{status:'unavailable'}:structuredClone(testAnalysis)}};
+};
+document.addEventListener('click',e=>{if(e.target.closest('[data-action]')?.dataset.action==='analyze')testErrors.push('legacy action collision');});
 window.render=()=>{document.getElementById('app').innerHTML=window.AgrionHome.markup({personName:'Teste',propertyName:'Propriedade de teste'});window.AgrionHome.afterRender()};
 function check(ok,message){if(!ok)throw Error(message)}
-async function until(checker){for(let i=0;i<100;i++){if(checker())return;await new Promise(r=>setTimeout(r,10))}throw Error('timeout')}
+async function until(checker){for(let i=0;i<1000;i++){if(checker())return;await new Promise(r=>setTimeout(r,10))}throw Error('timeout')}
 '''
 test = '''
 (async()=>{try{
@@ -59,15 +64,15 @@ check(document.querySelectorAll('.planning-strategy').length===2,'strategies');
 document.querySelector('[data-step="2"]').click();check(document.querySelectorAll('[data-choose]').length===2,'comparison');
 document.querySelector('[data-choose]').click();check(document.querySelectorAll('[data-cycle]').length===2,'cycles');
 const task=document.querySelector('[data-task]');task.checked=true;task.dispatchEvent(new Event('change'));
-document.querySelector('[data-action="back"]').click();check(!!document.getElementById('agrionHomePanel'),'back');
+document.querySelector('[data-planning-action="back"]').click();check(!!document.getElementById('agrionHomePanel'),'back');
 document.getElementById('agrionHomePlanning').click();await until(()=>document.querySelector('[data-task]'));
 check(document.querySelector('[data-task]').checked,'saved checklist');
 testContext.property.area_hectares=3;window.AgrionHome.showDashboard();document.getElementById('agrionHomePlanning').click();
 await until(()=>document.querySelector('.planning-plan-heading'));check(document.body.textContent.includes('mudaram'),'stale plan');
-fail=true;document.querySelector('[data-action="analyze"]').click();await until(()=>document.body.textContent.includes('análise anterior continua'));
+fail=true;document.querySelector('[data-planning-action="analyze"]').click();await until(()=>document.body.textContent.includes('análise anterior continua'));
 check(!!document.querySelector('.planning-plan-heading'),'failure must retain plan');
 testContext.property.id='empty-test';window.AgrionHome.showDashboard();document.getElementById('agrionHomePlanning').click();
-await until(()=>document.body.textContent.includes('Ainda não foi possível'));
+await until(()=>document.body.textContent.includes('campos complementares são opcionais'));
 check(!!document.querySelector('.planning-empty')&&!document.querySelector('.planning-spinner'),'finite cold failure');
 testContext.property.id='browser-test';fail=false;window.AgrionHome.showDashboard();document.getElementById('agrionHomePlanning').click();
 await until(()=>document.querySelector('.planning-plan-heading'));document.querySelector('[data-step="2"]').click();
