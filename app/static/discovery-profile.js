@@ -15,12 +15,16 @@
       if (![...ESSENTIAL,...OPTIONAL].includes(patch.field) || !['set','merge'].includes(patch.operation) || !['confirmed','uncertain','unknown'].includes(patch.status) || !evidenceText?.includes(patch.evidence_excerpt)) continue;
       const target=ESSENTIAL.includes(patch.field)?next.fields:next.additional_fields;
       const old=target[patch.field]||envelope();
-      if (old.evidence.some(x=>x.turn_id===sourceTurn)) continue;
-      if (old.status==='confirmed' && patch.status==='uncertain' && patch.operation!=='set') continue;
+      const sameTurn=old.evidence.some(x=>x.turn_id===sourceTurn);
       const harvest=patch.field==='last_harvest_result'&&old.value;
       const unavailable=harvest?.qualitative_result&&patch.status==='unknown';
-      const value=unavailable?{...old.value,estimate_unavailable:true}:harvest&&patch.value?{...old.value,...patch.value}:patch.operation==='merge' && old.value && patch.value ? {...old.value,...patch.value} : patch.value;
-      target[patch.field]={value,status:unavailable?'confirmed':patch.status,source:'farmer_report',evidence:[...old.evidence,{turn_id:sourceTurn,excerpt:patch.evidence_excerpt.slice(0,180)}].slice(-5),confidence:patch.confidence,unknown_reason:unavailable?null:patch.unknown_reason||null,updated_at:new Date().toISOString(),revision:old.revision+1};
+      if (sameTurn && !unavailable && (!patch.value || Object.entries(patch.value).every(([key,value])=>JSON.stringify(old.value?.[key])===JSON.stringify(value)))) continue;
+      if (old.status==='confirmed' && patch.status==='uncertain' && patch.operation!=='set' && !sameTurn && patch.field!=='last_harvest_result') continue;
+      const merge=old.value&&patch.value&&(sameTurn||harvest||patch.operation==='merge');
+      const value=unavailable?{...old.value,estimate_unavailable:true}:merge?{...old.value,...patch.value}:patch.value;
+      const excerpt=patch.evidence_excerpt.slice(0,180);
+      const evidence=old.evidence.some(x=>x.turn_id===sourceTurn&&x.excerpt===excerpt)?old.evidence:[...old.evidence,{turn_id:sourceTurn,excerpt}].slice(-5);
+      target[patch.field]={value,status:unavailable?'confirmed':patch.status,source:'farmer_report',evidence,confidence:patch.confidence,unknown_reason:unavailable?null:patch.unknown_reason||null,updated_at:new Date().toISOString(),revision:old.revision+1};
       applied.push({field:patch.field,before:old,after:target[patch.field]});
     }
     if(applied.length){next.revision++;next.updated_at=new Date().toISOString();}

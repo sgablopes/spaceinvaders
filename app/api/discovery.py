@@ -292,41 +292,75 @@ def extract():
             result = Extraction.model_validate_json(client.models.generate_content(model=model, contents=contents, config=retry_config).text)
         evidence = {turn["turn_id"]: turn["text"] for turn in history if turn["speaker"] == "farmer"}
         evidence[body["turn_id"]] = body["transcript"]
-        patches = []
-        for patch in result.patches:
-            if not patch.evidence_excerpt or patch.evidence_excerpt not in evidence.get(patch.evidence_turn_id or body["turn_id"], ""):
-                continue
-            if _validate_value(patch):
-                patches.append(patch)
-                continue
-            if patch.status == "unknown" and patch.field in RECOVERY_SCHEMAS:
+        def validated(candidates):
+            patches = []
+            for patch in candidates:
+                if patch.evidence_excerpt and not patch.evidence_turn_id and patch.evidence_excerpt not in body["transcript"]:
+                    matches = [turn_id for turn_id, spoken in evidence.items() if patch.evidence_excerpt in spoken]
+                    if len(matches) == 1:
+                        patch = patch.model_copy(update={"evidence_turn_id": matches[0]})
+                if not patch.evidence_excerpt or patch.evidence_excerpt not in evidence.get(patch.evidence_turn_id or body["turn_id"], ""):
+                    continue
+                if _validate_value(patch):
+                    patches.append(patch)
+                    continue
+                if patch.status == "unknown" and patch.field in RECOVERY_SCHEMAS:
+                    try:
+                        reason_response = client.models.generate_content(model=model, contents=patch.evidence_excerpt, config=types.GenerateContentConfig(
+                            system_instruction="Classifique apenas uma recusa ou desconhecimento explicitamente dito pelo agricultor. Se a fala não indicar isso, retorne none.",
+                            response_mime_type="application/json", response_schema=UnknownReason,
+                        ))
+                        reason = UnknownReason.model_validate_json(reason_response.text).reason
+                        repaired = patch.model_copy(update={"value": None, "unknown_reason": reason})
+                        if reason != "none" and _validate_value(repaired):
+                            patches.append(repaired)
+                    except Exception as error:
+                        current_app.logger.warning("Discovery unknown-answer recovery failure (%s, %s)", patch.field, type(error).__name__)
+                    continue
+                schema = RECOVERY_SCHEMAS.get(patch.field)
+                if not schema or patch.status not in {"confirmed", "uncertain"}:
+                    continue
                 try:
-                    reason_response = client.models.generate_content(model=model, contents=patch.evidence_excerpt, config=types.GenerateContentConfig(
-                        system_instruction="Classifique apenas uma recusa ou desconhecimento explicitamente dito pelo agricultor. Se a fala não indicar isso, retorne none.",
-                        response_mime_type="application/json", response_schema=UnknownReason,
+                    repair_contents = json.dumps({"farmer_transcript": evidence[patch.evidence_turn_id or body["turn_id"]], "previous_assistant_question": context, "field": patch.field}, ensure_ascii=False)
+                    repaired_response = client.models.generate_content(model=model, contents=repair_contents, config=types.GenerateContentConfig(
+                        system_instruction="Preencha apenas o valor do campo indicado com fatos explícitos da fala do agricultor. A pergunta anterior esclarece o campo, mas não é evidência. Não invente dados; respeite o formato exigido pelo esquema.",
+                        response_mime_type="application/json", response_schema=schema,
                     ))
-                    reason = UnknownReason.model_validate_json(reason_response.text).reason
-                    repaired = patch.model_copy(update={"value": None, "unknown_reason": reason})
-                    if reason != "none" and _validate_value(repaired):
+                    value = schema.model_validate_json(repaired_response.text).model_dump(exclude_none=True)
+                    repaired = patch.model_copy(update={"value": value})
+                    if _validate_value(repaired):
                         patches.append(repaired)
                 except Exception as error:
-                    current_app.logger.warning("Discovery unknown-answer recovery failure (%s, %s)", patch.field, type(error).__name__)
-                continue
-            schema = RECOVERY_SCHEMAS.get(patch.field)
-            if not schema or patch.status not in {"confirmed", "uncertain"}:
-                continue
+                    current_app.logger.warning("Discovery field recovery failure (%s, %s)", patch.field, type(error).__name__)
+            return patches
+
+        patches = validated(result.patches)
+        snapshot_fields = body["profile_snapshot"].get("fields", {})
+        if not isinstance(snapshot_fields, dict):
+            snapshot_fields = {}
+        covered = {patch.field for patch in patches if patch.status in {"confirmed", "unknown"}}
+        targets = [field for field in ESSENTIAL_FIELDS if isinstance(snapshot_fields.get(field), dict)
+            and snapshot_fields[field].get("status") in {"pending", "uncertain"} and field not in covered]
+        harvest = next((patch.value for patch in reversed(patches) if patch.field == "last_harvest_result" and patch.value),
+            snapshot_fields.get("last_harvest_result", {}).get("value") if isinstance(snapshot_fields.get("last_harvest_result"), dict) else None)
+        if ("last_harvest_result" in snapshot_fields and isinstance(harvest, dict)
+            and harvest.get("qualitative_result") not in {None, "no_harvest"}
+            and harvest.get("quantity") is None and harvest.get("financial_amount") is None
+            and harvest.get("estimate_unavailable") is not True and "last_harvest_result" not in targets):
+            targets.append("last_harvest_result")
+        if targets:
             try:
-                repair_contents = json.dumps({"farmer_transcript": evidence[patch.evidence_turn_id or body["turn_id"]], "previous_assistant_question": context, "field": patch.field}, ensure_ascii=False)
-                repaired_response = client.models.generate_content(model=model, contents=repair_contents, config=types.GenerateContentConfig(
-                    system_instruction="Preencha apenas o valor do campo indicado com fatos explícitos da fala do agricultor. A pergunta anterior esclarece o campo, mas não é evidência. Não invente dados; respeite o formato exigido pelo esquema.",
-                    response_mime_type="application/json", response_schema=schema,
-                ))
-                value = schema.model_validate_json(repaired_response.text).model_dump(exclude_none=True)
-                repaired = patch.model_copy(update={"value": value})
-                if _validate_value(repaired):
-                    patches.append(repaired)
+                audit_config = types.GenerateContentConfig(
+                    system_instruction=instruction + " Confira especificamente os campos ainda sem resposta: " + ", ".join(targets) + ". "
+                        "Retorne patches somente para fatos explícitos presentes nas falas do agricultor, inclusive falas anteriores. "
+                        "Uma fala pode resolver vários campos. Não copie informações do Agrion nem repita um valor já registrado.",
+                    response_mime_type="application/json", response_schema=GenerationExtraction,
+                )
+                audit = Extraction.model_validate_json(client.models.generate_content(
+                    model=model, contents=contents, config=audit_config).text)
+                patches.extend(patch for patch in validated(audit.patches) if patch.field in targets)
             except Exception as error:
-                current_app.logger.warning("Discovery field recovery failure (%s, %s)", patch.field, type(error).__name__)
+                current_app.logger.warning("Discovery extraction audit failure (%s)", type(error).__name__)
         if result.patches and not patches:
             current_app.logger.warning("Discovery extraction rejected all %d generated patches", len(result.patches))
         return jsonify(interview_id=body["interview_id"], turn_id=body["turn_id"], sequence=body["sequence"], base_profile_revision=body["profile_revision"], patches=[p.model_dump() for p in patches], warnings=result.warnings[:5])

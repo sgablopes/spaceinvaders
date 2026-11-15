@@ -55,6 +55,18 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual([item['field'] for item in response.json['patches']], ['last_crop'])
         self.assertEqual(response.json['patches'][0]['evidence_turn_id'], old_turn)
 
+    def test_unique_prior_evidence_recovers_missing_turn_id(self):
+        import json
+        self.body['history'] = [{'turn_id': 'farmer-earlier', 'speaker': 'farmer', 'text': 'Foi banana.'}]
+        self.body['transcript'] = 'Sim.'
+        generated = {'patches': [{'field': 'last_crop', 'operation': 'set', 'value': {'crop': 'banana'},
+            'status': 'confirmed', 'evidence_excerpt': 'Foi banana'}]}
+        fake = SimpleNamespace(models=SimpleNamespace(generate_content=lambda **_: SimpleNamespace(text=json.dumps(generated))))
+        with patch.dict(os.environ, {'GOOGLE_CLOUD_PROJECT': 'test-project', 'GOOGLE_CLOUD_LOCATION': 'us-central1'}), patch('app.api.discovery.genai.Client', return_value=fake):
+            response = self.client.post('/api/interview/extract', json=self.body)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['patches'][0]['evidence_turn_id'], 'farmer-earlier')
+
     def test_harvest_allows_qualitative_and_explicit_estimates(self):
         base = {'field': 'last_harvest_result', 'operation': 'set', 'status': 'confirmed', 'evidence_excerpt': 'Foi boa'}
         self.assertTrue(_validate_value(Patch(**base, value={'qualitative_result': 'good'})))
@@ -170,6 +182,51 @@ class DiscoveryTests(unittest.TestCase):
         self.assertTrue(options['vertexai'])
         self.assertEqual(options['http_options'].api_version, 'v1')
         self.assertEqual(options['http_options'].base_url, 'https://aiplatform.us.rep.googleapis.com')
+
+    def test_audit_finds_second_field_after_partial_first_pass(self):
+        import json
+        self.body['transcript'] = 'Plantei milho, antes tinha soja.'
+        self.body['profile_snapshot'] = {'fields': {
+            'last_crop': {'status': 'pending', 'value': None},
+            'previous_crop': {'status': 'pending', 'value': None},
+        }}
+        first = {'patches': [{'field': 'last_crop', 'operation': 'set', 'value': {'crop': 'milho'},
+            'status': 'confirmed', 'evidence_excerpt': 'Plantei milho'}]}
+        audit = {'patches': [{'field': 'previous_crop', 'operation': 'set', 'value': {'crop': 'soja'},
+            'status': 'confirmed', 'evidence_excerpt': 'antes tinha soja'}]}
+        replies = iter([first, audit])
+        calls = []
+        def generate_content(**kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(text=json.dumps(next(replies)))
+        fake = SimpleNamespace(models=SimpleNamespace(generate_content=generate_content))
+        with patch.dict(os.environ, {'GOOGLE_CLOUD_PROJECT': 'test-project', 'GOOGLE_CLOUD_LOCATION': 'us-central1'}), patch('app.api.discovery.genai.Client', return_value=fake):
+            response = self.client.post('/api/interview/extract', json=self.body)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual({item['field'] for item in response.json['patches']}, {'last_crop', 'previous_crop'})
+        self.assertEqual(len(calls), 2)
+
+    def test_audit_failure_preserves_first_pass(self):
+        import json
+        self.body['transcript'] = 'Plantei milho.'
+        self.body['profile_snapshot'] = {'fields': {
+            'last_crop': {'status': 'pending', 'value': None},
+            'previous_crop': {'status': 'pending', 'value': None},
+        }}
+        first = {'patches': [{'field': 'last_crop', 'operation': 'set', 'value': {'crop': 'milho'},
+            'status': 'confirmed', 'evidence_excerpt': 'Plantei milho'}]}
+        calls = 0
+        def generate_content(**_):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return SimpleNamespace(text=json.dumps(first))
+            raise RuntimeError('audit unavailable')
+        fake = SimpleNamespace(models=SimpleNamespace(generate_content=generate_content))
+        with patch.dict(os.environ, {'GOOGLE_CLOUD_PROJECT': 'test-project', 'GOOGLE_CLOUD_LOCATION': 'us-central1'}), patch('app.api.discovery.genai.Client', return_value=fake):
+            response = self.client.post('/api/interview/extract', json=self.body)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item['field'] for item in response.json['patches']], ['last_crop'])
 
 
 if __name__ == '__main__':
