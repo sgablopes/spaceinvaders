@@ -48,6 +48,11 @@
     add('primary_goal',get('primary_goal')?{category:get('primary_goal'),description:get('goal_description')||null}:null);
     add('next_crop_preference',yes('no_preference')?{crop:null,no_preference:true}:get('next_crop_preference')?{crop:get('next_crop_preference'),no_preference:false}:null);
     add('current_season_stage',get('current_season_stage')?{stage:get('current_season_stage')}:null);
+    if(yes('never_cultivated')){
+      for(const field of ['main_difficulties','irrigation','mechanization','primary_goal','next_crop_preference','current_season_stage']){
+        if(!entries.some(entry=>entry.field===field))entries.push({field,status:'unknown',value:null});
+      }
+    }
     return entries;
   }
   window.AgrionManual={markup,collect};
