@@ -5,10 +5,12 @@ from uuid import uuid4
 from fastapi import APIRouter, Body, Request
 from fastapi.exceptions import RequestValidationError
 
-from .analysis_schemas import ClimateRequest, ClimateResponse, GDDRequest, RainfallRequest, IntegratedGDDResponse, IntegratedRainfallResponse
+from .analysis_schemas import (ClimateRequest, ClimateResponse, GDDRequest, RainfallRequest, IntegratedGDDResponse, IntegratedRainfallResponse,
+    WaterRequest, WaterResponse, EconomicsRequest, EconomicsResponse)
 from .analysis_service import run, gdd, rainfall
+from .indicator_schemas import DrySpellRequest, ThermalRequest, ETcRequest, WaterBalanceRequest, MarginRequest, CalculationResponse
 from .vendor.intelligence.core.errors import ServiceError, error_response
-from .vendor.intelligence.schemas.analysis import WaterRequest, WaterResponse, AgronomyRequest, AgronomyResponse, EconomicsRequest, EconomicsResponse
+from .vendor.intelligence.schemas.analysis import AgronomyRequest, AgronomyResponse
 from .vendor.intelligence.indicators.catalog import GROUP_CATALOG, CATALOG
 from .vendor.intelligence.schemas import indicators
 from .vendor.intelligence.schemas.common import ErrorResponse
@@ -31,8 +33,31 @@ def analysis_capabilities():
                 item["modes"] = ["caller_supplied", "nasa_power"]
                 item["limitations"] = ["Sem forecast; a cobertura diária deve ser completa.",
                     "GDD automático exige UTC e Tbase explícita." if item["id"] == "I01" else "Chuva automática consulta 90 dias, em UTC ou LST explícitos."]
+            if item["id"] in {"I03", "I05", "I07", "I08", "I14"}:
+                item["available"] = True
+                item["implementation_status"] = "implemented_explicit_inputs"
+                item["summary"] = {"I03": "Maior sequência de dias secos na janela",
+                    "I05": "Triagem de exposição térmica, sem estimativa de dano",
+                    "I07": "ETc padrão com ETo e Kc explícitos",
+                    "I08": "Variação hídrica com fluxos explícitos",
+                    "I14": "Margem do cenário econômico declarado"}[item["id"]]
+                item["limitations"] = {
+                    "I03": ["Maior sequência com chuva < limiar explícito; não classifica risco de seca.", "NASA histórica e forecast Meteomatics/Open-Meteo; disponibilidade não é garantida."],
+                    "I05": ["Somente contagem de exposição a limites declarados ou gerais ECOCROP; não diagnostica dano por estádio."],
+                    "I07": ["ETc=Kc×ETo sob condições padrão. ETo e escolha do Kc devem ser fornecidas; sem cálculo de ETo."],
+                    "I08": ["Variação contábil ΔS; fluxos/perdas e ETo explícitos. Não estima estoque real do solo ou irrigação recomendada."],
+                    "I14": ["Cenário de receita menos custos informados; não prevê preço/rendimento ou lucro líquido."]}[item["id"]]
+                item["modes"] = ["caller_supplied", "nasa_power", "automatic_forecast_meteomatics_open_meteo"] if item["id"] in {"I03", "I05"} else ["explicit_inputs_scenario"]
+                if item["id"] == "I08":
+                    item["modes"] += ["nasa_power_precipitation", "automatic_forecast_precipitation"]
         if group["id"] == "analyze_climate":
-            group["when_to_use"] = "Calcular GDD e chuva com séries próprias ou consulta NASA POWER automática; I03/I05 permanecem pendentes."
+            group["when_to_use"] = "GDD, chuva, sequências secas e triagem de exposição térmica, sem inferir dano ou risco agronômico."
+        if group["id"] == "analyze_water":
+            group["when_to_use"] = "Calcular ETc padrão e variação hídrica com ETo, Kc e fluxos explícitos, sem inferir estoque de água no solo."
+        if group["id"] == "analyze_economics":
+            group["when_to_use"] = "Calcular margem com área, produtividade, preço e custos declarados. I13 produtividade permanece pendente."
+        group["available"] = any(i["available"] for i in group["supported_indicators"])
+        group["implementation_status"] = "implemented" if all(i["available"] for i in group["supported_indicators"]) else "partial" if group["available"] else "planned"
     return groups
 
 
@@ -62,25 +87,25 @@ def register_analysis(app):
     router = APIRouter(prefix="/v1/analysis", tags=["Análises"], responses={
         code: {"model": ErrorResponse} for code in (404, 422, 429, 501, 502, 503, 504)})
 
-    @router.post("/climate", response_model=ClimateResponse, operation_id="analyze_climate", summary="Calcula GDD e chuva acumulada com dados próprios ou NASA POWER",
-        description="I01: GDD diário/total em degree_day_c, método simple_average_no_upper_cap v1.0 e Tbase explícita. I02: somas de 7/15/30/90 dias em mm, rolling_sum_precipitation v1.0. Omita a série para consulta automática NASA histórica; GDD exige UTC, chuva admite UTC/LST. Séries manuais não fazem chamadas externas. I03/I05 não implementados. Em sucesso parcial cada ID indisponível tem motivo explícito. Não calcula forecast ou recomendação de plantio.")
+    @router.post("/climate", response_model=ClimateResponse, operation_id="analyze_climate", summary="GDD, chuva, sequências secas e exposição térmica",
+        description="I01 GDD e I02 chuva mantêm métodos e contratos anteriores. I03 calcula maior sequência de dias com chuva abaixo do limiar explícito. I05 conta exposição fora de limites declarados ou gerais ECOCROP, sem diagnosticar dano. I03/I05 aceitam séries próprias, NASA histórica ou dias completos UTC com Meteomatics e alternativa automática Open-Meteo. Fonte e motivo da troca são preservados; não há equivalência garantida entre extremos dos provedores.")
     def climate(payload: Annotated[ClimateRequest, Body(openapi_examples={"nasa_historical": EXAMPLE})], request: Request):
-        return run("climate", payload, request.state.request_id, request.app.state.nasa)
+        return run("climate", payload, request.state.request_id, request.app.state.nasa, request.app.state.store, request.app.state.weather)
 
-    @router.post("/water", response_model=WaterResponse, operation_id="analyze_water", summary="Contrato de análise de água — indicadores pendentes",
-        description="I07 ETc e I08 balanço hídrico ainda não implementados. Entradas válidas retornam 501; não produz valores fictícios.")
+    @router.post("/water", response_model=WaterResponse, operation_id="analyze_water", summary="ETc padrão e variação hídrica com entradas explícitas",
+        description="I07: ETc=Kc×ETo com ETo diária fornecida e Kc explícito ou registro FAO escalar selecionado. I08: ΔS=P+I+CR−RO−ETc−DP; fluxos/perdas obrigatórios, sem zeros presumidos. Chuva forecast usa Meteomatics com alternativa Open-Meteo. Não estima água disponível/estresse no solo nem calcula ETo; demais entradas permanecem explícitas.")
     def water(payload: WaterRequest, request: Request):
-        return run("water", payload, request.state.request_id, request.app.state.nasa)
+        return run("water", payload, request.state.request_id, request.app.state.nasa, request.app.state.store, request.app.state.weather)
 
     @router.post("/agronomy", response_model=AgronomyResponse, operation_id="analyze_agronomy", summary="Contrato agronômico — indicadores pendentes",
         description="I09 aptidão, I10 sucessão e I11 risco aguardam validação dos métodos e catálogos. Não exige sucessão para selecionar I09. Entradas válidas retornam 501.")
     def agronomy(payload: AgronomyRequest, request: Request):
         return run("agronomy", payload, request.state.request_id, request.app.state.nasa)
 
-    @router.post("/economics", response_model=EconomicsResponse, operation_id="analyze_economics", summary="Contrato econômico — indicadores pendentes",
-        description="I13 cenário produtivo e I14 margem aguardam implementação/validação. Entradas válidas retornam 501; não garante produção ou lucro.")
+    @router.post("/economics", response_model=EconomicsResponse, operation_id="analyze_economics", summary="Margem do cenário econômico declarado",
+        description="I14 calcula produção=área×rendimento, receita=produção×preço e margem=receita−custos informados. Margem bruta só com custos declarados variáveis; sem câmbio ou custos presumidos. Não prevê produtividade/preços nem lucro líquido. I13 continua pendente de método/dados validados.")
     def economics(payload: EconomicsRequest, request: Request):
-        return run("economics", payload, request.state.request_id, request.app.state.nasa)
+        return run("economics", payload, request.state.request_id, request.app.state.nasa, request.app.state.store, request.app.state.weather)
 
     app.include_router(router)
     legacy = APIRouter(include_in_schema=False)
@@ -94,12 +119,22 @@ def register_analysis(app):
         return rainfall(request.app.state.nasa, payload, request.state.request_id)
 
     def placeholder(item, model):
-        def pending(payload: model):
-            raise ServiceError(501, "INDICATOR_NOT_IMPLEMENTED", "Indicador previsto, ainda não implementado.", details={"operation": item.id})
+        implemented = {"I03": ("climate", "dry_spell", ClimateRequest), "I05": ("climate", "thermal_stress", ClimateRequest),
+            "I07": ("water", "crop_evapotranspiration", WaterRequest), "I08": ("water", "water_balance", WaterRequest),
+            "I14": ("economics", "crop_margin", EconomicsRequest)}
+        def pending(payload: model, request: Request):
+            if item.indicator_id not in implemented:
+                raise ServiceError(501, "INDICATOR_NOT_IMPLEMENTED", "Indicador previsto, ainda não implementado.", details={"operation": item.id})
+            group, field, group_model = implemented[item.indicator_id]
+            selected = group_model.model_validate({"include": [item.indicator_id], "inputs": {field: payload.model_dump(mode="json")}})
+            answer = run(group, selected, request.state.request_id, request.app.state.nasa, request.app.state.store, request.app.state.weather)
+            data = answer.result.indicators[item.indicator_id].model_dump()
+            metadata = {k: data.pop(k) for k in ("status", "method", "provenance", "quality", "limitations", "traceability", "generated_at")}
+            return CalculationResponse(operation=item.id, result=data, **metadata)
         legacy.post(item.path, operation_id=item.id)(pending)
 
-    for item, model in zip(CATALOG[2:], (indicators.DrySpellRequest, indicators.ThermalStressRequest, indicators.ETcRequest,
-        indicators.WaterBalanceRequest, indicators.SuitabilityRequest, indicators.SuccessionRequest, indicators.PlantingRiskRequest,
-        indicators.YieldScenarioRequest, indicators.MarginRequest)):
+    for item, model in zip(CATALOG[2:], (DrySpellRequest, ThermalRequest, ETcRequest,
+        WaterBalanceRequest, indicators.SuitabilityRequest, indicators.SuccessionRequest, indicators.PlantingRiskRequest,
+        indicators.YieldScenarioRequest, MarginRequest)):
         placeholder(item, model)
     app.include_router(legacy)

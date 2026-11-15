@@ -38,8 +38,11 @@ python -B -m uvicorn src.main:app --host 127.0.0.1 --port 8001
 | `/api/v1/gaez` | Descoberta de camadas na API externa oficial e consulta do pixel remoto por coordenada |
 | `POST /v1/data/nasa-power/daily` | Temperaturas média/mínima/máxima, precipitação, umidade e radiação NASA POWER sob demanda |
 | `POST /v1/data/meteomatics/forecast` | Previsão UTC autenticada Meteomatics, dependente de credenciais e permissões |
-| `POST /v1/analysis/climate` | GDD e chuva acumulada, usando séries próprias ou NASA automaticamente |
-| `POST /v1/analysis/water`, `/agronomy`, `/economics` | Contratos dos demais grupos originais; métodos pendentes, com 501 explícito |
+| `POST /v1/data/weather/forecast` | Previsão UTC com seleção auto/Meteomatics/Open-Meteo e alternativa automática sem mistura de valores |
+| `POST /v1/analysis/climate` | GDD, chuva, sequência seca e triagem de exposição térmica; séries próprias ou NASA |
+| `POST /v1/analysis/water` | ETc padrão e variação hídrica com ETo/Kc e fluxos explícitos |
+| `POST /v1/analysis/economics` | Margem do cenário declarado (I14); I13 pendente |
+| `POST /v1/analysis/agronomy` | I09/I10/I11 pendentes, com 501 explícito |
 
 HWSD tem somente um README nesta pasta; raster e MDB não estão disponíveis. O Parquet ECOCROP e o contrato climático mencionado anteriormente também não estão no disco. Cálculo FAO-56 de ETo, motor AquaCrop e recomendações agronômicas não foram implementados por esta API de consulta. A consulta NASA POWER foi acrescentada sem alterar os caminhos anteriores.
 
@@ -81,7 +84,17 @@ O cache em memória tem TTL padrão 300 segundos e capacidade 128, configurávei
 
 Para chuva, selecione `include=["I02"]` e `inputs.rainfall` com `location`, `reference_date` e `day_basis` (`UTC` ou `LST`); não exige Tbase. Consulta os 90 dias até a referência e devolve as quatro somas retrospectivas. Ambos podem ser selecionados na mesma requisição, com períodos próprios. Não há conversão de LST para UTC nem substituição de lacunas por zero. GDD automático admite até 366 dias e somente UTC; períodos maiores continuam possíveis no modo manual conforme o contrato anterior.
 
-Fornecer `daily_temperatures`/`daily_precipitation` preserva o modo manual sem rede. Em automático a procedência é `NASA POWER`/`modeled_estimate`; em manual é `caller_supplied`. Sucesso parcial identifica cada ID indisponível sem valor substituto. `/v1/capabilities` inclui a operação INT existente e as quatro operações IND com seus estados; rotas legadas permanecem ocultas do OpenAPI. Os demais nove cálculos seguem 501.
+Fornecer `daily_temperatures`/`daily_precipitation` preserva o modo manual sem rede. Em automático a procedência é `NASA POWER`/`modeled_estimate`; em manual é `caller_supplied`. Sucesso parcial identifica cada ID indisponível sem valor substituto. `/v1/capabilities` inclui as operações INT e as quatro operações IND com seus estados; rotas legadas permanecem ocultas do OpenAPI. I09/I10/I11/I13 seguem 501.
+
+I03 sequência seca, I05 triagem de exposição térmica, I07 ETc, I08 variação hídrica e I14 margem estão documentados com métodos, unidades, parâmetros obrigatórios e exemplos em [DELIVERY_INDICATORS.md](DELIVERY_INDICATORS.md). Os três últimos exigem entradas explícitas, sem ETo ou dados econômicos automáticos. I05 não estima dano por estádio. I03/I05 e chuva de I08 agora usam o seletor Meteomatics/Open-Meteo, validado com previsões reais conforme [DELIVERY_WEATHER.md](DELIVERY_WEATHER.md).
+
+## Previsão automática Meteomatics/Open-Meteo
+
+`POST /v1/data/weather/forecast` reutiliza os campos de localização, intervalo UTC, parâmetros e resolução do conector Meteomatics, acrescentando `provider: "auto" | "meteomatics" | "open_meteo"`. Auto prefere Meteomatics e tenta Open-Meteo quando a consulta é negada, limitada, incompleta ou a fonte está indisponível. Não faz fallback por entrada inválida nem mistura valores. Auto exige cobertura completa de uma única fonte; ambas falhando retornam 503 explícito. A rota específica Meteomatics permanece intacta e sem fallback.
+
+A resposta informa `provider_used`, `fallback_used`, `provider_failures`, unidades/semântica temporal, procedência, licença e hashes. Open-Meteo aceita fonte mix; temperatura/umidade/vento/radiação instantâneos horários, chuva somada por intervalo e temperatura média/mínima/máxima apenas em dias completos UTC (`step_hours=24`, validade à meia-noite). Produtos térmicos diários agregados não equivalem necessariamente aos extremos Meteomatics. São preservados nulos/lacunas, sem interpolação própria.
+
+Consulte [DELIVERY_WEATHER.md](DELIVERY_WEATHER.md) para exemplos dinâmicos Python/JSON, configuração, atribuição e cotas da API pública Open-Meteo (uso não comercial), testes reais e avaliação do GEOS-FP. O acesso GEOS-FP por célula foi comprovado, mas ainda não há adaptador operacional desse produto.
 
 Métodos, schemas estendidos de saída, erros, exemplo completo I01/I02 e validação estão em [DELIVERY_AUTOMATIC_INDICATORS.md](DELIVERY_AUTOMATIC_INDICATORS.md). A API usa o núcleo versionado internamente, sem depender de arquivos da Área de Trabalho.
 
@@ -223,7 +236,7 @@ python -B -m unittest discover -s tests -v
 python -B tools/verify_external.py
 ```
 
-O primeiro comando roda 45 testes determinísticos: os 12 iniciais, 11 da entrega NASA, 8 da conexão automática aos indicadores e 14 do conector Meteomatics. As fontes locais reais são verificadas por contagens, nulos/zero, relações, quarentena, paginação, filtros, reuso do índice e hashes antes/depois. Mocks meteorológicos e raster de teste são **sintéticos**, cobrindo unidades, falhas externas, NoData, autenticação segura, cache e contrato HTTP, sem chamadas externas nos testes automatizados.
+O primeiro comando roda 71 testes determinísticos: os 12 iniciais, 11 da entrega NASA, 8 da conexão automática aos indicadores, 14 do conector Meteomatics, 13 dos indicadores e 13 da entrega meteorológica/GEOS-FP. As fontes locais reais são verificadas por contagens, nulos/zero, relações, quarentena, paginação, filtros, reuso do índice e hashes antes/depois. Mocks meteorológicos e raster de teste são **sintéticos**, cobrindo unidades, falhas externas, NoData, autenticação segura, cache e contrato HTTP, sem chamadas externas nos testes automatizados.
 
 O segundo comando é opcional e acessa a rede real. Grava `.runtime/gaez-live-check.json`, identificando expressamente que são consultas externas reais. Esse relatório não é uma recomendação agronômica.
 
@@ -233,4 +246,8 @@ Com o serviço já iniciado, `python -B tools/verify_running.py` valida o acesso
 
 `python -B tools/verify_automatic_indicators.py` valida o fluxo NASA → GDD/chuva diretamente por HTTP no container único, sem o consumidor externo; compara rotas agrupada e legadas e salva `.runtime/automatic-indicators-check.json`.
 
+`python -B tools/verify_indicators.py` valida I03/I05 com consultas NASA reais no Brasil/EUA e compara séries próprias/automáticas. Valida I07/I08/I14 com entradas explicitamente controladas e Kc selecionado da base, sem alegar observações de ETo/fluxos/preços. Registra a dependência de credenciais forecast e salva `.runtime/indicators-live-check.json`.
+
 `python -B tools/verify_meteomatics.py` tenta a consulta forecast real usando apenas as credenciais configuradas no servidor. Sem elas, registra a indisponibilidade; `--probe-unauthenticated` verifica somente a exigência de login no provedor. A evidência em `.runtime/meteomatics-live-check.json` não declara previsão validada enquanto não houver consulta autenticada bem-sucedida.
+
+`python -B tools/verify_weather.py` valida HTTP real para ambas as fontes no Brasil/EUA, I03/I05 e I08 com chuva real/demais entradas controladas. Também induz ausência de credenciais em um objeto isolado para demonstrar a alternativa real Open-Meteo, sem mudar o container/conta em execução. `python -B tools/probe_geos_fp.py` consulta metadados e três tempos de uma célula OPeNDAP, com limite de tamanho; é prova de viabilidade, sem conector operacional ou download de campo global.
