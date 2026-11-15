@@ -43,12 +43,35 @@ class AnalysisTools:
             {'name':'chuva_acumulada','description':'Calcula chuva histórica em janelas retrospectivas 7, 15, 30 e 90 dias, com NASA POWER.','parameters':{'type':'OBJECT','properties':{'location':location,'reference_date':day,'day_basis':{'type':'STRING','enum':['UTC','LST']}},'required':['location','reference_date']}},
             {'name':'graus_dia_acumulados','description':'Calcula graus-dia históricos NASA POWER; exige cultura, período exato e temperatura-base explícita. Não calcula estágio fenológico observado.','parameters':{'type':'OBJECT','properties':{'location':location,'crop_id':{'type':'STRING'},'start_date':day,'end_date':day,'base_temperature_c':{'type':'NUMBER'},'base_temperature_reference':{'type':'STRING','description':'Origem explícita da temperatura-base, quando disponível.'}},'required':['location','crop_id','start_date','end_date','base_temperature_c']}}
         ])
+        result.append({'name':'previsao_tempo','description':'Previsão Meteomatics para coordenada WGS84. Horários ISO com fuso e intervalos inteiramente futuros. Resultados incluem provedor e limitações; não é observação local.', 'parameters':{'type':'OBJECT','properties':{'location':location,'start_time':{'type':'STRING'},'end_time':{'type':'STRING'},'step_hours':{'type':'INTEGER','description':'Intervalo em horas: 1, 3, 6 ou 24.'},'parameters':{'type':'ARRAY','items':{'type':'STRING','enum':['temperature','temperature_mean','temperature_min','temperature_max','precipitation','relative_humidity','wind_speed','solar_radiation']}},'require_complete':{'type':'BOOLEAN'}},'required':['location','start_time','end_time','step_hours','parameters']}})
+        indicators={
+            'sequencia_seca':('I03','Máxima sequência de dias secos. Exige start_date, end_date, location ou daily_precipitation e rain_threshold_mm explícito.'),
+            'exposicao_termica':('I05','Conta dias acima/abaixo de limites; não estima danos. Exige start_date, end_date, crop_id, growth_stage, threshold_catalog_version, localização ou série e ecocrop_crop_id ou limites com threshold_reference.'),
+            'evapotranspiracao_cultura':('I07','ETc padrão, não evapotranspiração real. Exige datas, crop_id, growth_stage, kc_catalog_version, eto_series com eto_reference e kc com kc_reference ou kc_selection.'),
+            'variacao_hidrica':('I08','Variação hídrica contábil, não irrigação recomendada nem estoque do solo. Exige entradas I07, assumptions_reference e daily_fluxes completos.'),
+            'margem_cenario':('I14','Margem do cenário declarado, não lucro líquido. Exige datas, crop_id, area_ha, expected_yield_t_per_ha, price_per_t, cost_per_ha, currency e assumptions_reference.')}
+        for name,(_,description) in indicators.items():
+            result.append({'name':name,'description':description+' Informe dados reais ou hipóteses explicitamente declaradas; nunca invente entradas.','parameters':{'type':'OBJECT','properties':{'inputs_json':{'type':'STRING','description':'Objeto JSON de entradas com nomes e unidades exatas do contrato; datas AAAA-MM-DD e timezone UTC.'}},'required':['inputs_json']}})
         return result
 
     def execute(self, name, args):
         if not isinstance(args, dict):
             return {'error':'invalid_arguments'}
         try:
+            indicator_names={'sequencia_seca':'I03','exposicao_termica':'I05','evapotranspiracao_cultura':'I07','variacao_hidrica':'I08','margem_cenario':'I14'}
+            if name=='previsao_tempo' or name in indicator_names:
+                if self._climate is None:
+                    from .climate_tools import ClimateTools
+                    self._climate=ClimateTools(base_url=self.base_url)
+                if name=='previsao_tempo':
+                    if set(args)-{'location','start_time','end_time','step_hours','parameters','require_complete'}:raise ValueError()
+                    output=self._climate.forecast(**args,provider='meteomatics')
+                else:
+                    if set(args)!={'inputs_json'} or not isinstance(args['inputs_json'],str) or len(args['inputs_json'])>100000:raise ValueError()
+                    output=self._climate.indicator(indicator_names[name],json.loads(args['inputs_json']))
+                if not isinstance(output,dict):return {'error':'invalid_response'}
+                if len(json.dumps(output,ensure_ascii=False,allow_nan=False))>120000:return {'error':'response_too_large','message':'Solicite um período menor.'}
+                return output
             if name in {'nasa_clima_diario','chuva_acumulada','graus_dia_acumulados'}:
                 if self._climate is None:
                     from .climate_tools import ClimateTools

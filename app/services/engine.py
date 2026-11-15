@@ -111,6 +111,8 @@ class AgrionEngine:
                        'Quando não houver fonte verificável disponível, diga isso claramente; não invente referências, fatos ou resultados de ferramentas. '
                        'Use o ponto central da propriedade quando apropriado, respeite o aviso se estiver fora do polígono, e informe que dados NASA são estimativas regionais históricas, não previsão nem medição local. '
                        'Para graus-dia use cultura, data exata e temperatura-base explicitamente informada ou apoiada por fonte identificável; nunca deduza dia ou temperatura-base. Graus-dia não são estágio fenológico observado. '
+                       'Na previsão informe provedor, horários, períodos e limitações; previsões não são observações. Nunca invente ETo, coeficientes, limiares, custos, preços ou fluxos ausentes; pergunte quando forem necessários. '
+                       'Exposição térmica não estima dano; ETc padrão não é evapotranspiração real; variação hídrica não é estoque do solo nem recomendação de irrigação; margem declarada não é lucro líquido. '
                        'Identifique dados ausentes e incertezas e informe quando uma consulta falhar.')
         generated = self._generate(self.model, contents, instruction)
         text, used = generated if isinstance(generated, tuple) else (generated, ())

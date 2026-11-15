@@ -8,6 +8,22 @@ spec.loader.exec_module(module)
 
 
 class ToolsTest(unittest.TestCase):
+    def test_forecast_and_indicators_use_reviewed_adapters(self):
+        calls=[]
+        class Climate:
+            def forecast(self,**args):calls.append(('forecast',args));return {'ok':True,'data':{'provider_used':'Meteomatics'}}
+            def indicator(self,indicator_id,inputs):calls.append((indicator_id,inputs));return {'ok':True,'data':{'status':'partial','provenance':[{'provider':'NASA POWER'}]}}
+        tools=module.AnalysisTools(climate=Climate())
+        names={item['name'] for item in tools.declarations()}
+        self.assertTrue({'previsao_tempo','sequencia_seca','exposicao_termica','evapotranspiracao_cultura','variacao_hidrica','margem_cenario'}<=names)
+        response=tools.execute('previsao_tempo',{'location':{'latitude':0,'longitude':0},'start_time':'2030-01-01T00:00:00Z','end_time':'2030-01-01T01:00:00Z','step_hours':1,'parameters':['temperature']})
+        self.assertEqual(response['data']['provider_used'],'Meteomatics')
+        self.assertEqual(calls[0][1]['provider'],'meteomatics')
+        self.assertEqual(tools.execute('previsao_tempo',{'provider':'auto'})['error'],'invalid_arguments')
+        self.assertEqual(tools.execute('sequencia_seca',{'inputs_json':'{"rain_threshold_mm":1}'})['data']['status'],'partial')
+        self.assertEqual(calls[1][0],'I03')
+        self.assertEqual(tools.execute('margem_cenario',{'inputs_json':'not json'})['error'],'invalid_arguments')
+
     def test_climate_tools_registered_and_forward_results(self):
         class Climate:
             def nasa_daily(self, **args):return {'ok':True,'data':{'status':'partial','provenance':{'provider':'NASA POWER'},'args':args}}

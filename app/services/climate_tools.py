@@ -2,13 +2,14 @@
 import json
 import math
 import os
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
 PARAMETERS = {'T2M', 'T2M_MAX', 'T2M_MIN', 'PRECTOTCORR', 'RH2M', 'ALLSKY_SFC_SW_DWN'}
+FORECAST_PARAMETERS = {'temperature','temperature_mean','temperature_min','temperature_max','precipitation','relative_humidity','wind_speed','solar_radiation'}
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -66,6 +67,46 @@ class ClimateTools:
         payload={'location':loc,'crop_id':crop_id.strip(),'start_date':start_date,'end_date':end_date,'base_temperature_c':base_temperature_c,'timezone':'UTC','data_kind':'historical'}
         if base_temperature_reference is not None:payload['base_temperature_reference']=base_temperature_reference.strip()
         return self._call('/v1/analysis/climate',{'include':['I01'],'inputs':{'gdd':payload}})
+
+    def forecast(self, location, start_time, end_time, step_hours, parameters, provider='meteomatics', require_complete=True):
+        loc=_location(location)
+        if type(step_hours) is not int or step_hours not in {1,3,6,24}:raise ValueError('Intervalo inválido.')
+        if not isinstance(parameters,list) or not parameters or any(not isinstance(p,str) or p not in FORECAST_PARAMETERS for p in parameters) or len(parameters)!=len(set(parameters)):raise ValueError('Parâmetros de previsão inválidos.')
+        if provider not in {'meteomatics','open_meteo','auto'} or type(require_complete) is not bool:raise ValueError('Provedor inválido.')
+        def timestamp(value):
+            if not isinstance(value,str) or 'T' not in value:raise ValueError('Horário deve ter fuso explícito.')
+            parsed=datetime.fromisoformat(value.replace('Z','+00:00'))
+            if parsed.tzinfo is None or parsed.utcoffset() is None:raise ValueError('Horário deve ter fuso explícito.')
+            return parsed.astimezone(timezone.utc)
+        start,end=timestamp(start_time),timestamp(end_time)
+        if start.minute or start.second or start.microsecond or end.minute or end.second or end.microsecond or end<start or end-start>timedelta(days=16) or (end-start).total_seconds()%(step_hours*3600):raise ValueError('Intervalo de previsão inválido.')
+        now=datetime.now(timezone.utc)
+        if start<=now or (set(parameters)&{'precipitation','temperature_mean','temperature_min','temperature_max'} and start-timedelta(hours=step_hours)<=now):raise ValueError('A previsão e seus intervalos devem estar no futuro.')
+        return self._call('/v1/data/weather/forecast',{'location':loc,'start_time':start_time,'end_time':end_time,'step_hours':step_hours,'parameters':parameters,'provider':provider,'source':'mix','require_complete':require_complete})
+
+    def indicator(self, indicator_id, inputs):
+        """Executa apenas indicadores novos; entradas explícitas são validadas novamente pelo serviço."""
+        catalog={'I03':('climate','dry_spell'),'I05':('climate','thermal_stress'),'I07':('water','crop_evapotranspiration'),'I08':('water','water_balance'),'I14':('economics','crop_margin')}
+        if indicator_id not in catalog or not isinstance(inputs,dict):raise ValueError('Indicador ou entradas inválidas.')
+        if len(json.dumps(inputs,allow_nan=False,ensure_ascii=False))>100000:raise ValueError('Entradas muito grandes.')
+        group,field=catalog[indicator_id]
+        required={'I03':{'start_date','end_date','rain_threshold_mm'},'I05':{'start_date','end_date','crop_id','growth_stage','threshold_catalog_version'},'I07':{'start_date','end_date','crop_id','growth_stage','kc_catalog_version'},'I08':{'start_date','end_date','crop_id','growth_stage','kc_catalog_version','assumptions_reference'},'I14':{'start_date','end_date','crop_id','area_ha','expected_yield_t_per_ha','price_per_t','cost_per_ha','currency','assumptions_reference'}}[indicator_id]
+        if not required.issubset(inputs):raise ValueError('Faltam entradas explícitas do indicador.')
+        start,end=_day(inputs['start_date']),_day(inputs['end_date'])
+        if end<start:raise ValueError('Período invertido.')
+        if 'location' in inputs:_location(inputs['location'])
+        if inputs.get('timezone','UTC')!='UTC':raise ValueError('Indicador exige UTC.')
+        if indicator_id=='I03' and 'location' not in inputs and 'daily_precipitation' not in inputs:raise ValueError('Informe localização ou série de chuva.')
+        if indicator_id=='I05' and not (inputs.get('ecocrop_crop_id') or (inputs.get('threshold_reference') and (inputs.get('lower_threshold_c') is not None or inputs.get('upper_threshold_c') is not None))):raise ValueError('Informe limites com referência ou ID ECOCROP.')
+        if indicator_id in {'I07','I08'}:
+            if not inputs.get('eto_series') or not inputs.get('eto_reference'):raise ValueError('Informe série e referência de ETo.')
+            if not inputs.get('kc_selection') and (inputs.get('kc') is None or not inputs.get('kc_reference')):raise ValueError('Informe Kc com referência ou seleção FAO.')
+        if indicator_id=='I08' and not inputs.get('daily_fluxes'):raise ValueError('Informe os fluxos diários.')
+        if indicator_id=='I14':
+            for key in ('area_ha','expected_yield_t_per_ha','price_per_t','cost_per_ha'):
+                number=inputs[key]
+                if isinstance(number,bool) or not isinstance(number,(int,float)) or not math.isfinite(number) or number<0 or key=='area_ha' and number==0:raise ValueError('Valor econômico inválido.')
+        return self._call('/v1/analysis/'+group,{'include':[indicator_id],'inputs':{field:inputs}})
 
     def _call(self,path,payload):
         try:
