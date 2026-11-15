@@ -8,6 +8,10 @@ from .climate_tools import ClimateTools
 from .engine import AgrionEngine, EngineError
 
 
+def search_entries(evidence):
+    return [entry['result']['search_entry_point'] for entry in evidence if isinstance(entry,dict) and entry.get('tool')=='pesquisar_internet' and isinstance(entry.get('result'),dict) and isinstance(entry['result'].get('search_entry_point'),str)]
+
+
 def location_from(context):
     point=context.get('property',{}).get('center_point') or {}
     coordinates=point.get('coordinates') if isinstance(point,dict) else None
@@ -87,28 +91,66 @@ def stage_section(context, engine=None):
     crop=fields.get('current_crop') or {};planted=fields.get('planting_date') or {}
     if not isinstance(crop,dict) or not isinstance(planted,dict):return {'status':'unavailable','note':'Dados da cultura indisponíveis.'}
     crop_value=crop.get('value') or {};date_value=planted.get('value') or {}
-    if crop.get('status')!='confirmed' or not isinstance(crop_value,dict) or not crop_value.get('crop') or planted.get('status')!='confirmed' or not isinstance(date_value,dict):
-        return {'status':'unavailable','note':'Informe a cultura atual e a data exata de plantio para uma estimativa.'}
-    date_text=date_value.get('date')
-    try:
-        if not isinstance(date_text,str) or len(date_text)!=10 or datetime.strptime(date_text,'%Y-%m-%d').date()>datetime.now(timezone.utc).date():raise ValueError()
-    except ValueError:return {'status':'unavailable','note':'É necessária uma data exata de plantio já ocorrida.'}
+    if crop.get('status')!='confirmed' or not isinstance(crop_value,dict) or not crop_value.get('crop'):
+        return {'status':'unavailable','note':'Informe a cultura atual para uma estimativa.'}
+    date_text=date_value.get('date') if planted.get('status')=='confirmed' and isinstance(date_value,dict) else None
+    if date_text is not None:
+        try:
+            if not isinstance(date_text,str) or len(date_text)!=10 or datetime.strptime(date_text,'%Y-%m-%d').date()>datetime.now(timezone.utc).date():raise ValueError()
+        except ValueError:return {'status':'unavailable','note':'É necessária uma data exata de plantio já ocorrida.'}
+    declared=fields.get('current_season_stage') or {}
+    if not date_text and (not isinstance(declared,dict) or declared.get('status')!='confirmed' or not isinstance(declared.get('value'),dict) or not declared['value'].get('stage')):
+        return {'status':'unavailable','note':'Informe a data de plantio ou a fase atual para uma estimativa.'}
     gdd=None
     try:
         result=(engine or AgrionEngine()).run(task='Investigue fontes e estime a fase da cultura atual e janela de colheita, se houver dados suficientes.',context=context,mode='dashboard_stage')
         text=result.text.strip()
         if text.startswith('```') and text.endswith('```'):text=text.split('\n',1)[1].rsplit('```',1)[0]
-        gdd=_grounded_gdd(result.tool_evidence,context,date_text)
+        gdd=_grounded_gdd(result.tool_evidence,context,date_text) if date_text else None
         data=json.loads(text)
-        if not isinstance(data,dict) or set(data)!={'phase','reason','harvest_window','source_urls'}:raise ValueError()
+        required={'phase','reason','harvest_window','source_urls'};optional={'phase_confidence','phase_confidence_reason','harvest_confidence','harvest_confidence_reason'}
+        if not isinstance(data,dict) or not required.issubset(data) or set(data)-required-optional:raise ValueError()
         phase,reason,window,urls=data['phase'],data['reason'],data['harvest_window'],data['source_urls']
-        if not isinstance(phase,str) or not phase.strip() or len(phase)>240 or not isinstance(reason,str) or not reason.strip() or len(reason)>240 or (window is not None and (not isinstance(window,str) or len(window)>240)) or not isinstance(urls,list) or not 1<=len(urls)<=5:raise ValueError()
+        if (phase is not None and (not isinstance(phase,str) or not phase.strip() or len(phase)>240)) or not isinstance(reason,str) or not reason.strip() or len(reason)>240 or (window is not None and (not isinstance(window,str) or not window.strip() or len(window)>240)) or not (phase or window) or not isinstance(urls,list) or not 1<=len(urls)<=5:raise ValueError()
         evidence=json.dumps(result.tool_evidence,ensure_ascii=False)
         for url in urls:
             if not isinstance(url,str) or len(url)>1000 or urlsplit(url).scheme not in {'http','https'} or not urlsplit(url).hostname or url not in evidence:raise ValueError()
-        return {'status':'ready','phase':phase.strip(),'reason':reason.strip(),'harvest_window':window,'source_urls':urls,'gdd':gdd,'value_kind':'estimate','generated_at':datetime.now(timezone.utc).isoformat()}
+        def confidence(prefix):
+            amount=data.get(prefix+'_confidence');why=data.get(prefix+'_confidence_reason')
+            if type(amount) is not int or not 0<=amount<=100 or not isinstance(why,str) or not 1<=len(why.split())<=5 or len(why)>100:return None
+            return {'value':amount,'reason':why.strip()}
+        return {'status':'ready','phase':phase.strip() if phase else None,'reason':reason.strip(),'harvest_window':window,'phase_confidence':confidence('phase') if phase else None,'harvest_confidence':confidence('harvest') if window else None,'source_urls':urls,'search_entry_points':search_entries(result.tool_evidence),'gdd':gdd,'value_kind':'estimate','generated_at':datetime.now(timezone.utc).isoformat()}
     except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError):
         return {'status':'unavailable','gdd':gdd,'note':'Ainda não há evidência suficiente para estimar a fase com segurança.'}
+
+
+def news_section(context,engine=None):
+    try:
+        result=(engine or AgrionEngine()).run(task='Pesquise notícias recentes pertinentes à cultura e à região da propriedade.',context=context,mode='dashboard_news')
+        text=result.text.strip()
+        if text.startswith('```') and text.endswith('```'):text=text.split('\n',1)[1].rsplit('```',1)[0]
+        data=json.loads(text)
+        if not isinstance(data,dict) or set(data)!={'items'} or not isinstance(data['items'],list) or len(data['items'])>3:raise ValueError()
+        urls=set();search_text=[]
+        for entry in result.tool_evidence:
+            if isinstance(entry,dict) and entry.get('tool')=='pesquisar_internet':
+                if isinstance((entry.get('result') or {}).get('text'),str):search_text.append(entry['result']['text'])
+                for source in (entry.get('result') or {}).get('sources',[]):
+                    if isinstance(source,dict) and isinstance(source.get('url'),str):urls.add(source['url'])
+        items=[]
+        for item in data['items']:
+            if not isinstance(item,dict) or set(item)!={'title','summary','date','url'}:continue
+            title,summary,day,url=(item[k] for k in ('title','summary','date','url'))
+            if not isinstance(title,str) or not 1<=len(title)<=180 or not isinstance(summary,str) or not 1<=len(summary)<=300 or not isinstance(day,str) or len(day)!=10 or not isinstance(url,str) or url not in urls:continue
+            try:parsed_day=datetime.strptime(day,'%Y-%m-%d')
+            except ValueError:continue
+            if not any(day in text or parsed_day.strftime('%d/%m/%Y') in text for text in search_text):continue
+            items.append({'title':title,'summary':summary,'date':day,'url':url})
+        entries=search_entries(result.tool_evidence)
+        if not items or not entries:raise ValueError()
+        return {'status':'ready','items':items,'search_entry_points':entries,'generated_at':datetime.now(timezone.utc).isoformat()}
+    except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError):
+        return {'status':'unavailable','note':'Nenhuma notícia disponível no momento.'}
 
 
 def daily_section(context, engine=None):

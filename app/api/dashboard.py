@@ -8,7 +8,7 @@ from flask import Blueprint, jsonify, request
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from app.api.discovery import _origin_ok, _rate_limit
 from app.services.engine import AgrionEngine, EngineError
-from app.services.dashboard_data import forecast_section, rainfall_section, stage_section, daily_section, market_section
+from app.services.dashboard_data import forecast_section, rainfall_section, stage_section, daily_section, market_section, news_section
 from app.services.dashboard_monitor import evaluate as evaluate_monitor
 from app.services.tools import AnalysisTools
 
@@ -46,7 +46,7 @@ def bootstrap():
 
 @dashboard_blueprint.post('/api/dashboard/<section>')
 def section(section):
-    operations={'forecast':forecast_section,'rainfall':rainfall_section,'stage':stage_section,'daily':daily_section,'market-analysis':market_section}
+    operations={'forecast':forecast_section,'rainfall':rainfall_section,'stage':stage_section,'daily':daily_section,'market-analysis':market_section,'news':news_section}
     if section not in operations:return jsonify(error='not_found'),404
     if not _origin_ok():return jsonify(error='origin_rejected'),403
     if request.content_length is not None and request.content_length>50000:return jsonify(error='request_too_large'),413

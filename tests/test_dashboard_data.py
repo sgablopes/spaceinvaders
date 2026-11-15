@@ -69,6 +69,21 @@ class DashboardDataTest(unittest.TestCase):
         self.context['agricultural_profile']['fields']['planting_date']['value']['date']='2025-01'
         self.assertEqual(dashboard.stage_section(self.context,Engine())['status'],'unavailable')
 
+    def test_confidence_is_separate_and_rejects_invalid_values(self):
+        import json
+        class Engine:
+            def run(self,**kwargs):return SimpleNamespace(text=json.dumps({'phase':'Crescimento','reason':'Referência','harvest_window':'Dezembro','source_urls':['https://example.org/a'],'phase_confidence':75,'phase_confidence_reason':'Data conhecida','harvest_confidence':120,'harvest_confidence_reason':'Estimativa geral'}),tool_evidence=({'result':{'url':'https://example.org/a'}},))
+        result=dashboard.stage_section(self.context,Engine())
+        self.assertEqual(result['phase_confidence']['value'],75)
+        self.assertIsNone(result['harvest_confidence'])
+
+    def test_news_needs_search_url_date_and_suggestions(self):
+        class Engine:
+            def run(self,**kwargs):return SimpleNamespace(text='{"items":[{"title":"Notícia","summary":"Resumo","date":"2026-11-01","url":"https://example.org/a"}]}',tool_evidence=({'tool':'pesquisar_internet','result':{'text':'Publicado em 2026-11-01','sources':[{'url':'https://example.org/a'}],'search_entry_point':'<div>Busca</div>'}},))
+        result=dashboard.news_section(self.context,Engine())
+        self.assertEqual(result['status'],'ready')
+        self.assertEqual(result['items'][0]['date'],'2026-11-01')
+
     def test_gdd_requires_reference_from_another_tool_and_correct_location(self):
         reference='https://example.org/base'
         evidence=[{'tool':'fontes_agricolas','result':{'data':{'reference':reference}}},{'tool':'graus_dia_acumulados','arguments':{'location':{'latitude':-16.5,'longitude':-49.3},'start_date':'2025-01-01'},'result':{'ok':True,'data':{'result':{'indicators':{'I01':{'value':0,'unit':'degree_day_c','base_temperature_c':10,'base_temperature_reference':reference,'provenance':[{'provider':'NASA POWER'}]}}}}}}]

@@ -2,6 +2,7 @@
 from flask import Blueprint, jsonify, request
 from app.api.discovery import _origin_ok, _rate_limit
 from app.services.engine import AgrionEngine, EngineConfigurationError, EngineUnavailableError
+from app.services.dashboard_data import search_entries
 
 assistant_blueprint = Blueprint('assistant', __name__)
 
@@ -25,6 +26,6 @@ def message():
         return jsonify(error='not_configured'), 503
     except EngineUnavailableError:
         return jsonify(error='assistant_unavailable'), 503
-    response=jsonify(text=result.text, tools_used=list(result.tools_used))
+    response=jsonify(text=result.text, tools_used=list(result.tools_used), search_entry_points=search_entries(result.tool_evidence))
     response.headers['Cache-Control']='no-store'
     return response
