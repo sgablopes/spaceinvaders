@@ -14,7 +14,7 @@
 .agrion-home-picture img{object-fit:cover;object-position:center 55%}
 .agrion-home-waiting-photo{position:absolute;inset:0;overflow:hidden;border-radius:24px}
 .agrion-home-waiting-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(248,248,241,.7),rgba(248,248,241,.88))}
-.agrion-home-loading{position:relative;overflow:hidden;margin-top:26px;min-height:clamp(300px,45vh,440px);display:grid;place-items:center;text-align:center;padding:32px 20px}
+.agrion-home-loading{position:relative;overflow:hidden;margin-top:10px;min-height:clamp(300px,45vh,440px);display:grid;place-items:center;text-align:center;padding:32px 20px}
 .agrion-home-loading-content{position:relative;z-index:1;display:grid;justify-items:center;gap:10px}
 .agrion-home-spinner{width:60px;height:60px;border:6px solid #DDE9C4;border-top-color:#385C39;border-right-color:#8CB45D;border-radius:50%;animation:agrion-home-spin 1.2s linear infinite;margin-bottom:12px}
 .agrion-home-loading h1{font:800 clamp(24px,4vw,34px)/1.15 'Plus Jakarta Sans',sans-serif;letter-spacing:-.04em;margin:0;color:#29452B}
@@ -33,6 +33,8 @@
 .agrion-home-hero::after{content:"";position:absolute;inset:auto 0 0;height:53%;background:linear-gradient(transparent,#F8F8F1)}
 .agrion-home-content{position:relative;padding:0 2px}
 .agrion-home-kicker{color:#385C39;font-weight:800;font-size:14px;letter-spacing:.06em;margin:0 0 5px}
+.agrion-home-main-kicker{margin:26px 0 0}
+.agrion-home-main-copy{margin-top:24px}
 .agrion-home-content h1{font:800 clamp(27px,4vw,45px)/1.08 'Plus Jakarta Sans',sans-serif;letter-spacing:-.055em;max-width:700px;margin:0;color:#16231A}
 .agrion-home-subtitle{color:#506052;font-size:clamp(14px,2vw,19px);line-height:1.4;max-width:640px;margin:10px 0 26px}
 .agrion-home-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
