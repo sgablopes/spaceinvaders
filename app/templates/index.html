@@ -1243,6 +1243,7 @@
   <script src="{{ url_for('static', filename='property-flow.js') }}"></script>
   <script src="{{ url_for('static', filename='discovery-profile.js') }}"></script>
   <script src="{{ url_for('static', filename='discovery-repository.js') }}"></script>
+  <script src="{{ url_for('static', filename='discovery-manual.js') }}"></script>
   <script src="{{ url_for('static', filename='discovery.js') }}"></script>
   <script>
   'use strict';
@@ -1489,6 +1490,7 @@
       </div></div></main><div id="toastMount" aria-live="polite"></div>`;
   }
   function render(){const navs=[['home','Início','home'],['plan','Planejar','compare'],['map','Mapa','map'],['safra','Safra','journal']];
+    if(AgrionDiscovery.view()!=='none'){$('app').innerHTML=AgrionDiscovery.markup();AgrionDiscovery.afterRender();return}
     if(AgrionProperty.view()!=='welcome'){$('app').innerHTML=AgrionProperty.markup();renderToast();AgrionProperty.afterRender();return}
     if(state.page==='home'){$('app').innerHTML=welcome();renderToast();return}
     $('app').innerHTML=`<div class="app"><aside class="sidebar" aria-label="Navegação principal"><div class="brand"><div class="brand-logo">${icon('sprout',26)}</div><div><div class="brand-name">Agrion<span style="color:#A8C96C">.</span></div><div class="brand-tag">Cultive decisões melhores.</div></div></div><div class="navlabel">EXPERIÊNCIA</div>${navs.map(n=>navItem(...n)).join('')}<div class="navlabel">INTELIGÊNCIA</div>${navItem('intelligence','Inteligência','news')}${navItem('assistant','Assistente','brain')}<div class="side-bottom"><div class="demo-stamp">${icon('spark',16)} Protótipo interativo V3.1</div><p class="side-note">Dados agrícolas demonstrativos; sem integrações NASA ou IA.</p><button class="text-link" data-action="askReset" style="margin-top:11px">${icon('reset',15)} Reiniciar demonstração</button></div></aside>

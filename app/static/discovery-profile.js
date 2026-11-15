@@ -33,5 +33,20 @@
   function analysisInput(profile, property) {
     return {schema_version:'1.1.0',property_id:property.propertyId,geometry:property.geometry,area_hectares:property.areaHectares,agricultural_profile:{...profile.fields,...profile.additional_fields},data_quality:{pending_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='pending'),uncertain_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='uncertain'),unknown_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='unknown')}};
   }
-  window.AgrionProfile={ESSENTIAL,create,apply,analysisInput};
+  function applyManual(profile, entries) {
+    const next=structuredClone(profile),applied=[];
+    for(const entry of entries){
+      if(!ESSENTIAL.includes(entry.field)||!['confirmed','unknown'].includes(entry.status))continue;
+      const old=next.fields[entry.field];
+      const value=entry.status==='unknown'?null:entry.value;
+      if(entry.status==='confirmed'&&(!value||typeof value!=='object'))continue;
+      if(old.status===entry.status&&JSON.stringify(old.value)===JSON.stringify(value))continue;
+      const turnId=crypto.randomUUID();
+      next.fields[entry.field]={value,status:entry.status,source:'user_edit',evidence:[...old.evidence,{turn_id:turnId,excerpt:'Preenchimento manual'}].slice(-5),confidence:'high',unknown_reason:entry.status==='unknown'?'does_not_know':null,updated_at:new Date().toISOString(),revision:old.revision+1};
+      applied.push({field:entry.field,before:old,after:next.fields[entry.field],turn_id:turnId});
+    }
+    if(applied.length){next.revision++;next.updated_at=new Date().toISOString();}
+    return {profile:next,applied};
+  }
+  window.AgrionProfile={ESSENTIAL,create,apply,applyManual,analysisInput};
 })();
