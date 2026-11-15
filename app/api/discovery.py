@@ -162,8 +162,13 @@ def register_socket(app):
 
     @sock.route("/api/interview/live-session")
     def live(ws):
-        if not _origin_ok() or not _rate_limit("LIVE_SESSIONS", 8):
-            ws.send(json.dumps({"error": "rate_limited_or_origin_rejected"}))
+        if not _origin_ok():
+            app.logger.warning("Discovery Live origin rejected")
+            ws.send(json.dumps({"error": "origin_rejected"}))
+            return
+        if not _rate_limit("LIVE_SESSIONS", 8):
+            app.logger.warning("Discovery Live rate limit reached")
+            ws.send(json.dumps({"error": "live_rate_limited"}))
             return
         phase = "configuration"
         try:

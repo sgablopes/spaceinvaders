@@ -2,6 +2,7 @@ import logging
 import os
 
 from flask import Flask, jsonify, render_template, request
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.api.health import health_blueprint
 from app.api.discovery import discovery_blueprint, register_socket
@@ -9,6 +10,8 @@ from app.api.discovery import discovery_blueprint, register_socket
 
 def create_app(test_config=None):
     app = Flask(__name__)
+    # Only the local Nginx proxy can reach the published application port.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
     if test_config:
         app.config.update(test_config)
 

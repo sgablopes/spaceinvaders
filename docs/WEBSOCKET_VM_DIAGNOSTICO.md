@@ -34,6 +34,7 @@ location = /api/interview/live-session {
     proxy_pass http://127.0.0.1:8000;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
     proxy_read_timeout 360s;
@@ -42,3 +43,5 @@ location = /api/interview/live-session {
 ```
 
 Após qualquer edição autorizada do Nginx, validar `sudo nginx -t` antes de `sudo systemctl reload nginx`. Nunca cole tokens de acesso ou transcrições nos relatórios de erro.
+
+O Agrion limita por padrão a 8 tentativas Live por hora por IP e por processo. Tentativas repetidas de diagnóstico podem atingir esse limite. O cabeçalho `X-Forwarded-For` acima permite que o Flask identifique o visitante atrás do Nginx; sem ele, todos podem parecer vir do proxy local. A nova versão do aplicativo mostra `Limite de conexões por hora atingido` quando este for o motivo, em vez de sugerir uma falha genérica de WebSocket.
