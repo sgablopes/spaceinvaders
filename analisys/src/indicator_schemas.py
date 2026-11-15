@@ -9,6 +9,7 @@ from .vendor.intelligence.schemas.analysis import IndicatorMetadata as OriginalM
 from .vendor.intelligence.schemas.gdd import DailyTemperature, TemperatureC
 from .vendor.intelligence.schemas.rainfall import DailyPrecipitation
 from .vendor.intelligence.schemas import indicators as original
+from .faostat_schemas import PriceSelection, PriceObservation
 
 NonNegative = Annotated[float, Field(strict=True, ge=0)]
 SeriesKind = Literal["declared", "simulation", "forecast"]
@@ -106,9 +107,18 @@ class WaterBalanceRequest(ETcRequest):
 class MarginRequest(original.MarginRequest):
     area_ha: Annotated[float, Field(strict=True, gt=0)]
     expected_yield_t_per_ha: NonNegative
-    price_per_t: NonNegative
+    price_per_t: NonNegative | None = None
+    faostat_price: PriceSelection | None = None
     cost_per_ha: NonNegative
     cost_basis: Literal["declared_costs", "variable_costs"] = Field(default="declared_costs", description="Somente variable_costs permite denominar a saída margem bruta. Não inclui automaticamente custos ausentes.")
+
+    @model_validator(mode="after")
+    def price_mode(self):
+        if (self.price_per_t is None) == (self.faostat_price is None):
+            raise ValueError("Informe price_per_t ou faostat_price, exclusivamente.")
+        if self.faostat_price is not None and self.currency != "USD":
+            raise ValueError("Preço FAOSTAT automático requer moeda USD; custos também devem ser declarados em USD.")
+        return self
 
 
 class ResultBase(Schema):
@@ -198,6 +208,9 @@ class MarginResult(ResultBase):
     margin_per_ha: float
     margin_definition: Literal["revenue_less_declared_costs", "gross_margin_variable_costs"]
     assumptions_reference: str
+    price_per_t_used: float | None = None
+    faostat_price_record: PriceObservation | None = None
+    price_data_sha256: str | None = None
 
 
 class DrySpellIndicator(DrySpellResult, IndicatorMetadata):

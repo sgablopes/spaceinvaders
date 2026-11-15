@@ -39,10 +39,11 @@ python -B -m uvicorn src.main:app --host 127.0.0.1 --port 8001
 | `POST /v1/data/nasa-power/daily` | Temperaturas média/mínima/máxima, precipitação, umidade e radiação NASA POWER sob demanda |
 | `POST /v1/data/meteomatics/forecast` | Previsão UTC autenticada Meteomatics, dependente de credenciais e permissões |
 | `POST /v1/data/weather/forecast` | Previsão UTC com seleção auto/Meteomatics/Open-Meteo e alternativa automática sem mistura de valores |
+| `GET /v1/data/faostat/metadata`, `/countries`, `/items`, `/prices` | Snapshot de preços/índices FAOSTAT indexado; consultas por país/produto/período |
 | `POST /v1/simulations/aquacrop` | Safra real do motor AquaCrop-OSPy 3.0.12, Maize de sequeiro; produtividade simulada e balanço hídrico com hipóteses explícitas |
 | `POST /v1/analysis/climate` | GDD, chuva, sequência seca e triagem de exposição térmica; séries próprias ou NASA |
 | `POST /v1/analysis/water` | ETc padrão e variação hídrica com ETo/Kc e fluxos explícitos |
-| `POST /v1/analysis/economics` | Margem do cenário declarado (I14); I13 pendente |
+| `POST /v1/analysis/economics` | Margem I14 com preço declarado ou seleção histórica FAOSTAT USD/t, custos explícitos; I13 pendente |
 | `POST /v1/analysis/agronomy` | I09/I10/I11 pendentes, com 501 explícito |
 
 HWSD tem somente um README nesta pasta; raster e MDB não estão disponíveis. O Parquet ECOCROP e o contrato climático mencionado anteriormente também não estão no disco. O motor AquaCrop-OSPy e ETo NASA/FAO-56 estão implementados separadamente das tabelas locais; recomendações agronômicas e FAO oficial 7.3 continuam pendentes. Os caminhos de consulta anteriores foram preservados.
@@ -54,6 +55,14 @@ HWSD tem somente um README nesta pasta; raster e MDB não estão disponíveis. O
 Maize genérico, uma safra de sequeiro com plantio em `start_date`; `soil`, `initial_water`, `co2`, `management` e referências são obrigatórios. Clima pode vir da NASA histórica com ETo FAO-56 calculada ou de série diária própria já contendo ETo. Sem lacunas, colheita parcial disfarçada ou substituição de falhas por números. O solo de biblioteca é hipótese explícita, não consulta de solo geolocalizado. Uma execução concorrente por processo, até 300 dias, timeout padrão 90 segundos.
 
 **Não é a distribuição oficial FAO 7.3**, que apresentou erros internos na auditoria. Consulte [DELIVERY_AQUACROP.md](DELIVERY_AQUACROP.md) para o JSON completo, unidades, método ETo, versões fixadas, resultados reais da execução e pendências de solo/calibração. Produtividade simulada não equivale a produção observada ou recomendação agronômica. As abas de entrada da planilha foram preservadas, inclusive vazias.
+
+## FAOSTAT e preços históricos
+
+`GET /v1/data/faostat/prices?country_iso2=BR&item_code=56&start_year=2020&end_year=2024&element_code=5532` retorna preços de milho no Brasil em USD/t. Informe ISO2 ou código FAOSTAT de país (`area_code`) e produto explícitos. Catálogos em `/v1/data/faostat/countries`, `/items` e `/metadata`; não há tradução automática de produtos ou seleção de país histórico ambíguo.
+
+`frequency=annual` é o padrão; `monthly` permite `month=1..12`, e `all` mantém ambas separadas. `limit` até 500 e `offset` permitem paginação estável. A resposta preserva `value`, `value_text`, `unit`, `element`, `value_kind`, `flag`, códigos e todos os campos originais em `raw`. 5539 é índice, com unidade vazia; não é preço monetário. LCU/SLC não são convertidas em moeda ISO. Ausência retorna lista vazia e não zero.
+
+O I14 mantém `price_per_t` manual e aceita, alternativamente, `faostat_price` com país/produto/ano e referência explícita de cenário. Esse modo somente utiliza USD/t (5532), exige moeda USD e mantém `cost_per_ha` obrigatório. Não prevê preços nem usa preço como custo. Não há fallback para outro ano/produto/país. Exemplos completos e provas reais estão em [DELIVERY_FAOSTAT.md](DELIVERY_FAOSTAT.md).
 
 ## NASA POWER diário
 
@@ -230,7 +239,7 @@ As respostas de erro das rotas anteriores `/api/v1/...` usam `detail`, conforme 
 
 ## Armazenamento e atualização
 
-SQLite foi escolhido como índice local, sem servidor de banco adicional, pois as fontes presentes totalizam aproximadamente 2,4 MB e são essencialmente estáticas. As tabelas normalizadas das planilhas e CSVs são a origem prioritária; tabelas originais e auditorias também ficam disponíveis para rastreabilidade. Nenhuma inferência, conversão de unidade agronômica ou correção dos arquivos é aplicada na carga.
+SQLite foi escolhido para as quatro fontes agronômicas originais, de aproximadamente 2,4 MB, essencialmente estáticas. As tabelas normalizadas são prioritárias; originais e auditorias permanecem disponíveis. Não se corrigem os arquivos de entrada. O FAOSTAT de 214 MB tem outro índice SQLite **tipado**, `.runtime/faostat.sqlite3`, no mesmo volume, com importação em lotes e B-tree por país/produto/ano/período/elemento. Não usa os filtros JSON genéricos nem lê o CSV por request; não adiciona servidor de banco.
 
 O índice fica em `.runtime/catalog.sqlite3` no modo local, ou no volume `catalog` do projeto Compose. A carga ocorre no início, e as consultas usam conexões somente de leitura. As tabelas são particionadas logicamente por fonte/aba e indexadas por fonte, tabela e linha; buscas textuais e filtros JSON percorrem a tabela selecionada. Não é uma promessa de desempenho para bases muito maiores.
 
@@ -247,7 +256,7 @@ python -B -m unittest discover -s tests -v
 python -B tools/verify_external.py
 ```
 
-O primeiro comando roda 82 testes determinísticos: os 12 iniciais, 11 da entrega NASA, 8 da conexão automática aos indicadores, 14 do conector Meteomatics, 13 dos indicadores, 13 da meteorologia/GEOS-FP e 11 da simulação/ETo. O motor AquaCrop é executado realmente nos testes de safra, com clima controlado identificado como sintético; não há chamadas externas na suíte. As fontes locais são verificadas por contagens, relações, paginação, índice e hashes; os testes também cobrem erros, unidades, cache, conservação hídrica e contratos.
+O primeiro comando roda 95 testes: os 82 anteriores e 13 de FAOSTAT/I14, incluindo fontes locais reais e fixtures identificadas como sintéticas. O motor AquaCrop é executado realmente nos testes de safra com clima controlado; não há chamadas externas na suíte. Verificam-se contagens, relações, paginação, índices, hashes, unidades, falhas e contratos. O CSV grande precisa estar disponível localmente para a conferência real.
 
 O segundo comando é opcional e acessa a rede real. Grava `.runtime/gaez-live-check.json`, identificando expressamente que são consultas externas reais. Esse relatório não é uma recomendação agronômica.
 
@@ -264,3 +273,5 @@ Com o serviço já iniciado, `python -B tools/verify_running.py` valida o acesso
 `python -B tools/verify_weather.py` valida HTTP real para ambas as fontes no Brasil/EUA, I03/I05 e I08 com chuva real/demais entradas controladas. Também induz ausência de credenciais em um objeto isolado para demonstrar a alternativa real Open-Meteo, sem mudar o container/conta em execução. `python -B tools/probe_geos_fp.py` consulta metadados e três tempos de uma célula OPeNDAP, com limite de tamanho; é prova de viabilidade, sem conector operacional ou download de campo global.
 
 `python -B tools/verify_aquacrop.py` executa uma safra Maize no container com NASA histórica real e ETo calculada, verifica fechamento hídrico e reproduz a simulação com a mesma série explícita. As hipóteses de solo/cultura/manejo são identificadas como cenário. Salva `.runtime/aquacrop-http-check.json`; não há resultado fictício nem preenchimento da planilha original.
+
+`python -B tools/verify_faostat.py` verifica preços/índice reais no Brasil/EUA/Indonésia, ausência de ano e I14 com preço real e custos/rendimento explicitamente controlados. Mede a consulta HTTP e salva `.runtime/faostat-http-check.json`. O CSV está ignorado pelo Git por tamanho; forneça-o separadamente em `analisys/` antes de construir a imagem. Hashes e atualização atômica estão documentados em [DELIVERY_FAOSTAT.md](DELIVERY_FAOSTAT.md).

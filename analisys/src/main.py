@@ -17,6 +17,8 @@ from .open_meteo import OpenMeteo
 from .weather_service import Weather
 from .weather_routes import register_weather
 from .aquacrop_routes import register_aquacrop
+from .faostat_store import FaostatStore
+from .faostat_routes import register_faostat
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,13 +38,15 @@ class Page(BaseModel):
     items: list[Record]
 
 
-def create_app(root: Path = ROOT, database: Path | None = None, gaez=None, nasa=None, meteomatics=None, open_meteo=None):
+def create_app(root: Path = ROOT, database: Path | None = None, gaez=None, nasa=None, meteomatics=None, open_meteo=None, faostat=None):
     store = Store(root, database or root / ".runtime" / "catalog.sqlite3")
 
     @asynccontextmanager
     async def lifespan(app):
         store.prepare()
         app.state.store = store
+        app.state.faostat = faostat or FaostatStore(root)
+        app.state.faostat.prepare()
         app.state.analysis_root = root.resolve()
         app.state.gaez = gaez or Gaez()
         app.state.nasa = nasa or NasaPower()
@@ -57,24 +61,24 @@ def create_app(root: Path = ROOT, database: Path | None = None, gaez=None, nasa=
             app.state.meteomatics.close()
             app.state.open_meteo.close()
 
-    app = FastAPI(title="Agrion — Dados e análises agronômicas", version="1.5.0", lifespan=lifespan,
-                  description="Fontes locais, GAEZ v5, NASA POWER histórica e previsão Meteomatics/Open-Meteo. Quatro operações de análise preservadas. Simulação AquaCrop-OSPy 3.0.12 disponível em /v1/simulations/aquacrop: Maize de sequeiro com hipóteses explícitas, NASA/FAO-56 ou clima próprio; não é FAO oficial 7.3 nem produtividade observada.")
+    app = FastAPI(title="Agrion — Dados e análises agronômicas", version="1.6.0", lifespan=lifespan,
+                  description="Fontes agronômicas, FAOSTAT PP histórico indexado, GAEZ v5, NASA POWER, Meteomatics/Open-Meteo e AquaCrop-OSPy 3.0.12. Quatro operações de análise preservadas. I14 aceita preço histórico FAOSTAT USD/tonne explicitamente selecionado; custos não são inferidos. Simulações e cenários não são observações de produtividade nem previsões de preço.")
 
     @app.get("/health", tags=["serviço"])
     def health(request: Request) -> dict[str, Any]:
-        return {"status": "ok", "datasets": len(request.app.state.store.datasets()),
+        return {"status": "ok", "datasets": len(request.app.state.store.datasets()) + int(request.app.state.faostat.configured),
                 "gaez": "external_on_demand_not_checked"}
 
     @app.get("/api/v1/datasets", tags=["catálogo"])
     def datasets(request: Request) -> dict[str, Any]:
-        return {"local": request.app.state.store.datasets(),
+        return {"local": [*request.app.state.store.datasets(), *([request.app.state.faostat.metadata()] if request.app.state.faostat.configured else [])],
                 "external": [{"id": "gaez", "version": "5", "endpoint": "/api/v1/gaez/layers"},
                              {"id": "nasa_power", "endpoint": "/v1/data/nasa-power/daily", "method": "POST"},
                              {"id": "meteomatics", "endpoint": "/v1/data/meteomatics/forecast", "method": "POST",
                               "credentials_configured": request.app.state.meteomatics.configured},
                              {"id": "weather_forecast", "endpoint": "/v1/data/weather/forecast", "method": "POST",
                               "providers": ["Meteomatics", "Open-Meteo"]}],
-                "unavailable": ["HWSD: raster e banco MDB não estão nesta pasta."]}
+                "unavailable": ["HWSD: raster e banco MDB não estão nesta pasta."] + ([] if request.app.state.faostat.configured else ["FAOSTAT: forneça CSV e planilha de países."])}
 
     def source_router(dataset):
         router = APIRouter(prefix=f"/api/v1/{dataset}", tags=[dataset])
@@ -159,6 +163,7 @@ def create_app(root: Path = ROOT, database: Path | None = None, gaez=None, nasa=
     register_meteomatics(app)
     register_weather(app)
     register_aquacrop(app)
+    register_faostat(app)
     return app
 
 

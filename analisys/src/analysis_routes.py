@@ -46,16 +46,18 @@ def analysis_capabilities():
                     "I05": ["Somente contagem de exposição a limites declarados ou gerais ECOCROP; não diagnostica dano por estádio."],
                     "I07": ["ETc=Kc×ETo sob condições padrão. ETo e escolha do Kc devem ser fornecidas; sem cálculo de ETo."],
                     "I08": ["Variação contábil ΔS; fluxos/perdas e ETo explícitos. Não estima estoque real do solo ou irrigação recomendada."],
-                    "I14": ["Cenário de receita menos custos informados; não prevê preço/rendimento ou lucro líquido."]}[item["id"]]
+                    "I14": ["Preço declarado ou observação FAOSTAT USD/tonne selecionada explicitamente. Custos continuam informados; não prevê preço/rendimento ou lucro líquido."]}[item["id"]]
                 item["modes"] = ["caller_supplied", "nasa_power", "automatic_forecast_meteomatics_open_meteo"] if item["id"] in {"I03", "I05"} else ["explicit_inputs_scenario"]
                 if item["id"] == "I08":
                     item["modes"] += ["nasa_power_precipitation", "automatic_forecast_precipitation"]
+                if item["id"] == "I14":
+                    item["modes"] += ["faostat_historical_usd_price"]
         if group["id"] == "analyze_climate":
             group["when_to_use"] = "GDD, chuva, sequências secas e triagem de exposição térmica, sem inferir dano ou risco agronômico."
         if group["id"] == "analyze_water":
             group["when_to_use"] = "Calcular ETc padrão e variação hídrica com ETo, Kc e fluxos explícitos, sem inferir estoque de água no solo."
         if group["id"] == "analyze_economics":
-            group["when_to_use"] = "Calcular margem com área, produtividade, preço e custos declarados. I13 produtividade permanece pendente."
+            group["when_to_use"] = "Calcular margem com área/rendimento/custos declarados e preço próprio ou FAOSTAT histórico explicitamente selecionado. I13 permanece pendente."
         group["available"] = any(i["available"] for i in group["supported_indicators"])
         group["implementation_status"] = "implemented" if all(i["available"] for i in group["supported_indicators"]) else "partial" if group["available"] else "planned"
     return groups
@@ -103,9 +105,9 @@ def register_analysis(app):
         return run("agronomy", payload, request.state.request_id, request.app.state.nasa)
 
     @router.post("/economics", response_model=EconomicsResponse, operation_id="analyze_economics", summary="Margem do cenário econômico declarado",
-        description="I14 calcula produção=área×rendimento, receita=produção×preço e margem=receita−custos informados. Margem bruta só com custos declarados variáveis; sem câmbio ou custos presumidos. Não prevê produtividade/preços nem lucro líquido. I13 continua pendente de método/dados validados.")
+        description="I14 reutiliza área×rendimento×preço menos custos declarados. Informe price_per_t ou faostat_price exato, exclusivamente. FAOSTAT somente USD/tonne, moeda USD e referência explícita do uso histórico no cenário; custos/ha em USD continuam obrigatórios, sem câmbio. Índices/LCU/SLC não viram preço financeiro. Não prevê produtividade/preços ou lucro líquido. I13 permanece pendente.")
     def economics(payload: EconomicsRequest, request: Request):
-        return run("economics", payload, request.state.request_id, request.app.state.nasa, request.app.state.store, request.app.state.weather)
+        return run("economics", payload, request.state.request_id, request.app.state.nasa, request.app.state.store, request.app.state.weather, request.app.state.faostat)
 
     app.include_router(router)
     legacy = APIRouter(include_in_schema=False)
@@ -127,7 +129,7 @@ def register_analysis(app):
                 raise ServiceError(501, "INDICATOR_NOT_IMPLEMENTED", "Indicador previsto, ainda não implementado.", details={"operation": item.id})
             group, field, group_model = implemented[item.indicator_id]
             selected = group_model.model_validate({"include": [item.indicator_id], "inputs": {field: payload.model_dump(mode="json")}})
-            answer = run(group, selected, request.state.request_id, request.app.state.nasa, request.app.state.store, request.app.state.weather)
+            answer = run(group, selected, request.state.request_id, request.app.state.nasa, request.app.state.store, request.app.state.weather, request.app.state.faostat)
             data = answer.result.indicators[item.indicator_id].model_dump()
             metadata = {k: data.pop(k) for k in ("status", "method", "provenance", "quality", "limitations", "traceability", "generated_at")}
             return CalculationResponse(operation=item.id, result=data, **metadata)

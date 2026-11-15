@@ -7,3 +7,5 @@ __pycache__/
 .env
 .env.*
 !.env.example
+# Base FAOSTAT volumosa fornecida separadamente; conservar o original local.
+/Prices_E_All_Data_(Normalized).csv

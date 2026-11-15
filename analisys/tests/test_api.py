@@ -42,10 +42,13 @@ class ApiTests(unittest.TestCase):
     def test_catalog_and_health(self):
         self.assertEqual(self.client.get("/health").json()["status"], "ok")
         data = self.client.get("/api/v1/datasets").json()
-        self.assertEqual(len(data["local"]), 4)
+        self.assertEqual(len(data["local"]), 5)
         self.assertEqual(data["external"][0]["id"], "gaez")
         for item in data["local"]:
-            self.assertEqual(item["sha256"], self.before[item["file"]])
+            if item["id"] == "faostat_prices":
+                self.assertEqual(item["records"], 1319583)
+            else:
+                self.assertEqual(item["sha256"], self.before[item["file"]])
 
     def test_ecocrop_values_and_search_synonyms(self):
         page = self.client.get("/api/v1/ecocrop/requisitos", params={"filtros": json.dumps({"crop_id": "ECO_289"})}).json()
