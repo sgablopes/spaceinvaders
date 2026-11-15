@@ -20,7 +20,7 @@ Os diretórios serão criados conforme houver conteúdo:
 
 A API está implementada em FastAPI, com SQLite das fontes locais, FAOSTAT de preços indexado, GAEZ v5 externa, NASA POWER e previsões Meteomatics/Open-Meteo. Leia o [contrato completo e os exemplos de consumo](docs/API.md).
 
-Antes do build, forneça os originais `Prices_E_All_Data_(Normalized).csv` e `Agrion_Codigos_Paises_FAOSTAT.xlsx` em `analisys/`. O CSV de 214 MB está ignorado pelo Git e deve ser distribuído separadamente; não é baixado/substituído automaticamente. Os hashes da edição validada estão em [DELIVERY_FAOSTAT.md](docs/DELIVERY_FAOSTAT.md).
+O build usa `data/faostat.sqlite3.gz` e seu manifesto, distribuídos pelo Git (25,95 MiB compactados). Não é necessário transferir o CSV para a VM: ao iniciar, o serviço valida e instala o banco no volume existente. A planilha de países e as demais bases também estão versionadas. Configure `analisys/.env` na VM e reconstrua somente o Compose de análises após o pull. O CSV original permanece preservado localmente para futuras atualizações; procedimento em [DELIVERY_FAOSTAT.md](docs/DELIVERY_FAOSTAT.md).
 
 Na raiz do repositório:
 
@@ -86,7 +86,7 @@ Para trabalho simultâneo com o desenvolvedor principal, use um checkout ou work
 
 ## Estado e pendências
 
-- API de consulta, índices locais, container isolado e 95 testes aprovados, incluindo fontes agronômicas, FAOSTAT/economia, NASA, indicadores, meteorologia e AquaCrop-OSPy.
+- API de consulta, índices locais, container isolado e 101 testes aprovados, incluindo distribuição do banco FAOSTAT sem CSV, fontes agronômicas, economia, NASA, indicadores, meteorologia e AquaCrop-OSPy.
 - Container saudável em `127.0.0.1:8001`; consultas HTTP locais e GAEZ real para milho e soja validadas. Veja [o registro de validação](docs/VALIDACAO.md).
 - Unidades/classes GAEZ exigem interpretação específica quando ausentes do GeoTIFF.
 - NASA POWER preservada. Meteomatics autenticada e Open-Meteo validadas por HTTP no Brasil/EUA; fallback sem mistura de provedores, também nos indicadores forecast.

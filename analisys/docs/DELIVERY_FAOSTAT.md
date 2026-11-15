@@ -32,21 +32,33 @@ O CSV é percorrido em fluxo, com lotes de 10.000 observações. Dimensões de p
 
 A carga valida cabeçalhos, códigos, anos, números finitos e consistência de rótulos por código. O valor textual original permanece junto ao valor numérico, evitando perder a representação/precisão da fonte. A coluna `raw` da resposta reconstitui os 15 campos originais; os apóstrofos de proteção de códigos e os zeros iniciais de M49/CPC permanecem nela. Fora de `raw`, remove-se somente o apóstrofo inicial dos campos de código, mantendo o tipo texto.
 
-Na inicialização com os dois arquivos presentes, compara-se a impressão digital SHA-256/versão com o índice. Sem alteração, reutiliza-o; quando muda, constrói outro arquivo temporário e só substitui o índice após sucesso e nova verificação dos hashes. Uma falha não publica carga parcial nem destrói o índice anterior. O serviço utiliza um worker, como já configurado. Sem os arquivos FAOSTAT, as outras fontes continuam disponíveis e as consultas FAOSTAT retornam 503 explícito.
+Na inicialização com os dois arquivos originais presentes, compara-se a impressão digital SHA-256/versão com o índice. Sem alteração, reutiliza-o; quando muda, constrói outro arquivo temporário e só substitui o índice após sucesso e nova verificação dos hashes. Sem os originais, instala o snapshot compactado descrito abaixo. Uma falha não publica carga parcial nem destrói o índice anterior. O serviço utiliza um worker, como já configurado. Sem originais nem snapshot, as outras fontes continuam disponíveis e as consultas FAOSTAT retornam 503 explícito.
 
 Medição local desta entrega: carga completa aproximadamente **33,3 s**, índice **119.517.184 bytes** (cerca de 114 MiB). Em 50 consultas locais Brasil/milho/USD, 2020–2024: mediana **1,20 ms**, p95 **1,61 ms**. Em 30 consultas HTTP no container: mediana **7,63 ms**. São medições do ambiente desta sessão, sem promessa de SLA ou concorrência alta. Evidências em `.runtime/faostat-performance.json` e `.runtime/faostat-http-check.json`.
 
 ### Distribuição e atualização
 
-O CSV de cerca de 204 MiB foi mantido original e está ignorado pelo Git, pois excede o limite normal de arquivos grandes do GitHub. **Ele deve ser fornecido separadamente em `analisys/` em cada checkout/ambiente que fizer o build.** Não há download automático ou troca silenciosa por outra edição. A planilha de correspondências é pequena e deve acompanhar a entrega autorizada. O Dockerfile inclui o CSV e a planilha na imagem, e o índice derivado permanece no volume, fora do Git.
+O CSV de cerca de 204 MiB permanece original, fora do Git, como fonte de atualização local. A distribuição para a VM usa **`analisys/data/faostat.sqlite3.gz` (27.210.136 bytes; 25,95 MiB)** e **`faostat.manifest.json`**, preparados somente a partir do índice FAOSTAT validado. Esses dois arquivos são destinados ao versionamento Git, com a planilha de países já versionada. Não contêm credenciais nem dados da aplicação principal. Não exigem Git LFS ou transferência manual de CSV. O Dockerfile inclui o snapshot e a planilha, sem copiar o CSV.
 
-Para atualizar, forneça os novos arquivos autorizados, guarde as versões anteriores no fluxo da equipe e reconstrua o serviço:
+Na ausência dos dois originais, o serviço lê o manifesto, confere versão do esquema, hashes SHA-256 do pacote e banco, tamanho descompactado limitado, `PRAGMA quick_check`, procedência das fontes registrada no banco e hash da planilha quando presente. A instalação no volume `.runtime` é atômica. Um banco válido é reutilizado; uma nova edição versionada substitui somente o índice FAOSTAT após validação, sem remover o volume. Corrupção/incompatibilidade aborta a inicialização com erro explícito, preservando o banco anterior; não continua silenciosamente com outra edição. Os hashes do manifesto verificam integridade, não substituem confiança e revisão do repositório.
+
+**Deploy na VM:** depois que esta entrega estiver commitada e enviada, obtenha a branch/versão que a contém em um checkout próprio de análises. Não troque a branch de um checkout em uso pelo desenvolvedor principal. `git pull` traz o pacote, mas não reconstrói o container. A partir da raiz desse checkout:
 
 ```sh
+git pull --ff-only
 docker compose --env-file analisys/.env -f analisys/compose.yaml up -d --build --wait --wait-timeout 120
+curl -f http://127.0.0.1:8001/v1/data/faostat/metadata
 ```
 
-O índice novo é criado no início; não há recarga durante requisições. Não remova o volume para atualizar. Verifique os hashes/metadados expostos após cada troca de snapshot. O arquivo de preços local não foi modificado, compactado ou substituído.
+O `.env` continua configurado separadamente na VM; não há variáveis novas. Excel/ZIP das outras bases já acompanham o Git, e `catalog.sqlite3` é reconstruído automaticamente. Nenhuma alteração no Compose principal ou no banco da aplicação é necessária.
+
+**Atualização da base pelo desenvolvedor de análises:** forneça CSV e planilha originais autorizados em `analisys/`, guarde as versões anteriores no fluxo da equipe e execute, a partir de `analisys/`:
+
+```sh
+python -B tools/package_faostat.py
+```
+
+O comando valida/reutiliza a carga original e usa backup consistente SQLite antes de gerar o pacote e seu manifesto. Revise/teste os dois arquivos juntos e versione-os mediante autorização, incluindo a planilha se mudou. Então siga o deploy acima. Não há recarga durante requisições. Não remova o volume para atualizar. O CSV original não é modificado ou substituído. A compactação versionada é do banco derivado, sem perder campos brutos, precisão textual ou procedência.
 
 ## Países e produtos
 
@@ -133,6 +145,8 @@ python -B -m unittest discover -s tests -q
 python -B tools/verify_faostat.py
 ```
 
-**95 testes aprovados**: os 82 anteriores e 13 de FAOSTAT, incluindo fixtures explicitamente sintéticas, códigos/zeros iniciais, unidades, flags, zero/null/ausência, períodos, ambiguidades históricas, paginação, plano de consulta indexado, reuso/atualização atômica, preservação de fontes reais e integração I14/legado. O script HTTP gera `.runtime/faostat-http-check.json`, sem credenciais e fora do Git.
+**101 testes aprovados**: os 82 anteriores, 13 de FAOSTAT e seis de distribuição do snapshot, incluindo fixtures explicitamente sintéticas, códigos/zeros iniciais, unidades, flags, zero/null/ausência, períodos, ambiguidades históricas, paginação, plano de consulta indexado, reuso/atualização atômica, preservação de fontes reais e integração I14/legado. Os novos testes verificam primeira instalação sem CSV, reuso, atualização sobre volume existente, pacote corrompido preservando o banco anterior, tamanho/hash/esquema, divergência da planilha e recuperação de índice danificado. Sem o CSV original, somente a comparação independente da linha original é ignorada.
+
+Foi validado também o banco completo na imagem Docker, com raiz somente leitura e volume temporário vazio: CSV ausente, instalação automática de 1.319.583 registros e consulta Brasil/milho/2024 = 142,20 USD/t. O Compose de análises ficou saudável e o script HTTP confirmou Brasil, EUA, Indonésia, índice distinto de preço e I14 com custo/rendimento controlados. O script HTTP gera `.runtime/faostat-http-check.json`, sem credenciais e fora do Git.
 
 Persistem: custos de produção e câmbio/inflação não integrados; preço atual/futuro não previsto; qualidade e representatividade locais não comprovadas; tradução/mapeamento de produtos não automatizados. A aplicação principal não foi modificada. O desenvolvedor principal deve consumir estes contratos, manter a unidade e o ano do preço visíveis e distinguir referências históricas de hipóteses financeiras.

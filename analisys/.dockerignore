@@ -5,7 +5,10 @@ tests
 tools
 docs
 outputs
-data
+data/*
+!data/faostat.sqlite3.gz
+!data/faostat.manifest.json
 .git
 .env*
+/Prices_E_All_Data_(Normalized).csv
 *.md

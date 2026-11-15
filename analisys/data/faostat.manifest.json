@@ -1,0 +1,12 @@
+{
+  "fingerprint": {
+    "schema": 2,
+    "files": {
+      "Prices_E_All_Data_(Normalized).csv": "976728a369cfe38c143681f826d73cec5612c7cdc11da35aef3a703501cdb37f",
+      "Agrion_Codigos_Paises_FAOSTAT.xlsx": "69f5b4e729cf0a88f3bb28f385764279878e42558f68ab23dd7f26754b831fbc"
+    }
+  },
+  "database_bytes": 119517184,
+  "database_sha256": "705366ccc1843d2e75726c367b99a594a7cd9d957d3fed120d8b534f0f059c84",
+  "gzip_sha256": "27a64f183668fb032c43b1955250a44b27c29c1600cb2c3525d772fdbaa2824b"
+}

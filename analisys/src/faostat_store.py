@@ -55,12 +55,21 @@ class FaostatStore:
 
     @property
     def configured(self):
+        return self.originals_available or all((self.root / name).is_file() for name in (
+            "data/faostat.sqlite3.gz", "data/faostat.manifest.json"))
+
+    @property
+    def originals_available(self):
         return all((self.root / name).is_file() for name in (CSV, COUNTRIES))
 
     def prepare(self):
         if not self.configured:
             return
         with LOCK:
+            if not self.originals_available:
+                from .faostat_snapshot import restore
+                restore(self)
+                return
             fingerprint = {"schema": VERSION, "files": {name: sha256(self.root / name) for name in (CSV, COUNTRIES)}}
             if self.database.exists():
                 try:
@@ -117,7 +126,7 @@ class FaostatStore:
 
     def metadata(self):
         if self._metadata is None:
-            raise ServiceError(503, "FAOSTAT_FILES_MISSING", "FAOSTAT indisponível: forneça os dois arquivos originais e reinicie o serviço.")
+            raise ServiceError(503, "FAOSTAT_FILES_MISSING", "FAOSTAT indisponível: forneça o snapshot versionado ou os dois arquivos originais e reinicie o serviço.")
         return self._metadata
 
     def _countries(self, con):

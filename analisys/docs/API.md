@@ -256,7 +256,7 @@ python -B -m unittest discover -s tests -v
 python -B tools/verify_external.py
 ```
 
-O primeiro comando roda 95 testes: os 82 anteriores e 13 de FAOSTAT/I14, incluindo fontes locais reais e fixtures identificadas como sintéticas. O motor AquaCrop é executado realmente nos testes de safra com clima controlado; não há chamadas externas na suíte. Verificam-se contagens, relações, paginação, índices, hashes, unidades, falhas e contratos. O CSV grande precisa estar disponível localmente para a conferência real.
+O primeiro comando roda 101 testes: os 82 anteriores, 13 de FAOSTAT/I14 e seis de distribuição do banco compactado, incluindo fontes locais reais e fixtures identificadas como sintéticas. O motor AquaCrop é executado realmente nos testes de safra com clima controlado; não há chamadas externas na suíte. Verificam-se contagens, relações, paginação, índices, hashes, unidades, falhas e contratos. Sem o CSV, somente a comparação independente da linha original é marcada como ignorada; os testes do snapshot continuam executáveis.
 
 O segundo comando é opcional e acessa a rede real. Grava `.runtime/gaez-live-check.json`, identificando expressamente que são consultas externas reais. Esse relatório não é uma recomendação agronômica.
 
@@ -274,4 +274,4 @@ Com o serviço já iniciado, `python -B tools/verify_running.py` valida o acesso
 
 `python -B tools/verify_aquacrop.py` executa uma safra Maize no container com NASA histórica real e ETo calculada, verifica fechamento hídrico e reproduz a simulação com a mesma série explícita. As hipóteses de solo/cultura/manejo são identificadas como cenário. Salva `.runtime/aquacrop-http-check.json`; não há resultado fictício nem preenchimento da planilha original.
 
-`python -B tools/verify_faostat.py` verifica preços/índice reais no Brasil/EUA/Indonésia, ausência de ano e I14 com preço real e custos/rendimento explicitamente controlados. Mede a consulta HTTP e salva `.runtime/faostat-http-check.json`. O CSV está ignorado pelo Git por tamanho; forneça-o separadamente em `analisys/` antes de construir a imagem. Hashes e atualização atômica estão documentados em [DELIVERY_FAOSTAT.md](DELIVERY_FAOSTAT.md).
+`python -B tools/verify_faostat.py` verifica preços/índice reais no Brasil/EUA/Indonésia, ausência de ano e I14 com preço real e custos/rendimento explicitamente controlados. Mede a consulta HTTP e salva `.runtime/faostat-http-check.json`. O snapshot SQLite compactado e seu manifesto acompanham o Git; a VM não exige CSV. O serviço valida hashes, esquema e integridade antes da instalação atômica no volume. Atualização e deploy estão em [DELIVERY_FAOSTAT.md](DELIVERY_FAOSTAT.md).

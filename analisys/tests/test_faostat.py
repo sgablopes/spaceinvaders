@@ -229,6 +229,7 @@ class FaostatTests(unittest.TestCase):
 
 
 class RealFaostatTests(unittest.TestCase):
+    @unittest.skipUnless((ROOT / CSV).exists(), "Conferência independente requer CSV original; snapshot é validado nos testes de distribuição.")
     def test_real_sources_hashes_coverage_and_selected_csv_row(self):
         before = {name: sha256(ROOT / name) for name in (CSV, COUNTRIES)}
         store = FaostatStore(ROOT)
