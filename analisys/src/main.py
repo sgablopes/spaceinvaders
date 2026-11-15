@@ -13,6 +13,9 @@ from .nasa_routes import register_nasa
 from .analysis_routes import register_analysis
 from .meteomatics import Meteomatics
 from .meteomatics_routes import register_meteomatics
+from .open_meteo import OpenMeteo
+from .weather_service import Weather
+from .weather_routes import register_weather
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -32,7 +35,7 @@ class Page(BaseModel):
     items: list[Record]
 
 
-def create_app(root: Path = ROOT, database: Path | None = None, gaez=None, nasa=None, meteomatics=None):
+def create_app(root: Path = ROOT, database: Path | None = None, gaez=None, nasa=None, meteomatics=None, open_meteo=None):
     store = Store(root, database or root / ".runtime" / "catalog.sqlite3")
 
     @asynccontextmanager
@@ -42,15 +45,18 @@ def create_app(root: Path = ROOT, database: Path | None = None, gaez=None, nasa=
         app.state.gaez = gaez or Gaez()
         app.state.nasa = nasa or NasaPower()
         app.state.meteomatics = meteomatics or Meteomatics()
+        app.state.open_meteo = open_meteo or OpenMeteo()
+        app.state.weather = Weather(app.state.meteomatics, app.state.open_meteo)
         try:
             yield
         finally:
             app.state.gaez.close()
             app.state.nasa.close()
             app.state.meteomatics.close()
+            app.state.open_meteo.close()
 
-    app = FastAPI(title="Agrion — Dados e análises agronômicas", version="1.2.0", lifespan=lifespan,
-                  description="Fontes locais, GAEZ v5, NASA POWER histórica e Meteomatics forecast autenticado. Quatro operações de análise previstas; I01 GDD e I02 chuva funcionam com séries próprias ou NASA automática. Previsões dependem de credenciais e acesso do plano Meteomatics; não se misturam ao histórico.")
+    app = FastAPI(title="Agrion — Dados e análises agronômicas", version="1.4.0", lifespan=lifespan,
+                  description="Fontes locais, GAEZ v5, NASA POWER histórica e previsão Meteomatics com alternativa Open-Meteo. Quatro operações de análise preservadas. Previsões identificam fonte e limitações; não se misturam ao histórico.")
 
     @app.get("/health", tags=["serviço"])
     def health(request: Request) -> dict[str, Any]:
@@ -63,7 +69,9 @@ def create_app(root: Path = ROOT, database: Path | None = None, gaez=None, nasa=
                 "external": [{"id": "gaez", "version": "5", "endpoint": "/api/v1/gaez/layers"},
                              {"id": "nasa_power", "endpoint": "/v1/data/nasa-power/daily", "method": "POST"},
                              {"id": "meteomatics", "endpoint": "/v1/data/meteomatics/forecast", "method": "POST",
-                              "credentials_configured": request.app.state.meteomatics.configured}],
+                              "credentials_configured": request.app.state.meteomatics.configured},
+                             {"id": "weather_forecast", "endpoint": "/v1/data/weather/forecast", "method": "POST",
+                              "providers": ["Meteomatics", "Open-Meteo"]}],
                 "unavailable": ["HWSD: raster e banco MDB não estão nesta pasta."]}
 
     def source_router(dataset):
@@ -147,6 +155,7 @@ def create_app(root: Path = ROOT, database: Path | None = None, gaez=None, nasa=
     register_nasa(app)
     register_analysis(app)
     register_meteomatics(app)
+    register_weather(app)
     return app
 
 

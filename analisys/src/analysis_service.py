@@ -9,7 +9,10 @@ from .nasa_power import NasaError
 from .nasa_schemas import DailyRequest
 from .analysis_schemas import (
     ClimateResponse, IntegratedGDDResponse, IntegratedRainfallResponse, GDDIndicator, RainfallIndicator,
+    WaterResponse, EconomicsResponse,
 )
+from . import indicators as new_indicators
+from .indicator_schemas import DrySpellIndicator, ThermalIndicator, ETcIndicator, WaterBalanceIndicator, MarginIndicator
 from .vendor.intelligence.core.errors import ServiceError
 from .vendor.intelligence.indicators.analysis import analyze, BINDINGS
 from .vendor.intelligence.indicators.gdd_service import build_gdd_response
@@ -100,14 +103,18 @@ def rainfall(nasa, payload, request_id):
     return source_metadata(computed, payload, weather, rain=True)
 
 
-def run(group, payload, request_id, nasa):
-    if group != "climate":
-        return analyze(group, payload, request_id)
+def run(group, payload, request_id, nasa, store=None, meteomatics=None):
     # Valida as consultas selecionadas antes de qualquer chamada externa.
     if "I01" in payload.include and payload.inputs.gdd is not None and payload.inputs.gdd.daily_temperatures is None:
         query(payload.inputs.gdd, ["T2M_MIN", "T2M_MAX"])
     if "I02" in payload.include and payload.inputs.rainfall is not None and payload.inputs.rainfall.daily_precipitation is None:
         query(payload.inputs.rainfall, ["PRECTOTCORR"], rain=True)
     bindings = {**BINDINGS, "I01": ("gdd", partial(gdd, nasa), GDDIndicator),
-                "I02": ("rainfall", partial(rainfall, nasa), RainfallIndicator)}
-    return analyze(group, payload, request_id, bindings=bindings, response_model=ClimateResponse)
+                "I02": ("rainfall", partial(rainfall, nasa), RainfallIndicator),
+                "I03": ("dry_spell", partial(new_indicators.dry_spell, nasa, meteomatics), DrySpellIndicator),
+                "I05": ("thermal_stress", partial(new_indicators.thermal, nasa, meteomatics, store), ThermalIndicator),
+                "I07": ("crop_evapotranspiration", partial(new_indicators.etc, store), ETcIndicator),
+                "I08": ("water_balance", partial(new_indicators.balance, nasa, meteomatics, store), WaterBalanceIndicator),
+                "I14": ("crop_margin", new_indicators.margin, MarginIndicator)}
+    models = {"climate": ClimateResponse, "water": WaterResponse, "economics": EconomicsResponse}
+    return analyze(group, payload, request_id, bindings=bindings, response_model=models.get(group))

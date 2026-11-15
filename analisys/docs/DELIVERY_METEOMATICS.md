@@ -1,5 +1,7 @@
 # Meteomatics — integração de previsões meteorológicas
 
+> Registro da etapa inicial. A validação autenticada foi concluída posteriormente, e a alternativa Open-Meteo foi adicionada. Consulte o estado atual, as provas reais e o consumo recomendado em [DELIVERY_WEATHER.md](DELIVERY_WEATHER.md). As pendências de credenciais abaixo descrevem o momento desta etapa inicial.
+
 - **Categoria:** INT forecast, conforme o planejamento AGRION.
 - **Serviço:** mesma API FastAPI e container de `analisys/`, sem alterações no Flask.
 - **Situação:** conector, autenticação, endpoint, schemas e testes implementados. **Previsões reais autenticadas NÃO VALIDADAS: credenciais não disponíveis neste ambiente.** A consulta real sem autenticação confirmou HTTP 401 do provedor.

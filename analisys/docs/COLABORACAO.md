@@ -50,3 +50,5 @@ A branch `analisys` contém a API FastAPI, índice SQLite das fontes locais, cli
 A continuação incorpora NASA POWER e conecta automaticamente seus dados a I01/I02 no mesmo container e Swagger, com núcleo anterior versionado. As quatro operações de análise e as pendências estão em [DELIVERY_AUTOMATIC_INDICATORS.md](DELIVERY_AUTOMATIC_INDICATORS.md). As continuações posteriores ao commit inicial ainda precisam de commit/push quando solicitados.
 
 O conector Meteomatics de forecast também pertence à mesma API; não altera o modo histórico NASA. Seu consumo e a pendência de credenciais/permissões estão em [DELIVERY_METEOMATICS.md](DELIVERY_METEOMATICS.md). Não apresente a presença do endpoint ou a configuração de credenciais como prova de previsão autenticada validada.
+
+A continuação [DELIVERY_WEATHER.md](DELIVERY_WEATHER.md) registra a validação autenticada real, o seletor Meteomatics/Open-Meteo compartilhado pelos indicadores e a prova de acesso pontual GEOS-FP. A prova de transporte não substitui validação agronômica nem confirma integrações ainda pendentes.

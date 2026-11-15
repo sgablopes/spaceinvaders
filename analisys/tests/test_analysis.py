@@ -162,9 +162,10 @@ class AnalysisTests(unittest.TestCase):
         dry_spell = {"location": LOCATION, "start_date": "2025-10-01", "end_date": "2025-10-03", "rain_threshold_mm": 1}
         partial = self.post(["I01", "I03"], {"gdd": manual_gdd(), "dry_spell": dry_spell})
         self.assertEqual(partial.status_code, 200)
-        self.assertEqual(partial.json()["result"]["indicators"]["I03"]["status"], "not_implemented")
+        self.assertEqual(partial.json()["result"]["indicators"]["I03"]["status"], "ok")
         pending = self.post(["I03"], {"dry_spell": dry_spell})
-        self.assertEqual(pending.status_code, 501)
+        self.assertEqual(pending.status_code, 200)
+        self.assertEqual(pending.json()["result"]["indicators"]["I03"]["longest_run_days"], 3)
         schema = self.client.get("/openapi.json").json()
         operations = [item["post"]["operationId"] for path, item in schema["paths"].items() if path.startswith("/v1/analysis/")]
         self.assertEqual(set(operations), {"analyze_climate", "analyze_water", "analyze_agronomy", "analyze_economics"})
