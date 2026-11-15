@@ -45,6 +45,15 @@ class StationTelemetryTest(unittest.TestCase):
         self.assertEqual(self.client.get('/api/v1/stations/agrion-demo-001/telemetry').status_code, 400)
         self.assertEqual(self.client.get('/api/v1/stations/agrion-demo-001/telemetry', query_string={'from': '2026-01-01T00:00:00Z', 'to': '2026-01-02T00:00:00Z', 'limit': 501}).status_code, 400)
 
+    def test_demo_accepts_empty_key_only_when_not_configured(self):
+        app = create_app({'TESTING': True, 'STATION_DB_PATH': str(Path(self.directory.name) / 'open.sqlite3'),
+                          'STATION_KEYS': {}})
+        client = app.test_client()
+        self.assertEqual(client.post(self.url, json=self.body).status_code, 201)
+        other = {**self.body, 'station_id': 'another-station'}
+        self.assertEqual(client.post(self.url, json=other).status_code, 401)
+        self.assertEqual(self.client.post(self.url, json=self.body).status_code, 401)
+
 
 if __name__ == '__main__':
     unittest.main()

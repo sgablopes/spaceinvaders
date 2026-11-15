@@ -1,6 +1,6 @@
 # Mini Estação Meteorológica
 
-O firmware envia `POST /api/v1/stations/telemetry` com `Content-Type: application/json` e `X-Station-Key`. Configure `AGRION_STATION_KEYS` na VM como JSON, por exemplo `{"agrion-demo-001":"<chave-aleatoria>"}`. A chave não deve ser publicada. Sem configuração válida, o envio recebe `401`.
+O firmware envia `POST /api/v1/stations/telemetry` com `Content-Type: application/json`. A estação `agrion-demo-001` aceita envios sem `X-Station-Key` quando não há chave configurada para ela; qualquer cliente que conheça esse ID poderá enviar leituras. Para exigir autenticação, configure `AGRION_STATION_KEYS` na VM como JSON, por exemplo `{"agrion-demo-001":"<chave-aleatoria>"}`, e envie a mesma chave no header. Outras estações sempre exigem chave configurada. Não publique chaves reais.
 
 Corpo: `{"station_id":"agrion-demo-001","measurements":{"rain_detected":true,"temperature_c":26.5,"humidity_pct":72.3,"vento_estimado_m_s":3.2}}`. Campos ausentes são gravados como `null`. `yl38_d0`, `lm393_nivel`, `motor_adc_raw` e `wind_voltage_mv` são ignorados. Sucesso retorna `201` com `received_at` em UTC, atribuído no servidor. Envio a cada cinco segundos pode gerar 17.280 registros por dia por estação.
 
