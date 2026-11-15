@@ -1,0 +1,54 @@
+.agrion-home,.agrion-home *{box-sizing:border-box}
+.agrion-home{min-height:100dvh;background:#F8F8F1;color:#182419;font-family:Inter,sans-serif}
+.agrion-home-waiting{max-width:1200px;margin:0 auto;padding:28px clamp(18px,4vw,48px) 100px}
+.agrion-home-top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.agrion-home-brand{display:flex;align-items:center;gap:10px;color:#25592F;font:800 clamp(25px,5vw,35px)/1 'Plus Jakarta Sans',sans-serif;letter-spacing:-.05em}
+.agrion-home-brand-mark{display:grid;place-items:center;color:#385C39}
+.agrion-home-bell{display:grid;place-items:center;width:48px;height:48px;flex:none;border:1px solid #E4E9DD;border-radius:16px;background:#fff;color:#29452B;box-shadow:0 3px 12px #385c3912}
+.agrion-home-owner{display:flex;align-items:center;gap:13px;margin-top:28px}
+.agrion-home-owner-icon{display:grid;place-items:center;width:56px;height:56px;flex:none;border-radius:16px;background:#385C39;color:#fff;box-shadow:0 6px 14px #385c3930}
+.agrion-home-owner>div{display:grid;gap:3px;min-width:0}
+.agrion-home-owner span{font-size:15px}
+.agrion-home-owner strong{font:800 clamp(18px,3vw,24px)/1.2 'Plus Jakarta Sans',sans-serif;overflow-wrap:anywhere}
+.agrion-home-picture,.agrion-home-picture img{display:block;width:100%;height:100%}
+.agrion-home-picture img{object-fit:cover;object-position:center 55%}
+.agrion-home-waiting-photo{height:clamp(145px,25vw,230px);overflow:hidden;border-radius:24px;margin-top:26px;position:relative}
+.agrion-home-waiting-photo::after{content:"";position:absolute;inset:auto 0 0;height:45%;background:linear-gradient(transparent,#F8F8F1)}
+.agrion-home-loading{display:grid;justify-items:center;text-align:center;gap:10px;padding:clamp(18px,5vw,48px) 0}
+.agrion-home-spinner{width:60px;height:60px;border:6px solid #DDE9C4;border-top-color:#385C39;border-right-color:#8CB45D;border-radius:50%;animation:agrion-home-spin 1.2s linear infinite;margin-bottom:12px}
+.agrion-home-loading h1{font:800 clamp(24px,4vw,34px)/1.15 'Plus Jakarta Sans',sans-serif;letter-spacing:-.04em;margin:0;color:#29452B}
+.agrion-home-loading p{margin:0;color:#385C39;font-weight:600;min-height:22px}
+.agrion-home-loading small{color:#66745E;font-size:12px}
+@keyframes agrion-home-spin{to{transform:rotate(360deg)}}
+.agrion-home-panel{position:fixed;inset:0;z-index:11000;display:flex;flex-direction:column;background:#F8F8F1;border-radius:24px 24px 0 0;box-shadow:0 -16px 55px #18321d33;transform:translateY(calc(100% - 76px));transition:transform .42s cubic-bezier(.2,.7,.2,1),border-radius .42s;overflow:hidden}
+.agrion-home-panel.is-expanded{transform:translateY(0);border-radius:0}
+.agrion-home-menu-toggle{display:flex;align-items:center;justify-content:center;gap:10px;position:relative;width:100%;height:76px;min-height:76px;background:#385C39;color:white;border:0;font:800 16px/1 'Plus Jakarta Sans',sans-serif;cursor:pointer;letter-spacing:.01em}
+.agrion-home-menu-grip{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:42px;height:4px;border-radius:99px;background:#D8E889}
+.agrion-home-menu-arrow{font-size:26px;color:#D8E889;line-height:0}
+.agrion-home-panel-content{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:20px clamp(18px,4vw,48px) max(24px,env(safe-area-inset-bottom));width:100%}
+.agrion-home-panel-content>.agrion-home-top,.agrion-home-panel-content>.agrion-home-owner,.agrion-home-hero,.agrion-home-content,.agrion-home-nav{max-width:1100px;margin-left:auto;margin-right:auto}
+.agrion-home-panel-content>.agrion-home-owner{margin-top:25px}
+.agrion-home-hero{height:clamp(140px,23vw,280px);position:relative;margin-top:18px;overflow:hidden;border-radius:20px 20px 0 0}
+.agrion-home-hero::after{content:"";position:absolute;inset:auto 0 0;height:53%;background:linear-gradient(transparent,#F8F8F1)}
+.agrion-home-content{position:relative;margin-top:-28px;padding:0 2px}
+.agrion-home-kicker{color:#385C39;font-weight:800;font-size:14px;letter-spacing:.06em;margin:0 0 5px}
+.agrion-home-content h1{font:800 clamp(27px,4vw,45px)/1.08 'Plus Jakarta Sans',sans-serif;letter-spacing:-.055em;max-width:700px;margin:0;color:#16231A}
+.agrion-home-subtitle{color:#506052;font-size:clamp(14px,2vw,19px);line-height:1.4;max-width:640px;margin:10px 0 26px}
+.agrion-home-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.agrion-home-feature{display:flex;flex-direction:column;align-items:center;text-align:center;justify-content:center;gap:6px;min-width:0;min-height:146px;padding:14px 8px;border:1px solid #ECEFE8;border-radius:19px;background:white;color:#1B241E;box-shadow:0 4px 13px #385c3912}
+.agrion-home-feature>span{color:#218237;min-height:36px}
+.agrion-home-feature strong{font:800 clamp(12px,2vw,17px)/1.14 'Plus Jakarta Sans',sans-serif;overflow-wrap:anywhere}
+.agrion-home-feature small{font-size:clamp(10px,1.6vw,13px);line-height:1.25;color:#4C594D}
+.agrion-home-assistant{display:flex;align-items:center;gap:16px;width:100%;margin:22px 0;border:0;border-radius:22px;padding:17px 20px;background:#385C39;color:#fff;text-align:left}
+.agrion-home-assistant>span:first-child{font-size:37px;color:#D8E889}
+.agrion-home-assistant>span:nth-child(2){display:grid;gap:4px;flex:1}
+.agrion-home-assistant strong{font:800 clamp(18px,3vw,25px)/1.15 'Plus Jakarta Sans',sans-serif}
+.agrion-home-assistant small{font-size:clamp(12px,2vw,16px);line-height:1.35}
+.agrion-home-assistant>span:last-child{font-size:35px;line-height:1}
+.agrion-home-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;border-top:1px solid #E8ECE2;padding:14px 0 0}
+.agrion-home-nav-item{display:grid;justify-items:center;align-content:center;gap:5px;min-height:58px;background:transparent;border:0;color:#263428;font-size:11px;line-height:1.1}
+.agrion-home-nav-item.is-current{color:#1B8237;font-weight:800}
+.agrion-home-menu-open{overflow:hidden}
+@media(max-width:420px){.agrion-home-grid{gap:8px}.agrion-home-feature{min-height:138px;padding:10px 5px}.agrion-home-feature>span svg{width:28px;height:28px}.agrion-home-panel-content{padding-left:16px;padding-right:16px}.agrion-home-content{margin-top:-22px}.agrion-home-nav-item{font-size:10px}}
+@media(max-width:350px){.agrion-home-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.agrion-home-feature{min-height:120px}}
+@media(prefers-reduced-motion:reduce){.agrion-home-panel{transition:none}.agrion-home-spinner{animation-duration:3s}}

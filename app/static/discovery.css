@@ -23,7 +23,7 @@
 .discovery-transcript:empty::before{content:'A conversa aparecerá aqui.';color:#71806c;font-size:13px}
 .discovery-transcript p{margin:7px 0;overflow-wrap:anywhere}
 .discovery-transcript strong{color:#385C39}
-.discovery-voice .btn,.discovery-manual-form>.btn,.discovery-next .btn{width:100%;border-radius:15px;margin-top:10px}
+.discovery-voice .btn,.discovery-manual-form>.btn{width:100%;border-radius:15px;margin-top:10px}
 .discovery-voice #discoveryForm{margin-bottom:12px}
 .discovery-voice #discoveryForm label{display:block;font-weight:700;margin:0 0 7px}
 .discovery-manual-form>p{color:#596451;margin:0 0 18px;line-height:1.5}
@@ -34,9 +34,5 @@
 .discovery-inline input{width:17px;height:17px;accent-color:#385C39;flex:none}
 .discovery-never{background:#EAF0DA;border-radius:13px;padding:12px;margin-bottom:8px}
 .discovery-form-error{color:#9a312c!important;font-weight:700;margin:15px 0 0!important}
-.discovery-next{display:grid;place-items:center;text-align:center}
-.discovery-next .discovery-shell{max-width:520px}
-.discovery-next .discovery-greeting{text-align:left}
-.discovery-next .btn{max-width:340px;margin-top:24px}
 .discovery-page [hidden]{display:none!important}
 @media(max-width:520px){.discovery-page{padding-left:16px;padding-right:16px}.discovery-greeting{margin-bottom:20px}.discovery-voice,.discovery-manual-form{border-radius:18px;padding:18px}.discovery-field-row{grid-template-columns:1fr}}
