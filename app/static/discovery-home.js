@@ -26,11 +26,12 @@
           ${owner(property)}
         </div>
         <section class="agrion-home-loading" aria-label="Preparando a visão geral"><div class="agrion-home-waiting-photo" aria-hidden="true">${picture()}</div><div class="agrion-home-loading-content"><div class="agrion-home-spinner" aria-hidden="true"></div><h1>Preparando sua visão geral</h1><p id="agrionHomeLoadingText" aria-live="polite">Organizando dados da propriedade…</p><small>As análises agrícolas estarão disponíveis em breve.</small></div></section>
+        <button type="button" class="agrion-home-assistant"><span class="agrion-home-assistant-avatar"><img src="/static/agrion-avatar.jpeg" alt=""></span><span><strong>Assistente Agrion</strong><small>Tire dúvidas, analise dados e receba recomendações.</small></span><span aria-hidden="true">›</span></button>
       </div>
       <section id="agrionHomePanel" class="agrion-home-panel ${expanded?'is-expanded':''}" aria-label="Menu Agrion">
         <button id="agrionHomeMenuToggle" class="agrion-home-menu-toggle" type="button" aria-controls="agrionHomePanelContent" aria-expanded="${expanded}"><span class="agrion-home-menu-grip" aria-hidden="true"></span><span>${expanded?'Fechar menu':'Menu'}</span><span class="agrion-home-menu-arrow" aria-hidden="true">${expanded?'⌄':'⌃'}</span></button>
         <div id="agrionHomePanelContent" class="agrion-home-panel-content" ${expanded?'':'inert'}>
-          <div class="agrion-home-content"><p class="agrion-home-kicker">VISÃO GERAL</p><h1>Seu campo, suas próximas decisões.</h1><p class="agrion-home-subtitle">Monitoramento, planejamento e inteligência para a sua produção.</p><div class="agrion-home-grid">${featureCards}</div><button type="button" class="agrion-home-assistant"><span aria-hidden="true">✦</span><span><strong>Assistente Agrion</strong><small>Tire dúvidas, analise dados e receba recomendações.</small></span><span aria-hidden="true">›</span></button></div>
+          <div class="agrion-home-content"><p class="agrion-home-kicker">VISÃO GERAL</p><h1>Seu campo, suas próximas decisões.</h1><p class="agrion-home-subtitle">Monitoramento, planejamento e inteligência para a sua produção.</p><div class="agrion-home-grid">${featureCards}</div></div>
           <nav class="agrion-home-nav" aria-label="Navegação principal">${navigation}</nav>
         </div>
       </section>
