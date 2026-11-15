@@ -62,7 +62,7 @@
     }
     if(section==='stage'){
       const harvest=document.getElementById('agrionOverviewHarvest');
-      if(harvest){harvest.textContent=result?.status==='ready'&&result.harvest_window?`${result.harvest_window}${staleAt?' (estimativa anterior)':''}:'Indisponível';harvest.parentElement.querySelector('.agrion-confidence')?.remove();if(result?.status==='ready')confidence(harvest.parentElement,result.harvest_confidence);}
+      if(harvest){harvest.textContent=result?.status==='ready'&&result.harvest_window?`${result.harvest_window}${staleAt?' (estimativa anterior)':''}`:'Indisponível';harvest.parentElement.querySelector('.agrion-confidence')?.remove();if(result?.status==='ready')confidence(harvest.parentElement,result.harvest_confidence);}
     }
     renderSection(section,result);
     if(staleAt){const box=document.getElementById(`agrionDashboard-${section}`);if(box)staleNote(box,staleAt);}
