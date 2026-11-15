@@ -42,6 +42,8 @@ O endpoint `POST /api/v1/stations/telemetry` recebe leituras do ESP32. `agrion-d
 
 ## Testes
 
+O menu Planejamento oferece análise de culturas e rotações, comparação qualitativa e plano local com cronograma e checklist. Usa o Core e pesquisa complementar, mantendo a tela acessível em caso de falha. Contrato e limitações: [Planejamento de Cultivos](docs/PLANEJAMENTO_CULTIVOS.md).
+
 ```bash
 python -m unittest discover -s tests -v
 ```

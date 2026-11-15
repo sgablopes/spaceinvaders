@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  let expanded=false,stationOpen=false;
+  let expanded=false,stationOpen=false,planningOpen=false;
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const icon=(name,size=28)=>window.icon?window.icon(name,size):'';
   const greeting=()=>{const hour=new Date().getHours();return hour<12?'Bom dia':hour<18?'Boa tarde':'Boa noite';};
@@ -16,8 +16,9 @@
     ['map','Minha propriedade','Mapa, talhões e dados']
   ];
   function markup(property){
+    if(planningOpen)return `<main class="agrion-home"><div class="agrion-home-waiting"><div id="agrionHomeHeader"><header class="agrion-home-top">${brand()}<button class="agrion-home-bell" type="button" aria-label="Notificações">${icon('alert',22)}</button></header>${owner(property)}</div><div id="agrionPlanningScreen"></div></div></main>`;
     if(stationOpen)return `<main class="agrion-home"><div class="agrion-home-waiting"><div id="agrionHomeHeader"><header class="agrion-home-top">${brand()}<button class="agrion-home-bell" type="button" aria-label="Notificações">${icon('alert',22)}</button></header>${owner(property)}</div><div id="agrionStationScreen"></div></div></main>`;
-    const featureCards=features.map(([symbol,title,description])=>`<button class="agrion-home-feature" type="button" ${title==='Minha propriedade'?'id="agrionHomeProperty"':title==='Mini Estação Meteorológica'?'id="agrionHomeStation"':''}><span>${icon(symbol,34)}</span><strong>${title}</strong><small>${description}</small></button>`).join('');
+    const featureCards=features.map(([symbol,title,description])=>`<button class="agrion-home-feature" type="button" ${title==='Minha propriedade'?'id="agrionHomeProperty"':title==='Mini Estação Meteorológica'?'id="agrionHomeStation"':title==='Planejamento'?'id="agrionHomePlanning"':''}><span>${icon(symbol,34)}</span><strong>${title}</strong><small>${description}</small></button>`).join('');
     return `<main class="agrion-home">
       <div class="agrion-home-waiting">
         <div id="agrionHomeHeader">
@@ -39,10 +40,12 @@
     </main>`;
   }
   function afterRender(){
+    if(planningOpen){void window.AgrionPlanning.attach(document.getElementById('agrionPlanningScreen'));return;}
     if(stationOpen){window.AgrionStation.attach(document.getElementById('agrionStationScreen'));return;}
     const panel=document.getElementById('agrionHomePanel'),content=document.getElementById('agrionHomePanelContent'),toggle=document.getElementById('agrionHomeMenuToggle');
     if(!panel||!content||!toggle)return;
     document.getElementById('agrionHomeProperty').onclick=()=>window.AgrionDiscovery.editProperty();
+    document.getElementById('agrionHomePlanning').onclick=()=>{expanded=false;planningOpen=true;document.body.classList.remove('agrion-home-menu-open');window.AgrionDashboard.reset();window.render();window.scrollTo(0,0);};
     document.getElementById('agrionHomeStation').onclick=()=>{expanded=false;stationOpen=true;document.body.classList.remove('agrion-home-menu-open');window.AgrionDashboard.reset();window.render();window.scrollTo(0,0);};
     document.querySelector('.agrion-home-assistant').onclick=()=>window.AgrionDiscovery.openChat();
     document.getElementById('agrionDashboardRetry').onclick=()=>window.AgrionDashboard.start();
@@ -55,7 +58,7 @@
   }
   function clearDatabase(name){return new Promise((resolve,reject)=>{const request=indexedDB.open(name);request.onerror=()=>reject(request.error);request.onblocked=()=>reject(new Error('blocked'));request.onsuccess=()=>{const db=request.result,names=Array.from(db.objectStoreNames);if(!names.length){db.close();resolve();return;}const tx=db.transaction(names,'readwrite');for(const store of names)tx.objectStore(store).clear();tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>{db.close();reject(tx.error);};tx.onabort=()=>{db.close();reject(tx.error||new Error('aborted'));};};});}
   async function eraseData(){if(!window.confirm('Apagar os dados do Agrion neste navegador? A propriedade, as conversas, análises e registros serão excluídos. Esta ação não pode ser desfeita. Feche outras abas do Agrion antes de continuar.'))return;const button=document.getElementById('agrionDeleteData'),status=document.getElementById('agrionDeleteStatus');button.disabled=true;status.textContent='Apagando dados…';window.AgrionDeletingData=true;window.AgrionHome.reset();try{for(const name of ['agrion-discovery','agrion-dashboard','flora-demo-registros-v1'])await clearDatabase(name);const keys=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key==='agrion-property-v1'||key==='flora-demo-v3-1'||key?.startsWith('agrion-chat-v1:'))keys.push(key);}for(const key of keys)localStorage.removeItem(key);window.location.reload();}catch(_){window.AgrionDeletingData=false;button.disabled=false;status.textContent='Não foi possível apagar todos os dados. Feche outras abas do Agrion e tente novamente.';}}
-  function showDashboard(){stationOpen=false;window.AgrionStation.close();window.render();window.scrollTo(0,0);}
-  function reset(){expanded=false;stationOpen=false;window.AgrionStation.close();window.AgrionDashboard.reset();document.body.classList.remove('agrion-home-menu-open');}
+  function showDashboard(){stationOpen=false;planningOpen=false;window.AgrionPlanning.close();window.AgrionStation.close();window.render();window.scrollTo(0,0);}
+  function reset(){expanded=false;stationOpen=false;planningOpen=false;window.AgrionPlanning.close();window.AgrionStation.close();window.AgrionDashboard.reset();document.body.classList.remove('agrion-home-menu-open');}
   window.AgrionHome={markup,afterRender,reset,showDashboard};
 })();

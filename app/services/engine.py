@@ -46,6 +46,9 @@ def _research_query(contents, mode):
 
 
 def _vertex_generate(model: str, contents: list[dict], instruction: str, mode: str = 'chat') -> tuple[str, tuple[str, ...]]:
+    if mode == 'planning':
+        from .planning_provider import generate
+        return generate(model, contents, instruction)
     project = os.getenv('GOOGLE_CLOUD_PROJECT', '').strip()
     location = os.getenv('GOOGLE_CLOUD_ENGINE_LOCATION', os.getenv('GOOGLE_CLOUD_EXTRACTION_LOCATION', 'us')).strip()
     if not project or not location:
@@ -125,7 +128,7 @@ class AgrionEngine:
             raise ValueError('A tarefa deve conter entre 1 e 8000 caracteres.')
         if language not in {'pt-BR', 'en-US', 'es-US'}:
             raise ValueError('Idioma não suportado.')
-        if mode not in {'chat','dashboard','dashboard_stage','dashboard_daily','dashboard_market','dashboard_news'}:
+        if mode not in {'chat','dashboard','dashboard_stage','dashboard_daily','dashboard_market','dashboard_news','planning'}:
             raise ValueError('Modo não suportado.')
         if context is not None and not isinstance(context, dict):
             raise ValueError('O contexto deve ser um objeto.')
@@ -191,6 +194,9 @@ class AgrionEngine:
                        'Exposição térmica não estima dano; ETc padrão não é evapotranspiração real; variação hídrica não é estoque do solo nem recomendação de irrigação; margem declarada não é lucro líquido. '
                        'Identifique dados ausentes e incertezas sem inventar resultados.')
         instruction = common + (chat_style + 'Pesquise na internet quando solicitado ou quando for necessário complementar as ferramentas. Informe quando uma consulta falhar. ' + shared if mode == 'chat' else stage_style + shared if mode == 'dashboard_stage' else daily_style + shared if mode == 'dashboard_daily' else market_style + shared if mode == 'dashboard_market' else news_style + shared if mode == 'dashboard_news' else dashboard_style)
+        if mode == 'planning':
+            from .planning import planning_instruction
+            instruction = common + planning_instruction()
         generated = self._generate(self.model, contents, instruction, mode=mode) if self._generate is _vertex_generate else self._generate(self.model, contents, instruction)
         text, used, evidence = (generated[0], generated[1], generated[2] if len(generated)>2 else ()) if isinstance(generated, tuple) else (generated, (), ())
         if not isinstance(text, str) or not text.strip():
