@@ -6,6 +6,8 @@ O Agrion é uma proposta da equipe Space Invaders para o NASA Space Apps Challen
 
 O protótipo permite cadastro demonstrativo de propriedade, descoberta de culturas, comparação de cenários, mapa ilustrativo, diário de safra, registros locais e interface de assistente sem respostas de IA. Ele usa localStorage e IndexedDB do navegador; não há contas nem sincronização. Estão previstos dados NASA, fontes agrícolas verificadas, IA e persistência PostgreSQL/PostGIS.
 
+O primeiro acesso funcional agora permite informar nome, localizar uma propriedade com GPS ou busca MapTiler, desenhar um único perímetro sobre satélite e guardar o GeoJSON neste navegador. O fluxo não cria conta e não sincroniza dados.
+
 ## Tecnologias e estrutura
 
 HTML5, JavaScript e CSS Tailwind v4 já compilado no protótipo; Python/Flask com Blueprints; Gunicorn; Docker Compose. `app/` contém servidor e interface, `tests/` os testes, `references/` os arquivos originais preservados e `docs/` as decisões técnicas e visuais.
@@ -21,6 +23,8 @@ flask --app 'app:create_app' run --debug
 
 Acesse `http://127.0.0.1:5000/` e `http://127.0.0.1:5000/api/health`.
 
+Para habilitar o mapa, defina `MAPTILER_API_KEY` no ambiente antes de iniciar o Flask. Use uma chave de navegador do MapTiler; sem ela, a interface informa que o mapa não está configurado. A chave é enviada ao navegador e deve ter origens autorizadas no painel do MapTiler, incluindo `http://127.0.0.1:5000`, `http://127.0.0.1:8000` e `https://agrion.earth` conforme o ambiente usado. Não versione a chave.
+
 ## Docker
 
 ```bash
@@ -29,6 +33,8 @@ docker compose ps
 ```
 
 Acesse `http://127.0.0.1:8000/`. O Compose publica somente no loopback. Logs: `docker compose logs app`.
+
+Para o Compose, copie `.env.example` para `.env` e preencha `MAPTILER_API_KEY`. O arquivo `.env` é ignorado pelo Git. Na VM, configure a mesma variável no diretório do projeto antes de executar `docker compose up -d --build`.
 
 ## Testes
 
@@ -44,4 +50,6 @@ No Debian 13, em `/home/sgablopes/projects/agrion`, sincronize a versão pelo Gi
 
 ## Estado
 
-Backend e empacotamento iniciais concluídos. O protótipo mantém suas interações locais. Publicação na VM, integrações externas, banco de dados e autenticação pendentes.
+Backend e empacotamento iniciais concluídos. O protótipo mantém suas interações locais. MapTiler está integrado ao primeiro acesso local; publicação na VM, integrações NASA/IA, banco de dados e autenticação seguem pendentes.
+
+O cadastro geográfico usa `localStorage` na chave `agrion-property-v1`, separada do armazenamento demonstrativo legado. O registro contém versão, nomes, polígono GeoJSON em WGS84 (`[longitude, latitude]`), área em m² e hectares, localidade selecionada quando disponível e data do cadastro. Alterar de navegador ou limpar os dados locais remove o cadastro. A área é uma estimativa do contorno desenhado. A busca, imagens e GPS dependem de rede, permissões e configuração da chave. O botão **Continuar** da propriedade salva apenas sinaliza a próxima etapa.

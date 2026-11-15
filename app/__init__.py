@@ -16,7 +16,7 @@ def create_app(test_config=None):
 
     @app.get("/")
     def index():
-        return render_template("index.html")
+        return render_template("index.html", maptiler_api_key=os.environ.get("MAPTILER_API_KEY", ""))
 
     @app.errorhandler(404)
     def not_found(error):

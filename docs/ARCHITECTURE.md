@@ -7,14 +7,20 @@ flowchart LR
   G --> F[Flask]
   F --> H[Blueprint GET /api/health]
   B --> L[localStorage e IndexedDB]
+  B --> M[MapTiler Satellite e Geocoding: implementados]
+  B --> GJ[Leaflet + Geoman: implementados]
   F -. evolução futura .-> P[PostgreSQL + PostGIS]
   F -. evolução futura .-> X[NASA, IA e outras APIs]
 ```
 
 O Flask serve `app/templates/index.html` em `/`; o CSS e o JavaScript existentes estão incorporados. O navegador mantém dados demonstrativos localmente. A API atual expõe apenas `/api/health`. O simulador de conectividade na interface é independente do backend.
 
+O fluxo de primeiro acesso está em `app/static/property-flow.js`; a persistência isolada está em `app/static/property-store.js`. A geometria é um `Polygon` GeoJSON WGS84, com pares `[longitude, latitude]`. O cálculo de área usa integração geodésica sobre esfera WGS84 aproximada, em m² e hectares. O navegador grava um único registro versionado em `agrion-property-v1`, sem alterar `flora-demo-v3-1` ou o IndexedDB legado. A edição só substitui o registro após confirmação. No futuro, o GeoJSON poderá ser validado no servidor e convertido para `geometry(Polygon, 4326)` no PostGIS; ainda não há API de persistência.
+
 Gunicorn atende na porta 8000 do contêiner. O Compose publica `127.0.0.1:8000` na VM. Nginx existente deverá encaminhar o domínio configurado para esse endereço, preservando HTTPS. A alteração do virtual host exige inspeção e backup antes da validação com `nginx -t`.
 
 `AGRION_LOG_LEVEL` controla o nível de logs; o valor padrão é `INFO`. Gunicorn registra acesso e erros em stdout/stderr; Docker limita a retenção do log. `.env.example` documenta a configuração não secreta. Segredos futuros devem vir do ambiente e nunca ser versionados.
 
-O PostgreSQL com PostGIS será adicionado quando houver necessidade de persistência remota e geometrias reais. Integrações NASA e IA exigirão serviços separados, credenciais seguras, fontes verificáveis e tratamento de indisponibilidade. Nenhum desses componentes está implementado agora. A decisão atual prioriza servir o protótipo original com alterações mínimas e um backend modular pequeno.
+`MAPTILER_API_KEY` chega ao Flask pelo ambiente e é inserida no HTML para o cliente MapTiler. Trata-se de chave pública de navegador, portanto deve ter restrição de origem configurada no painel MapTiler para os endereços locais usados e `https://agrion.earth`. A chave real fica em `.env` local/VM, fora do Git. Se estiver vazia, o mapa mostra uma mensagem e não simula imagens ou localização.
+
+O PostgreSQL com PostGIS será adicionado quando houver necessidade de persistência remota e consultas espaciais no servidor. A geometria real já pode ser desenhada no navegador, mas fica apenas no armazenamento local. Integrações NASA e IA exigirão serviços separados, credenciais seguras, fontes verificáveis e tratamento de indisponibilidade. Esses componentes ainda não estão implementados. A decisão atual prioriza servir o protótipo original com alterações mínimas e um backend modular pequeno.

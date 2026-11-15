@@ -9,6 +9,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.20.6/dist/leaflet-geoman.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='property-flow.css') }}">
   <!-- CSS compilado a partir do Tailwind v4: ver agrion_tailwind_source.css -->
   <style id="agrion-tailwind-compiled">/*! tailwindcss v4.1.10 | MIT License | https://tailwindcss.com */
 @layer properties;
@@ -1234,6 +1237,9 @@
 </head>
 <body>
   <div id="app" aria-live="polite"></div>
+  <script>window.AGRION_CONFIG = { maptilerKey: {{ maptiler_api_key|tojson }} };</script>
+  <script src="{{ url_for('static', filename='property-store.js') }}"></script>
+  <script src="{{ url_for('static', filename='property-flow.js') }}"></script>
   <script>
   'use strict';
   const $=id=>document.getElementById(id);
@@ -1475,16 +1481,18 @@
           <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('chat',27)}</span><div><h2>Conte sobre sua lavoura</h2><p>O que você plantou, como foi a colheita e quais são seus objetivos.</p></div></div>
           <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('sprout',28)}</span><div><h2>Descubra o que plantar</h2><p>Explore culturas e rotações considerando clima, solo e histórico da sua região.</p></div></div>
           <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('chart',27)}</span><div><h2>Decida com mais confiança</h2><p>Compare riscos, oportunidades e potencial de retorno para sua próxima safra.</p></div></div>
-        </div><div class="welcome-actions"><button type="button" class="btn btn-primary" data-action="welcomeSoon">Começar meu planejamento ${icon('arrow',18)}</button><button type="button" class="btn btn-secondary" data-action="welcomeSoon">Já tenho uma conta</button></div>
+        </div><div class="welcome-actions"><button type="button" class="btn btn-primary" data-action="propertyEnter">Entrar ${icon('arrow',18)}</button></div>
       </div></div></main><div id="toastMount" aria-live="polite"></div>`;
   }
   function render(){const navs=[['home','Início','home'],['plan','Planejar','compare'],['map','Mapa','map'],['safra','Safra','journal']];
+    if(AgrionProperty.view()!=='welcome'){$('app').innerHTML=AgrionProperty.markup();renderToast();AgrionProperty.afterRender();return}
     if(state.page==='home'){$('app').innerHTML=welcome();renderToast();return}
     $('app').innerHTML=`<div class="app"><aside class="sidebar" aria-label="Navegação principal"><div class="brand"><div class="brand-logo">${icon('sprout',26)}</div><div><div class="brand-name">Agrion<span style="color:#A8C96C">.</span></div><div class="brand-tag">Cultive decisões melhores.</div></div></div><div class="navlabel">EXPERIÊNCIA</div>${navs.map(n=>navItem(...n)).join('')}<div class="navlabel">INTELIGÊNCIA</div>${navItem('intelligence','Inteligência','news')}${navItem('assistant','Assistente','brain')}<div class="side-bottom"><div class="demo-stamp">${icon('spark',16)} Protótipo interativo V3.1</div><p class="side-note">Dados agrícolas demonstrativos; sem integrações NASA ou IA.</p><button class="text-link" data-action="askReset" style="margin-top:11px">${icon('reset',15)} Reiniciar demonstração</button></div></aside>
       <div class="workspace"><main class="content"><div class="topbar"><div class="mobile-head"><div class="brand-logo">${icon('sprout',22)}</div><div><div class="brand-name">Agrion<span style="color:#A8C96C">.</span></div><div class="brand-tag">PROTÓTIPO V3.1</div></div></div><div class="bread">AGRION / ${safe(meta[state.page]||'Início')} <span style="color:#9AA694">· EXPERIÊNCIA DE DEMONSTRAÇÃO</span></div><div class="top-actions"><button class="chip ${state.offlineSim?'active':''}" data-action="toggleOffline" title="Simula indisponibilidade de serviços online; não altera a conexão real">${icon(state.offlineSim?'wifioff':'wifi',15)} <span class="text-condition">${state.offlineSim?'Modo campo':'Modo demonstrativo'}</span><span class="tiny" style="color:inherit">${state.offlineSim?'Offline simulado':'Online simulado'}</span></button><button class="icon-button" data-action="toIntelligence" title="Inteligência agrícola" aria-label="Inteligência agrícola">${icon('news',18)}</button><button class="icon-button" data-action="assistantFromHome" title="Assistente Agrion" aria-label="Assistente Agrion">${icon('brain',18)}</button></div></div>
       ${mainPage()}<div class="footer-note">Agrion · Protótipo V3.1 · Dados demonstrativos, sem consulta real à NASA ou geração de recomendações. Registros do usuário ficam neste navegador (IndexedDB), quando disponível.</div></main></div>
       <nav class="mobile-nav" aria-label="Navegação inferior">${navs.map(n=>`<button type="button" class="${active(n[0])?'active':''}" aria-current="${active(n[0])?'page':'false'}" data-action="nav" data-page="${n[0]}">${icon(n[2],20)}<span>${n[1]}</span></button>`).join('')}</nav></div><div id="toastMount" aria-live="polite"></div>${modalHtml()}`;renderToast();}
   async function perform(action,el){
+    if(action.startsWith('property')){AgrionProperty.action(action);return}
     switch(action){
       case 'welcomeSoon':notify('Funcionalidade disponível em breve.');break;
       case 'nav':navigate(el.dataset.page==='plan'?'plan':el.dataset.page);break;

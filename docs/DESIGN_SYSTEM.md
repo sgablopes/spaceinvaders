@@ -10,4 +10,8 @@ Ao alterar a interface, consulte as referências, mantenha cores e componentes e
 
 ## Boas-vindas
 
-A apresentação inicial usa `app/static/agrion-hero-mobile.jpg` até 767 px e `app/static/agrion-hero-desktop.jpg` a partir de 768 px. O elemento `<picture>` seleciona a imagem e o CSS aplica um degradê para o fundo. A composição é vertical no celular e divide texto e fotografia em duas colunas no tablet e desktop. Os estilos específicos ficam em `#agrion-welcome-styles` dentro de `app/templates/index.html`, sem alterar o CSS compilado do protótipo. Os dois botões mostram apenas o aviso de funcionalidade futura; a tela não inicia cadastro nem autenticação.
+A apresentação inicial usa `app/static/agrion-hero-mobile.jpg` até 767 px e `app/static/agrion-hero-desktop.jpg` a partir de 768 px. O elemento `<picture>` seleciona a imagem e o CSS aplica um degradê para o fundo. A composição é vertical no celular e divide texto e fotografia em duas colunas no tablet e desktop. Os estilos específicos ficam em `#agrion-welcome-styles` dentro de `app/templates/index.html`, sem alterar o CSS compilado do protótipo. O botão **Entrar** inicia a identificação sem criar conta ou autenticação.
+
+## Primeiro acesso e propriedade
+
+A tela de boas-vindas mantém imagem, textos e benefícios, com um único botão **Entrar**. A identificação usa card claro, campos arredondados e botão verde. O mapa usa satélite como fundo, busca sobreposta e um painel de terreno: inferior no mobile e lateral no desktop. O polígono tem borda `#D8E889` e preenchimento semitransparente `#385C39`. Os controles de desenho seguem o mesmo padrão de botões do Agrion. Estilos adicionais ficam em `app/static/property-flow.css`; o CSS Tailwind compilado e as telas demonstrativas permanecem preservados.
