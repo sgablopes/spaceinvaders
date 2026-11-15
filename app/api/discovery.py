@@ -6,6 +6,7 @@ import threading
 import time
 import uuid
 from collections import defaultdict, deque
+from typing import Literal
 from urllib.parse import urlsplit
 
 import google.auth
@@ -52,6 +53,31 @@ class Patch(BaseModel):
 class Extraction(BaseModel):
     model_config = ConfigDict(extra="forbid")
     patches: list[Patch] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class GenerationPatch(Patch):
+    field: Literal["last_crop", "previous_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal", "fertilization", "soil_management", "cover_crops", "other_crops", "water_access", "budget_constraints", "technical_resources"] = Field(
+        description="Agrion field ID. last_crop is the most recent crop; previous_crop is the crop immediately before it; last_harvest_result is the last harvest outcome; main_difficulties are farming problems; primary_goal is the next-season goal."
+    )
+    operation: Literal["set", "merge"] = Field(description="Use set for a new or corrected fact; merge only to add details to an existing fact.")
+    value: dict | None = Field(description=(
+        "Canonical object for the selected field; unknown answers use null. "
+        "last_crop and previous_crop use crop as a string. "
+        "last_harvest_result uses qualitative_result (good, average, poor, no_harvest), or explicit quantity and unit. "
+        "main_difficulties uses categories (drought, excess_rain, pests, diseases, soil, input_costs, labor, machinery, market, other) and free_text as a list. "
+        "irrigation uses water_regime (rainfed, irrigated, mixed, unknown), irrigation_method (none, manual, drip, sprinkler, center_pivot, furrow, other, unknown), and automated (true, false, null). "
+        "mechanization uses work_mode (manual, mixed, mechanized, automated, unknown), equipment as a list, and automation_level (none, partial, high, unknown). "
+        "primary_goal uses category (maximize_profit, increase_yield, restore_soil, reduce_risk, reduce_costs, diversify, other) and optional description."
+    ))
+    status: Literal["confirmed", "uncertain", "unknown"] = Field(description="confirmed for an explicit report, uncertain for an estimate or ambiguity, unknown only when the farmer explicitly does not know, remember, or answer.")
+    confidence: Literal["high", "medium", "low"] | None = None
+    evidence_excerpt: str = Field(description="Copy a short exact substring from the farmer's transcript, preserving spelling and accents.")
+    unknown_reason: Literal["does_not_know", "does_not_remember", "declined"] | None = Field(default=None, description="Required when status is unknown; otherwise null.")
+
+
+class GenerationExtraction(BaseModel):
+    patches: list[GenerationPatch] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
 
@@ -155,11 +181,13 @@ def extract():
                     "Não deduza fatos, anos, unidades, produtividade, mecanização ou irrigação. Uma fala pode gerar vários patches. "
                     "A evidência deve ser trecho literal da fala. 'Não sei' é unknown; estimativa é uncertain. "
                     "Não altere geometria. Não faça recomendações."),
-                response_mime_type="application/json", response_schema=Extraction,
+                response_mime_type="application/json", response_schema=GenerationExtraction,
             ),
         )
         result = Extraction.model_validate_json(response.text)
         patches = [p for p in result.patches if _validate_value(p) and p.evidence_excerpt and p.evidence_excerpt in body["transcript"]]
+        if result.patches and not patches:
+            current_app.logger.warning("Discovery extraction rejected all %d generated patches", len(result.patches))
         return jsonify(interview_id=body["interview_id"], turn_id=body["turn_id"], sequence=body["sequence"], base_profile_revision=body["profile_revision"], patches=[p.model_dump() for p in patches], warnings=result.warnings[:5])
     except ConfigurationError:
         return jsonify(error="vertex_not_configured"), 503
