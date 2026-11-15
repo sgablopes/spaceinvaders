@@ -40,7 +40,7 @@
     const panel=document.getElementById('agrionHomePanel'),content=document.getElementById('agrionHomePanelContent'),toggle=document.getElementById('agrionHomeMenuToggle');
     if(!panel||!content||!toggle)return;
     const header=document.getElementById('agrionHomeHeader');
-    const positionPanel=()=>{if(!header.isConnected){window.removeEventListener('resize',positionPanel);return;}panel.style.top=`${Math.min(header.getBoundingClientRect().bottom,window.innerHeight-160)}px`;};
+    const positionPanel=()=>{if(!header.isConnected){window.removeEventListener('resize',positionPanel);return;}panel.style.setProperty('--agrion-menu-space',`${Math.max(160,window.innerHeight-header.getBoundingClientRect().bottom)}px`);};
     positionPanel();window.addEventListener('resize',positionPanel,{passive:true});
     toggle.onclick=()=>{expanded=!expanded;panel.classList.toggle('is-expanded',expanded);content.inert=!expanded;toggle.setAttribute('aria-expanded',String(expanded));toggle.querySelector('span:nth-child(2)').textContent=expanded?'Fechar menu':'Menu';toggle.querySelector('.agrion-home-menu-arrow').textContent=expanded?'⌄':'⌃';document.body.classList.toggle('agrion-home-menu-open',expanded);};
     clearInterval(loadingTimer);
