@@ -6,6 +6,7 @@ import threading
 import time
 import uuid
 from collections import defaultdict, deque
+from urllib.parse import urlsplit
 
 import google.auth
 from google.auth.transport.requests import Request as AuthRequest
@@ -24,6 +25,10 @@ FIELDS = {"last_crop", "previous_crop", "last_harvest_result", "main_difficultie
 DIFFICULTIES = {"drought", "excess_rain", "pests", "diseases", "soil", "input_costs", "labor", "machinery", "market", "other"}
 GOALS = {"maximize_profit", "increase_yield", "restore_soil", "reduce_risk", "reduce_costs", "diversify", "other"}
 LANGUAGES = {"pt-BR", "en-US", "es-ES"}
+
+
+class ConfigurationError(RuntimeError):
+    pass
 
 
 class Patch(BaseModel):
@@ -52,7 +57,14 @@ def _uuid(value):
 
 def _origin_ok():
     origin = request.headers.get("Origin")
-    return not origin or origin == request.host_url.rstrip("/")
+    if not origin:
+        return True
+    parsed = urlsplit(origin)
+    public_origin = os.getenv("AGRION_PUBLIC_ORIGIN", "").rstrip("/")
+    if public_origin:
+        return origin == public_origin
+    # TLS is terminated by Nginx; Flask can see http while the browser uses https.
+    return parsed.scheme in {"http", "https"} and parsed.netloc == request.host and parsed.path == "" and not parsed.query and not parsed.fragment
 
 
 def _rate_limit(kind, default):
@@ -73,7 +85,7 @@ def _config():
     project = os.getenv("GOOGLE_CLOUD_PROJECT", "").strip()
     location = os.getenv("GOOGLE_CLOUD_LOCATION", "").strip()
     if not project or not location:
-        raise RuntimeError("vertex_not_configured")
+        raise ConfigurationError("vertex_not_configured")
     return project, location
 
 
@@ -119,7 +131,7 @@ def extract():
         project, _ = _config()
         extraction_location = os.getenv("GOOGLE_CLOUD_EXTRACTION_LOCATION", "us").strip()
         if not extraction_location:
-            raise RuntimeError("vertex_not_configured")
+            raise ConfigurationError("vertex_not_configured")
         client = genai.Client(vertexai=True, project=project, location=extraction_location)
         response = client.models.generate_content(
             model=os.getenv("GEMINI_EXTRACTION_MODEL", "gemini-3.5-flash-lite"),
@@ -136,7 +148,7 @@ def extract():
         result = Extraction.model_validate_json(response.text)
         patches = [p for p in result.patches if _validate_value(p) and p.evidence_excerpt and p.evidence_excerpt in body["transcript"]]
         return jsonify(interview_id=body["interview_id"], turn_id=body["turn_id"], sequence=body["sequence"], base_profile_revision=body["profile_revision"], patches=[p.model_dump() for p in patches], warnings=result.warnings[:5])
-    except RuntimeError:
+    except ConfigurationError:
         return jsonify(error="vertex_not_configured"), 503
     except (ValidationError, ValueError):
         return jsonify(error="invalid_provider_response"), 502
@@ -152,8 +164,10 @@ def register_socket(app):
         if not _origin_ok() or not _rate_limit("LIVE_SESSIONS", 8):
             ws.send(json.dumps({"error": "rate_limited_or_origin_rejected"}))
             return
+        phase = "configuration"
         try:
             project, location = _config()
+            phase = "client_setup"
             first_raw = ws.receive()
             if not first_raw or len(first_raw) > 4096:
                 ws.send(json.dumps({"error": "invalid_request"}))
@@ -168,16 +182,20 @@ def register_socket(app):
                 return
             name = str(first.get("person_name", ""))[:100]
             property_name = str(first.get("property_name", ""))[:120]
+            phase = "vm_credentials"
             credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
             credentials.refresh(AuthRequest())
+            phase = "vertex_connect"
             url = f"wss://{location}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1.LlmBidiService/BidiGenerateContent"
             with connect(url, additional_headers={"Authorization": f"Bearer {credentials.token}"}, max_size=2**22) as upstream:
+                phase = "vertex_setup"
                 instruction = (f"Você é Agrion. Converse em {language}, em linguagem simples e acolhedora, uma pergunta por vez. "
                     f"Pessoa: {name}. Propriedade: {property_name}. Comece perguntando a última cultura nesta área. "
                     "Conheça última cultura, cultura imediatamente anterior, resultado da colheita, dificuldades, irrigação, mecanização e objetivo. "
                     "Não invente dados nem recomendações. Respeite não sei. Seja breve. Se receber CLOSE_REQUESTED, agradeça e despeça-se sem nova pergunta. "
                     "Quando tiver concluído, chame complete_initial_interview. Nunca cite JSON, ferramentas ou estados internos.")
                 upstream.send(json.dumps({"setup": {"model": f"projects/{project}/locations/{location}/publishers/google/models/{os.getenv('GEMINI_LIVE_MODEL', 'gemini-3.8-live')}", "generationConfig": {"responseModalities": ["AUDIO"], "speechConfig": {"languageCode": language}}, "systemInstruction": {"parts": [{"text": instruction}]}, "inputAudioTranscription": {}, "outputAudioTranscription": {}, "tools": [{"functionDeclarations": [{"name": "complete_initial_interview", "description": "Request interview completion when essential facts are resolved or farmer asks to stop", "parameters": {"type": "OBJECT", "properties": {"reason": {"type": "STRING"}}}}]}]}}))
+                phase = "relay"
                 stop = threading.Event()
 
                 def browser_to_vertex():
@@ -199,13 +217,15 @@ def register_socket(app):
                     if stop.is_set():
                         break
                     ws.send(message)
-        except RuntimeError:
+        except ConfigurationError:
+            app.logger.warning("Discovery Live configuration failure in %s", phase)
             try:
                 ws.send(json.dumps({"error": "vertex_not_configured"}))
             except Exception:
                 pass
-        except Exception:
+        except Exception as error:
+            app.logger.warning("Discovery Live failure in %s (%s)", phase, type(error).__name__)
             try:
-                ws.send(json.dumps({"error": "vertex_unavailable"}))
+                ws.send(json.dumps({"error": "vertex_unavailable", "stage": phase}))
             except Exception:
                 pass

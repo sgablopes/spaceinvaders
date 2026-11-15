@@ -4,7 +4,7 @@ from unittest.mock import patch
 from types import SimpleNamespace
 
 from app import create_app
-from app.api.discovery import Patch, _validate_value
+from app.api.discovery import Patch, _origin_ok, _validate_value
 
 
 class DiscoveryTests(unittest.TestCase):
@@ -15,6 +15,13 @@ class DiscoveryTests(unittest.TestCase):
     def test_invalid_input_and_health(self):
         self.assertEqual(self.client.post('/api/interview/extract', json={}).status_code, 422)
         self.assertEqual(self.client.get('/api/health').status_code, 200)
+
+    def test_https_origin_matches_public_host_behind_http_proxy(self):
+        with patch.dict(os.environ, {"AGRION_PUBLIC_ORIGIN": ""}):
+            with self.client.application.test_request_context('/api/interview/live-session', base_url='http://agrion.earth', headers={'Origin': 'https://agrion.earth'}):
+                self.assertTrue(_origin_ok())
+            with self.client.application.test_request_context('/api/interview/live-session', base_url='http://agrion.earth', headers={'Origin': 'https://other.example'}):
+                self.assertFalse(_origin_ok())
 
     def test_missing_vertex_configuration_is_explicit(self):
         with patch.dict(os.environ, {"GOOGLE_CLOUD_PROJECT": "", "GOOGLE_CLOUD_LOCATION": ""}):
