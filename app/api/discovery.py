@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 
 import google.auth
 from google.auth.transport.requests import Request as AuthRequest
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from flask_sock import Sock
 from google import genai
 from google.genai import types
@@ -139,7 +139,13 @@ def extract():
         extraction_location = os.getenv("GOOGLE_CLOUD_EXTRACTION_LOCATION", "us").strip()
         if not extraction_location:
             raise ConfigurationError("vertex_not_configured")
-        client = genai.Client(vertexai=True, project=project, location=extraction_location)
+        client_options = {"vertexai": True, "project": project, "location": extraction_location}
+        if extraction_location in {"us", "eu"}:
+            client_options["http_options"] = types.HttpOptions(
+                api_version="v1",
+                base_url=f"https://aiplatform.{extraction_location}.rep.googleapis.com",
+            )
+        client = genai.Client(**client_options)
         response = client.models.generate_content(
             model=os.getenv("GEMINI_EXTRACTION_MODEL", "gemini-3.5-flash-lite"),
             contents=json.dumps({"transcript": body["transcript"], "profile_snapshot": body["profile_snapshot"]}, ensure_ascii=False),
@@ -159,7 +165,8 @@ def extract():
         return jsonify(error="vertex_not_configured"), 503
     except (ValidationError, ValueError):
         return jsonify(error="invalid_provider_response"), 502
-    except Exception:
+    except Exception as error:
+        current_app.logger.warning("Discovery extraction failure (%s)", type(error).__name__)
         return jsonify(error="vertex_unavailable"), 503
 
 

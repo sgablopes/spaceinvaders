@@ -53,7 +53,12 @@ class DiscoveryTests(unittest.TestCase):
             response = self.client.post('/api/interview/extract', json=self.body)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json['patches']), 5)
-        client_factory.assert_called_once_with(vertexai=True, project='test-project', location='us')
+        options = client_factory.call_args.kwargs
+        self.assertEqual(options['project'], 'test-project')
+        self.assertEqual(options['location'], 'us')
+        self.assertTrue(options['vertexai'])
+        self.assertEqual(options['http_options'].api_version, 'v1')
+        self.assertEqual(options['http_options'].base_url, 'https://aiplatform.us.rep.googleapis.com')
 
 
 if __name__ == '__main__':
