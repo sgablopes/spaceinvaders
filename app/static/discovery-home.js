@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  let expanded=false,loadingTimer=null;
+  let expanded=false;
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const icon=(name,size=28)=>window.icon?window.icon(name,size):'';
   const greeting=()=>{const hour=new Date().getHours();return hour<12?'Bom dia':hour<18?'Boa tarde':'Boa noite';};
@@ -24,7 +24,8 @@
           ${owner(property)}
         </div>
         <p class="agrion-home-kicker agrion-home-main-kicker">VISÃO GERAL</p>
-        <section class="agrion-home-loading" aria-label="Preparando a visão geral"><div class="agrion-home-waiting-photo" aria-hidden="true">${picture()}</div><div class="agrion-home-loading-content"><div class="agrion-home-spinner" aria-hidden="true"></div><h1>Preparando sua visão geral</h1><p id="agrionHomeLoadingText" aria-live="polite">Organizando dados da propriedade…</p><small>As análises agrícolas estarão disponíveis em breve.</small></div></section>
+        <section id="agrionHomeLoading" class="agrion-home-loading" aria-label="Preparando a visão geral"><div class="agrion-home-waiting-photo" aria-hidden="true">${picture()}</div><div class="agrion-home-loading-content"><div class="agrion-home-spinner" aria-hidden="true"></div><h1>Preparando sua visão geral</h1><p id="agrionHomeLoadingText" aria-live="polite">Organizando dados da propriedade…</p><button id="agrionDashboardRetry" class="agrion-dashboard-retry" type="button" hidden>Tentar novamente</button></div></section>
+        <div id="agrionDashboard" class="agrion-dashboard" hidden></div>
         <div class="agrion-home-content agrion-home-main-copy"><h1>Seu campo, suas próximas decisões.</h1><p class="agrion-home-subtitle">Monitoramento, planejamento e inteligência para a sua produção.</p></div>
         <button type="button" class="agrion-home-assistant"><span class="agrion-home-assistant-avatar"><img src="/static/agrion-avatar.jpeg" alt=""></span><span><strong>Assistente Agrion</strong><small>Tire dúvidas, analise dados e receba recomendações.</small></span><span aria-hidden="true">›</span></button>
       </div>
@@ -41,14 +42,13 @@
     if(!panel||!content||!toggle)return;
     document.getElementById('agrionHomeProperty').onclick=()=>window.AgrionDiscovery.editProperty();
     document.querySelector('.agrion-home-assistant').onclick=()=>window.AgrionDiscovery.openChat();
+    document.getElementById('agrionDashboardRetry').onclick=()=>window.AgrionDashboard.start();
     const header=document.getElementById('agrionHomeHeader');
     const positionPanel=()=>{if(!header.isConnected){window.removeEventListener('resize',positionPanel);return;}panel.style.setProperty('--agrion-menu-space',`${Math.max(160,window.innerHeight-header.getBoundingClientRect().bottom)}px`);};
     positionPanel();window.addEventListener('resize',positionPanel,{passive:true});
     toggle.onclick=()=>{expanded=!expanded;panel.classList.toggle('is-expanded',expanded);content.inert=!expanded;toggle.setAttribute('aria-expanded',String(expanded));toggle.querySelector('span:nth-child(2)').textContent=expanded?'Fechar menu':'Menu';toggle.querySelector('.agrion-home-menu-arrow').textContent=expanded?'⌄':'⌃';document.body.classList.toggle('agrion-home-menu-open',expanded);};
-    clearInterval(loadingTimer);
-    const phrases=['Organizando dados da propriedade…','Levantando informações do campo…','Preparando a área de mercado…'];let index=0;
-    loadingTimer=setInterval(()=>{const node=document.getElementById('agrionHomeLoadingText');if(!node){clearInterval(loadingTimer);loadingTimer=null;return;}node.textContent=phrases[++index%phrases.length];},3000);
+    window.AgrionDashboard.start();
   }
-  function reset(){expanded=false;clearInterval(loadingTimer);loadingTimer=null;document.body.classList.remove('agrion-home-menu-open');}
+  function reset(){expanded=false;window.AgrionDashboard.reset();document.body.classList.remove('agrion-home-menu-open');}
   window.AgrionHome={markup,afterRender,reset};
 })();

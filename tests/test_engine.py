@@ -40,6 +40,31 @@ class EngineTest(unittest.TestCase):
         with self.assertRaises(engine.EngineUnavailableError):
             engine.AgrionEngine(generate=lambda *args: '').run('teste')
 
+    def test_dashboard_mode_uses_separate_structured_instructions(self):
+        instructions=[]
+        service=engine.AgrionEngine(generate=lambda model,contents,instruction:(instructions.append(instruction) or '{"highlight_fields":[]}'))
+        result=service.run('Prepare dashboard',context={'property':{'id':'p'}},mode='dashboard')
+        self.assertEqual(result.text,'{"highlight_fields":[]}')
+        self.assertIn('highlight_fields',instructions[0])
+        self.assertNotIn('até três frases curtas',instructions[0])
+        with self.assertRaises(ValueError):service.run('teste',mode='invalid')
+
+    def test_dashboard_stage_carries_tool_evidence(self):
+        instructions=[]
+        evidence=({'tool':'fontes_agricolas','result':{'data':{'source_url':'https://example.org'}}},)
+        service=engine.AgrionEngine(generate=lambda model,contents,instruction:(instructions.append(instruction) or ('{}',('fontes_agricolas',),evidence)))
+        result=service.run('Estime a fase',mode='dashboard_stage')
+        self.assertEqual(result.tool_evidence,evidence)
+        self.assertIn('fonte',instructions[0])
+        self.assertNotIn('até três frases curtas',instructions[0])
+
+    def test_daily_mode_has_structured_instructions_without_chat_limit(self):
+        instructions=[]
+        service=engine.AgrionEngine(generate=lambda model,contents,instruction:(instructions.append(instruction) or '{}'))
+        service.run('Analise',mode='dashboard_daily')
+        self.assertIn('recommendations',instructions[0])
+        self.assertNotIn('até três frases curtas',instructions[0])
+
     def test_vertex_tool_cycle_preserves_model_content(self):
         model_content=object()
         requests=[]

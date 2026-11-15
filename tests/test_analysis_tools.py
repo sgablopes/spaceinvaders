@@ -8,6 +8,25 @@ spec.loader.exec_module(module)
 
 
 class ToolsTest(unittest.TestCase):
+    def test_faostat_catalog_and_prices_reject_ambiguous_or_unbounded_queries(self):
+        calls=[]
+        tools=module.AnalysisTools(request=lambda path,params:(calls.append((path,params)) or {'items':[],'source':{'provider':'FAOSTAT'}}))
+        self.assertEqual(tools.execute('faostat_paises',{'q':'Brasil'})['data']['source']['provider'],'FAOSTAT')
+        self.assertEqual(tools.execute('faostat_produtos',{'q':'Maize','country_iso2':'BR'})['data']['items'],[])
+        self.assertEqual(tools.execute('faostat_precos',{'country_iso2':'BR','item_code':'56','start_year':2024,'end_year':2024})['data']['items'],[])
+        self.assertEqual(calls[-1][0],'/v1/data/faostat/prices')
+        self.assertEqual(calls[-1][1]['limit'],10)
+        self.assertEqual(tools.execute('faostat_precos',{'country_iso2':'BR','area_code':'21','item_code':'56'})['error'],'invalid_arguments')
+        self.assertEqual(tools.execute('faostat_precos',{'country_iso2':'BR','item_code':'56','limit':500})['error'],'invalid_arguments')
+
+    def test_aquacrop_dispatches_declared_scenario_and_preserves_response(self):
+        class Climate:
+            def aquacrop(self,inputs):return {'ok':True,'data':{'scenario_id':inputs['scenario_id'],'limitations':['simulação']}}
+        tools=module.AnalysisTools(climate=Climate())
+        result=tools.execute('simular_aquacrop',{'inputs_json':'{"scenario_id":"teste"}'})
+        self.assertEqual(result['data']['limitations'],['simulação'])
+        self.assertEqual(tools.execute('simular_aquacrop',{'inputs_json':'x'})['error'],'invalid_arguments')
+
     def test_forecast_and_indicators_use_reviewed_adapters(self):
         calls=[]
         class Climate:
@@ -18,7 +37,7 @@ class ToolsTest(unittest.TestCase):
         self.assertTrue({'previsao_tempo','sequencia_seca','exposicao_termica','evapotranspiracao_cultura','variacao_hidrica','margem_cenario'}<=names)
         response=tools.execute('previsao_tempo',{'location':{'latitude':0,'longitude':0},'start_time':'2030-01-01T00:00:00Z','end_time':'2030-01-01T01:00:00Z','step_hours':1,'parameters':['temperature']})
         self.assertEqual(response['data']['provider_used'],'Meteomatics')
-        self.assertEqual(calls[0][1]['provider'],'meteomatics')
+        self.assertEqual(calls[0][1]['provider'],'auto')
         self.assertEqual(tools.execute('previsao_tempo',{'provider':'auto'})['error'],'invalid_arguments')
         self.assertEqual(tools.execute('sequencia_seca',{'inputs_json':'{"rain_threshold_mm":1}'})['data']['status'],'partial')
         self.assertEqual(calls[1][0],'I03')

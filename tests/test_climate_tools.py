@@ -12,6 +12,24 @@ LOCATION={'latitude':-16.5,'longitude':-49.3}
 
 
 class ClimateToolsTest(unittest.TestCase):
+    def test_i14_accepts_exact_faostat_selection_without_inventing_price(self):
+        captured=[]
+        tools=module.ClimateTools(post=lambda path,payload:(captured.append(payload) or {'status':'ok'}))
+        scenario={'start_date':'2025-01-01','end_date':'2025-12-31','crop_id':'maize','area_ha':1,'expected_yield_t_per_ha':2,'cost_per_ha':100,'currency':'USD','assumptions_reference':'Custo e rendimento declarados','faostat_price':{'country_iso2':'BR','item_code':'56','year':2024,'reference':'preço histórico'}}
+        self.assertTrue(tools.indicator('I14',scenario)['ok'])
+        self.assertNotIn('price_per_t',captured[0]['inputs']['crop_margin'])
+        with self.assertRaises(ValueError):tools.indicator('I14',{**scenario,'price_per_t':10})
+        with self.assertRaises(ValueError):tools.indicator('I14',{**scenario,'currency':'BRL'})
+
+    def test_aquacrop_returns_aggregate_and_traceability_without_large_daily_series(self):
+        tools=module.ClimateTools(post=lambda path,payload:{'result':{'dry_yield_t_ha':3,'daily':[{'date':'2025-01-01'}]},'weather':[{}],'provenance':[{'provider':'NASA'}],'limitations':['cenário']})
+        scenario={'scenario_id':'s1','start_date':'2025-01-01','end_date':'2025-01-02','crop':'Maize','location':{'latitude':0,'longitude':0},'weather':{},'soil':{},'initial_water':{},'co2':{},'management':{},'assumptions_reference':'declaração'}
+        result=tools.aquacrop(scenario)['data']
+        self.assertEqual(result['result']['dry_yield_t_ha'],3)
+        self.assertNotIn('daily',result['result'])
+        self.assertEqual(result['provenance'][0]['provider'],'NASA')
+        with self.assertRaises(ValueError):tools.aquacrop({**scenario,'crop':'Onion'})
+
     def test_forecast_preserves_provider_and_fallback(self):
         calls=[]
         def post(path,body):

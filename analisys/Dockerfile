@@ -7,6 +7,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY src ./src
 COPY *.xlsx *.zip ./
+COPY data/faostat.sqlite3.gz data/faostat.manifest.json ./data/
 RUN groupadd --gid 10001 agrion && useradd --uid 10001 --gid agrion agrion \
     && mkdir .runtime && chown agrion:agrion .runtime
 USER agrion

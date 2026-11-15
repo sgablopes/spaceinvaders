@@ -7,6 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from app.api.health import health_blueprint
 from app.api.discovery import discovery_blueprint, register_socket
 from app.api.assistant import assistant_blueprint
+from app.api.dashboard import dashboard_blueprint
 
 
 def create_app(test_config=None):
@@ -20,11 +21,12 @@ def create_app(test_config=None):
     app.register_blueprint(health_blueprint)
     app.register_blueprint(discovery_blueprint)
     app.register_blueprint(assistant_blueprint)
+    app.register_blueprint(dashboard_blueprint)
     register_socket(app)
 
     @app.after_request
     def discovery_no_cache(response):
-        if request.path.startswith(("/api/interview/", "/api/assistant/")):
+        if request.path.startswith(("/api/interview/", "/api/assistant/", "/api/dashboard/")):
             response.headers["Cache-Control"] = "no-store"
         return response
 

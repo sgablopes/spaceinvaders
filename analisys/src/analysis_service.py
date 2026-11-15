@@ -12,6 +12,7 @@ from .analysis_schemas import (
     WaterResponse, EconomicsResponse,
 )
 from . import indicators as new_indicators
+from .faostat_margin import calculate as faostat_margin
 from .indicator_schemas import DrySpellIndicator, ThermalIndicator, ETcIndicator, WaterBalanceIndicator, MarginIndicator
 from .vendor.intelligence.core.errors import ServiceError
 from .vendor.intelligence.indicators.analysis import analyze, BINDINGS
@@ -103,7 +104,7 @@ def rainfall(nasa, payload, request_id):
     return source_metadata(computed, payload, weather, rain=True)
 
 
-def run(group, payload, request_id, nasa, store=None, meteomatics=None):
+def run(group, payload, request_id, nasa, store=None, meteomatics=None, faostat=None):
     # Valida as consultas selecionadas antes de qualquer chamada externa.
     if "I01" in payload.include and payload.inputs.gdd is not None and payload.inputs.gdd.daily_temperatures is None:
         query(payload.inputs.gdd, ["T2M_MIN", "T2M_MAX"])
@@ -115,6 +116,6 @@ def run(group, payload, request_id, nasa, store=None, meteomatics=None):
                 "I05": ("thermal_stress", partial(new_indicators.thermal, nasa, meteomatics, store), ThermalIndicator),
                 "I07": ("crop_evapotranspiration", partial(new_indicators.etc, store), ETcIndicator),
                 "I08": ("water_balance", partial(new_indicators.balance, nasa, meteomatics, store), WaterBalanceIndicator),
-                "I14": ("crop_margin", new_indicators.margin, MarginIndicator)}
+                "I14": ("crop_margin", partial(faostat_margin, faostat), MarginIndicator)}
     models = {"climate": ClimateResponse, "water": WaterResponse, "economics": EconomicsResponse}
     return analyze(group, payload, request_id, bindings=bindings, response_model=models.get(group))

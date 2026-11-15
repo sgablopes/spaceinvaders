@@ -5,11 +5,14 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
-Parameter = Literal["T2M", "T2M_MAX", "T2M_MIN", "PRECTOTCORR", "RH2M", "ALLSKY_SFC_SW_DWN"]
+Parameter = Literal["T2M", "T2M_MAX", "T2M_MIN", "PRECTOTCORR", "RH2M", "ALLSKY_SFC_SW_DWN", "WS2M", "T2MDEW", "PS"]
+DEFAULT_PARAMETERS = ["T2M", "T2M_MAX", "T2M_MIN", "PRECTOTCORR", "RH2M", "ALLSKY_SFC_SW_DWN"]
 PARAMETERS = {
     "T2M": ("tmean_c", "C"), "T2M_MAX": ("tmax_c", "C"), "T2M_MIN": ("tmin_c", "C"),
     "PRECTOTCORR": ("precip_mm_day", "mm/day"), "RH2M": ("relative_humidity_pct", "%"),
     "ALLSKY_SFC_SW_DWN": ("solar_radiation_mj_m2_day", "MJ/m^2/day"),
+    "WS2M": ("wind_speed_2m_m_s", "m/s"), "T2MDEW": ("dewpoint_c", "C"),
+    "PS": ("surface_pressure_kpa", "kPa"),
 }
 
 
@@ -37,7 +40,7 @@ class DailyRequest(Schema):
     location: Location
     start_date: CivilDate
     end_date: CivilDate
-    parameters: list[Parameter] = Field(default_factory=lambda: list(PARAMETERS), min_length=1, max_length=6)
+    parameters: list[Parameter] = Field(default_factory=lambda: list(DEFAULT_PARAMETERS), min_length=1, max_length=9)
     time_standard: Literal["UTC", "LST"] = Field(default="UTC", description="Dia da fonte; LST é hora solar, não fuso IANA. Sem conversão entre bases.")
     require_complete: bool = Field(default=False, strict=True, description="Se true, lacunas retornam 404. Caso contrário, null e status partial.")
 
@@ -64,6 +67,9 @@ class DailyRow(Schema):
     precip_mm_day: float | None = None
     relative_humidity_pct: float | None = None
     solar_radiation_mj_m2_day: float | None = None
+    wind_speed_2m_m_s: float | None = None
+    dewpoint_c: float | None = None
+    surface_pressure_kpa: float | None = None
     missing_parameters: list[Parameter]
 
 

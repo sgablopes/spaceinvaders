@@ -43,13 +43,19 @@ class AnalysisTools:
             {'name':'chuva_acumulada','description':'Calcula chuva histórica em janelas retrospectivas 7, 15, 30 e 90 dias, com NASA POWER.','parameters':{'type':'OBJECT','properties':{'location':location,'reference_date':day,'day_basis':{'type':'STRING','enum':['UTC','LST']}},'required':['location','reference_date']}},
             {'name':'graus_dia_acumulados','description':'Calcula graus-dia históricos NASA POWER; exige cultura, período exato e temperatura-base explícita. Não calcula estágio fenológico observado.','parameters':{'type':'OBJECT','properties':{'location':location,'crop_id':{'type':'STRING'},'start_date':day,'end_date':day,'base_temperature_c':{'type':'NUMBER'},'base_temperature_reference':{'type':'STRING','description':'Origem explícita da temperatura-base, quando disponível.'}},'required':['location','crop_id','start_date','end_date','base_temperature_c']}}
         ])
-        result.append({'name':'previsao_tempo','description':'Previsão Meteomatics para coordenada WGS84. Horários ISO com fuso e intervalos inteiramente futuros. Resultados incluem provedor e limitações; não é observação local.', 'parameters':{'type':'OBJECT','properties':{'location':location,'start_time':{'type':'STRING'},'end_time':{'type':'STRING'},'step_hours':{'type':'INTEGER','description':'Intervalo em horas: 1, 3, 6 ou 24.'},'parameters':{'type':'ARRAY','items':{'type':'STRING','enum':['temperature','temperature_mean','temperature_min','temperature_max','precipitation','relative_humidity','wind_speed','solar_radiation']}},'require_complete':{'type':'BOOLEAN'}},'required':['location','start_time','end_time','step_hours','parameters']}})
+        result.append({'name':'previsao_tempo','description':'Previsão para coordenada WGS84: Meteomatics ou alternativa Open-Meteo. Informe provedor, licença e limitações; não é observação local.', 'parameters':{'type':'OBJECT','properties':{'location':location,'start_time':{'type':'STRING'},'end_time':{'type':'STRING'},'step_hours':{'type':'INTEGER','description':'Intervalo em horas: 1, 3, 6 ou 24.'},'parameters':{'type':'ARRAY','items':{'type':'STRING','enum':['temperature','temperature_mean','temperature_min','temperature_max','precipitation','relative_humidity','wind_speed','solar_radiation']}},'require_complete':{'type':'BOOLEAN'}},'required':['location','start_time','end_time','step_hours','parameters']}})
+        result.extend([
+            {'name':'faostat_paises','description':'Busca países e códigos FAOSTAT; não escolha automaticamente uma correspondência ambígua.','parameters':{'type':'OBJECT','properties':{'q':{'type':'STRING'}}}},
+            {'name':'faostat_produtos','description':'Busca produtos e códigos FAOSTAT; nomes da fonte são em inglês, confirme a correspondência.','parameters':{'type':'OBJECT','properties':{'q':{'type':'STRING'},'country_iso2':{'type':'STRING'},'area_code':{'type':'STRING'}}}},
+            {'name':'faostat_precos','description':'Preços históricos nacionais ao produtor ou índices, não cotações atuais; preserve ano, unidade, país, flag e fonte.','parameters':{'type':'OBJECT','properties':{'item_code':{'type':'STRING'},'country_iso2':{'type':'STRING'},'area_code':{'type':'STRING'},'start_year':{'type':'INTEGER'},'end_year':{'type':'INTEGER'},'frequency':{'type':'STRING','enum':['annual','monthly','all']},'month':{'type':'INTEGER'},'element_code':{'type':'STRING'},'limit':{'type':'INTEGER'},'offset':{'type':'INTEGER'}},'required':['item_code']}},
+            {'name':'simular_aquacrop','description':'Simulação AquaCrop-OSPy de milho de sequeiro, não resultado observado nem previsão garantida. Use somente cenário, solo, água, CO2, manejo, clima e referências explicitamente fornecidos; não invente hipóteses. Pode demorar.','parameters':{'type':'OBJECT','properties':{'inputs_json':{'type':'STRING','description':'JSON completo do contrato /v1/simulations/aquacrop; requer scenario_id, start_date, end_date, crop Maize, location, weather, soil, initial_water, co2, management e assumptions_reference.'}},'required':['inputs_json']}}
+        ])
         indicators={
             'sequencia_seca':('I03','Máxima sequência de dias secos. Exige start_date, end_date, location ou daily_precipitation e rain_threshold_mm explícito.'),
             'exposicao_termica':('I05','Conta dias acima/abaixo de limites; não estima danos. Exige start_date, end_date, crop_id, growth_stage, threshold_catalog_version, localização ou série e ecocrop_crop_id ou limites com threshold_reference.'),
             'evapotranspiracao_cultura':('I07','ETc padrão, não evapotranspiração real. Exige datas, crop_id, growth_stage, kc_catalog_version, eto_series com eto_reference e kc com kc_reference ou kc_selection.'),
             'variacao_hidrica':('I08','Variação hídrica contábil, não irrigação recomendada nem estoque do solo. Exige entradas I07, assumptions_reference e daily_fluxes completos.'),
-            'margem_cenario':('I14','Margem do cenário declarado, não lucro líquido. Exige datas, crop_id, area_ha, expected_yield_t_per_ha, price_per_t, cost_per_ha, currency e assumptions_reference.')}
+            'margem_cenario':('I14','Margem do cenário declarado, não lucro líquido. Exige datas, crop_id, area_ha, expected_yield_t_per_ha, cost_per_ha, currency e assumptions_reference; price_per_t ou faostat_price explícito USD/t e custos em USD.')}
         for name,(_,description) in indicators.items():
             result.append({'name':name,'description':description+' Informe dados reais ou hipóteses explicitamente declaradas; nunca invente entradas.','parameters':{'type':'OBJECT','properties':{'inputs_json':{'type':'STRING','description':'Objeto JSON de entradas com nomes e unidades exatas do contrato; datas AAAA-MM-DD e timezone UTC.'}},'required':['inputs_json']}})
         return result
@@ -59,16 +65,17 @@ class AnalysisTools:
             return {'error':'invalid_arguments'}
         try:
             indicator_names={'sequencia_seca':'I03','exposicao_termica':'I05','evapotranspiracao_cultura':'I07','variacao_hidrica':'I08','margem_cenario':'I14'}
-            if name=='previsao_tempo' or name in indicator_names:
+            if name in {'previsao_tempo','simular_aquacrop'} or name in indicator_names:
                 if self._climate is None:
                     from .climate_tools import ClimateTools
                     self._climate=ClimateTools(base_url=self.base_url)
                 if name=='previsao_tempo':
                     if set(args)-{'location','start_time','end_time','step_hours','parameters','require_complete'}:raise ValueError()
-                    output=self._climate.forecast(**args,provider='meteomatics')
+                    output=self._climate.forecast(**args,provider='auto')
                 else:
                     if set(args)!={'inputs_json'} or not isinstance(args['inputs_json'],str) or len(args['inputs_json'])>100000:raise ValueError()
-                    output=self._climate.indicator(indicator_names[name],json.loads(args['inputs_json']))
+                    parsed=json.loads(args['inputs_json'])
+                    output=self._climate.aquacrop(parsed) if name=='simular_aquacrop' else self._climate.indicator(indicator_names[name],parsed)
                 if not isinstance(output,dict):return {'error':'invalid_response'}
                 if len(json.dumps(output,ensure_ascii=False,allow_nan=False))>120000:return {'error':'response_too_large','message':'Solicite um período menor.'}
                 return output
@@ -81,7 +88,23 @@ class AnalysisTools:
                 if not isinstance(output,dict):return {'error':'invalid_response'}
                 if len(json.dumps(output,ensure_ascii=False,allow_nan=False))>120000:return {'error':'response_too_large','message':'Solicite um período menor.'}
                 return output
-            if name in _SOURCES:
+            if name in {'faostat_paises','faostat_produtos','faostat_precos'}:
+                allowed={'faostat_paises':{'q'},'faostat_produtos':{'q','area_code','country_iso2'},'faostat_precos':{'item_code','area_code','country_iso2','start_year','end_year','frequency','month','element_code','limit','offset'}}[name]
+                if set(args)-allowed:raise ValueError()
+                params=dict(args)
+                if 'q' in args and (not isinstance(args['q'],str) or not 1<=len(args['q'])<=200):raise ValueError()
+                for key in ('area_code','item_code','element_code'):
+                    if key in args and (not isinstance(args[key],str) or not re.fullmatch(r'[0-9]{1,10}',args[key])):raise ValueError()
+                if 'country_iso2' in args and (not isinstance(args['country_iso2'],str) or not re.fullmatch(r'[A-Z]{2}',args['country_iso2'])):raise ValueError()
+                if 'area_code' in args and 'country_iso2' in args:raise ValueError()
+                if name=='faostat_precos':
+                    if 'item_code' not in args or not ({'area_code','country_iso2'} & set(args)):raise ValueError()
+                    for key,low,high in [('start_year',1900,2100),('end_year',1900,2100),('month',1,12),('limit',1,30),('offset',0,100000)]:
+                        if key in args and (type(args[key]) is not int or not low<=args[key]<=high):raise ValueError()
+                    if args.get('start_year',1900)>args.get('end_year',2100) or args.get('frequency','annual') not in {'annual','monthly','all'} or 'month' in args and args.get('frequency')!='monthly':raise ValueError()
+                    params.setdefault('limit',10)
+                path='/v1/data/faostat/'+{'faostat_paises':'countries','faostat_produtos':'items','faostat_precos':'prices'}[name]
+            elif name in _SOURCES:
                 if set(args)-{'q','filtros_json','limit','offset'}: raise ValueError()
                 q=args.get('q');limit=args.get('limit',10);offset=args.get('offset',0)
                 if q is not None and (not isinstance(q,str) or not 1<=len(q)<=200): raise ValueError()

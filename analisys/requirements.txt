@@ -4,3 +4,6 @@ httpx>=0.28,<1
 openpyxl>=3.1,<4
 rasterio>=1.4,<2
 tzdata==2025.2
+aquacrop==3.0.12
+pandas==2.2.3
+numpy==2.2.6

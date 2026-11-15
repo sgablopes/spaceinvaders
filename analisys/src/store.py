@@ -29,8 +29,8 @@ KNOWLEDGE_TABLES = {
 WARNINGS = {
     "ecocrop": ["Requisitos gerais de espécies; não são aptidão local ou recomendação agronômica."],
     "fao56": ["Faixas e variantes permanecem literais; consultar auditorias e limitações metodológicas.",
-              "Esta API disponibiliza tabelas; não implementa cálculo de ETo."],
-    "aquacrop": ["Contrato intermediário Agrion, não formato nativo AquaCrop nem simulação executada.",
+              "Tabelas não fornecem clima; ETo da simulação usa NASA e método FAO-56 documentado separadamente."],
+    "aquacrop": ["Planilha é contrato intermediário; execução do motor disponível separadamente em /v1/simulations/aquacrop.",
                  "Abas de entrada vazias não representam observações disponíveis."],
     "conhecimento": ["Conferência documental não equivale a validação agronômica local.",
                      "Relação mandioca → milho requer revisão antes de qualquer recomendação.",

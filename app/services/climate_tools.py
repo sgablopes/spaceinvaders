@@ -90,7 +90,7 @@ class ClimateTools:
         if indicator_id not in catalog or not isinstance(inputs,dict):raise ValueError('Indicador ou entradas inválidas.')
         if len(json.dumps(inputs,allow_nan=False,ensure_ascii=False))>100000:raise ValueError('Entradas muito grandes.')
         group,field=catalog[indicator_id]
-        required={'I03':{'start_date','end_date','rain_threshold_mm'},'I05':{'start_date','end_date','crop_id','growth_stage','threshold_catalog_version'},'I07':{'start_date','end_date','crop_id','growth_stage','kc_catalog_version'},'I08':{'start_date','end_date','crop_id','growth_stage','kc_catalog_version','assumptions_reference'},'I14':{'start_date','end_date','crop_id','area_ha','expected_yield_t_per_ha','price_per_t','cost_per_ha','currency','assumptions_reference'}}[indicator_id]
+        required={'I03':{'start_date','end_date','rain_threshold_mm'},'I05':{'start_date','end_date','crop_id','growth_stage','threshold_catalog_version'},'I07':{'start_date','end_date','crop_id','growth_stage','kc_catalog_version'},'I08':{'start_date','end_date','crop_id','growth_stage','kc_catalog_version','assumptions_reference'},'I14':{'start_date','end_date','crop_id','area_ha','expected_yield_t_per_ha','cost_per_ha','currency','assumptions_reference'}}[indicator_id]
         if not required.issubset(inputs):raise ValueError('Faltam entradas explícitas do indicador.')
         start,end=_day(inputs['start_date']),_day(inputs['end_date'])
         if end<start:raise ValueError('Período invertido.')
@@ -103,10 +103,25 @@ class ClimateTools:
             if not inputs.get('kc_selection') and (inputs.get('kc') is None or not inputs.get('kc_reference')):raise ValueError('Informe Kc com referência ou seleção FAO.')
         if indicator_id=='I08' and not inputs.get('daily_fluxes'):raise ValueError('Informe os fluxos diários.')
         if indicator_id=='I14':
-            for key in ('area_ha','expected_yield_t_per_ha','price_per_t','cost_per_ha'):
+            if ('price_per_t' in inputs)==('faostat_price' in inputs):raise ValueError('Informe exatamente uma fonte de preço.')
+            if 'faostat_price' in inputs and (not isinstance(inputs['faostat_price'],dict) or inputs['currency']!='USD'):raise ValueError('Preço FAOSTAT exige seleção e moeda USD.')
+            for key in ('area_ha','expected_yield_t_per_ha','cost_per_ha') + (('price_per_t',) if 'price_per_t' in inputs else ()):
                 number=inputs[key]
                 if isinstance(number,bool) or not isinstance(number,(int,float)) or not math.isfinite(number) or number<0 or key=='area_ha' and number==0:raise ValueError('Valor econômico inválido.')
         return self._call('/v1/analysis/'+group,{'include':[indicator_id],'inputs':{field:inputs}})
+
+    def aquacrop(self, inputs):
+        if not isinstance(inputs,dict) or len(json.dumps(inputs,allow_nan=False,ensure_ascii=False))>100000:raise ValueError('Cenário inválido.')
+        required={'scenario_id','start_date','end_date','crop','location','weather','soil','initial_water','co2','management','assumptions_reference'}
+        if not required.issubset(inputs) or inputs.get('crop')!='Maize':raise ValueError('Cenário incompleto ou cultura não suportada.')
+        _location(inputs['location'])
+        result=self._call('/v1/simulations/aquacrop',inputs)
+        if result.get('ok') and isinstance(result.get('data'),dict):
+            data=dict(result['data']); summary=dict(data.get('result') or {});summary.pop('daily',None)
+            data['result']=summary;data.pop('weather',None)
+            data['detail_note']='Séries diárias omitidas da resposta ao motor; totais e referências preservados.'
+            result=dict(result,data=data)
+        return result
 
     def _call(self,path,payload):
         try:
