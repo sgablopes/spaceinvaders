@@ -260,8 +260,8 @@ class FaostatStore:
             rows = con.execute("SELECT i.code AS item_code,i.cpc_raw,i.label AS name FROM items i" + (" WHERE " + " AND ".join(clauses) if clauses else "") + " ORDER BY i.label,i.code", args).fetchall()
         return {"items": [dict(r) for r in rows], "source": self.source()}
 
-    def prices(self, area, item, start_year, end_year, *, frequency="annual", month=None, element_code=None, limit=100, offset=0):
-        self.metadata()
+    @staticmethod
+    def price_condition(area, item, start_year, end_year, frequency, month, element_code, non_null=False):
         if start_year > end_year or (month is not None and frequency != "monthly"):
             raise ServiceError(422, "FAOSTAT_PERIOD_INVALID", "Período invertido ou mês sem frequência mensal.")
         where, args = ["o.area_code=?", "o.item_code=?", "o.year BETWEEN ? AND ?"], [area, item, start_year, end_year]
@@ -270,14 +270,38 @@ class FaostatStore:
             where.append("o.months_code=?" if month is not None else "o.months_code BETWEEN '7001' AND '7012'")
             if month is not None: args.append(str(7000 + month))
         if element_code is not None: where.append("o.element_code=?"); args.append(element_code)
-        condition = " AND ".join(where)
+        if non_null: where.append("o.value IS NOT NULL")
+        return " AND ".join(where), args
+
+    def prices(self, area, item, start_year, end_year, *, frequency="annual", month=None, element_code=None, limit=100, offset=0, order="asc", non_null=False):
+        self.metadata()
+        if order not in {"asc", "desc"}:
+            raise ServiceError(422, "FAOSTAT_ORDER_INVALID", "Ordenação deve ser asc ou desc.")
+        condition, args = self.price_condition(area, item, start_year, end_year, frequency, month, element_code, non_null)
+        direction = "DESC" if order == "desc" else "ASC"
         with self.connect() as con:
             total = con.execute("SELECT count(*) FROM observations o WHERE " + condition, args).fetchone()[0]
             rows = con.execute("""SELECT o.*,a.label AS area,a.m49_raw,i.label AS item,i.cpc_raw,e.label AS element,p.label AS months
                 FROM observations o JOIN areas a ON a.code=o.area_code JOIN items i ON i.code=o.item_code
                 JOIN elements e ON e.code=o.element_code JOIN periods p ON p.code=o.months_code WHERE """ + condition +
-                " ORDER BY o.year,o.months_code,o.element_code,o.source_row LIMIT ? OFFSET ?", [*args, limit, offset]).fetchall()
+                f" ORDER BY o.year {direction},o.months_code {direction},o.element_code,o.source_row LIMIT ? OFFSET ?", [*args, limit, offset]).fetchall()
         return {"total": total, "limit": limit, "offset": offset, "items": [self.observation(r) for r in rows], "source": self.source()}
+
+    def latest_price(self, area, item, start_year=1991, end_year=2100, *, frequency="annual", month=None, element_code="5532"):
+        self.metadata()
+        condition, args = self.price_condition(area, item, start_year, end_year, frequency, month, element_code, True)
+        with self.connect() as con:
+            period = con.execute("SELECT o.year,o.months_code FROM observations o WHERE " + condition +
+                                 " ORDER BY o.year DESC,o.months_code DESC LIMIT 1", args).fetchone()
+        page = {"total": 0, "limit": 500, "offset": 0, "items": [], "source": self.source()}
+        selected = None
+        if period is not None:
+            selected_month = int(period["months_code"]) - 7000 if frequency == "monthly" else None
+            page = self.prices(area, item, period["year"], period["year"], frequency=frequency,
+                               month=selected_month, element_code=element_code, limit=500, non_null=True)
+            selected = {"year": period["year"], "month": selected_month}
+        return {**page, "selection_status": "not_found" if not page["total"] else "found" if page["total"] == 1 else "ambiguous",
+                "frequency": frequency, "element_code": element_code, "non_null_only": True, "selected_period": selected}
 
     @staticmethod
     def observation(row):

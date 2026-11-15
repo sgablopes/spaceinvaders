@@ -117,7 +117,7 @@ Cache em memória por coordenada exata, fonte, parâmetros ordenados, horários 
 | 429 | `UPSTREAM_RATE_LIMITED` | Cota/limite; não há repetição imediata |
 | 404 | `DATA_UNAVAILABLE` / `DATA_INCOMPLETE` | Sem dados ou incompleto quando exigida cobertura total |
 | 422 | `VALIDATION_ERROR` / `FORECAST_PERIOD_INVALID` | Entrada, período futuro ou limite da aplicação inválido |
-| 502 | `UPSTREAM_INVALID_RESPONSE` / `UPSTREAM_REJECTED` | Formato, unidades/códigos, coordenadas ou consulta incompatíveis |
+| 502 | `UPSTREAM_INVALID_RESPONSE` / `UPSTREAM_REJECTED` | Resposta ilegível, erro indicado pelo provedor ou consulta recusada; coordenadas, versão e faixas meteorológicas não são comparadas |
 | 502/503/504 | erro transitório/timeout | Falha de provedor/rede ou tempo limite |
 
 Apenas GETs com falhas de rede, timeout, HTTP 408 ou 5xx têm retentativas limitadas. Login, permissões e cota não são repetidos automaticamente. Não há fallback para NASA, valores zero ou respostas sintéticas.

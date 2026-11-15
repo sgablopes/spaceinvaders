@@ -111,22 +111,47 @@ class NasaTests(unittest.TestCase):
             self.make_client(raw).daily(DailyRequest.model_validate(REQUEST))
         self.assertEqual(error.exception.status, 404)
 
-    def test_units_time_geometry_and_numbers_rejected(self):
-        for mutation in ("unit", "time", "geometry", "nan", "boolean", "negative_rain", "inverted_temp", "date", "sources"):
+    def test_unreadable_numbers_and_metadata_are_rejected(self):
+        for mutation in ("nan", "boolean", "sources"):
             with self.subTest(mutation=mutation):
                 raw = synthetic_response()
-                if mutation == "unit": raw["parameters"]["T2M"]["units"] = "K"
-                if mutation == "time": raw["header"]["time_standard"] = "LST"
-                if mutation == "geometry": raw["geometry"]["coordinates"] = [0, 0]
                 if mutation == "nan": raw["properties"]["parameter"]["T2M"]["20251001"] = "NaN"
                 if mutation == "boolean": raw["properties"]["parameter"]["T2M"]["20251001"] = True
-                if mutation == "negative_rain": raw["properties"]["parameter"]["PRECTOTCORR"]["20251001"] = -1
-                if mutation == "inverted_temp": raw["properties"]["parameter"]["T2M_MIN"]["20251001"] = 40
-                if mutation == "date": raw["header"]["end"] = "20251002"
                 if mutation == "sources": raw["header"]["sources"] = None
                 with self.assertRaises(NasaError) as error:
                     self.make_client(raw).daily(DailyRequest.model_validate(REQUEST))
                 self.assertEqual(error.exception.status, 502)
+
+    def test_response_consistency_is_not_validated_or_corrected(self):
+        raw = synthetic_response()
+        raw["parameters"]["T2M"]["units"] = "K"
+        raw["header"].update(time_standard="LST", end="20251002", fill_value=9999)
+        raw["geometry"]["type"] = "UnverifiedProviderGeometry"
+        raw["properties"]["parameter"]["PRECTOTCORR"]["20251001"] = -1
+        raw["properties"]["parameter"]["T2M_MIN"]["20251001"] = 140
+        raw["properties"]["parameter"]["T2M"]["20300101"] = 20
+        result = self.make_client(raw).daily(DailyRequest.model_validate(REQUEST))
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.result.parameters["T2M"].unit, "K")
+        self.assertEqual(result.result.period.time_standard, "LST")
+        self.assertIsNone(result.result.period.timezone)
+        self.assertEqual(result.result.series[0].precip_mm_day, -1)
+        self.assertEqual(result.result.series[0].tmin_c, 140)
+        self.assertEqual(len(result.result.series), 3)
+
+    def test_returned_coordinates_are_not_compared_to_requested_point(self):
+        request = DailyRequest.model_validate({**REQUEST, "location": {
+            "latitude": -16.51234567, "longitude": -49.31234567}})
+        for coordinates in ([-49.312, -16.512, 800], [0, 0]):
+            with self.subTest(coordinates=coordinates):
+                raw = synthetic_response(request)
+                raw["geometry"]["coordinates"] = coordinates
+                service = self.make_client(raw)
+                for _ in range(2):  # Consulta inicial e resposta em cache.
+                    result = service.daily(request)
+                    self.assertEqual(result.status, "ok")
+                    self.assertEqual(result.result.location, request.location)
+                    self.assertEqual(result.provenance[0].source_geometry, raw["geometry"])
 
     def test_invalid_request(self):
         for fields in ({"end_date": "2025-09-01"}, {"end_date": "9999-01-01"}, {"start_date": "1980-01-01"},

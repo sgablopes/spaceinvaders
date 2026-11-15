@@ -14,6 +14,21 @@ load('climate_tools');load('engine');dashboard=load('dashboard_data')
 
 
 class DashboardDataTest(unittest.TestCase):
+    def test_market_uses_real_tool_price_and_keeps_zero(self):
+        import json
+        class Engine:
+            def run(self,**kwargs):
+                return SimpleNamespace(text=json.dumps({'summary':'Referência histórica para milho.','item_code':'56'}),tool_evidence=({'tool':'faostat_candidatos','result':{'data':{'candidates':[{'item_code':'56'}]}}},{'tool':'faostat_ultimo_preco','arguments':{'item_code':'56'},'result':{'data':{'selection_status':'found','frequency':'annual','items':[{'item_code':'56','value':0,'value_kind':'usd_per_tonne','unit':'USD','year':2024,'area':'Brazil','item':'Maize'}]}}}))
+        result=dashboard.market_section(self.context,Engine())
+        self.assertEqual(result['price']['value'],0)
+        self.assertEqual(result['price']['year'],2024)
+
+    def test_market_keeps_qualitative_summary_when_price_is_ambiguous(self):
+        class Engine:
+            def run(self,**kwargs):return SimpleNamespace(text='{"summary":"Considere as informações disponíveis.","item_code":"56"}',tool_evidence=({'tool':'faostat_ultimo_preco','arguments':{'item_code':'56'},'result':{'data':{'selection_status':'ambiguous','items':[]}}},))
+        result=dashboard.market_section(self.context,Engine())
+        self.assertEqual(result['status'],'ready')
+        self.assertIsNone(result['price'])
     def setUp(self):
         self.context={'property':{'center_point':{'coordinates':[-49.3,-16.5]}},'agricultural_profile':{'fields':{'current_crop':{'status':'confirmed','value':{'crop':'milho'}},'planting_date':{'status':'confirmed','value':{'date':'2025-01-01'}}}}}
 

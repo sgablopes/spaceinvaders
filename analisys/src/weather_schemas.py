@@ -16,6 +16,8 @@ class WeatherProvenance(ForecastProvenance):
     grid_latitude: float | None = None
     grid_longitude: float | None = None
     elevation_m: float | None = None
+    source_timezone: str | None = None
+    source_utc_offset_seconds: int | None = None
 
 
 class WeatherMethod(ForecastMethod):

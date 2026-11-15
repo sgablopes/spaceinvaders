@@ -44,19 +44,19 @@ def _vertex_generate(model: str, contents: list[dict], instruction: str, mode: s
             options['http_options'] = types.HttpOptions(api_version='v1', timeout=30000)
         with genai.Client(**options) as client:
             config_options={'system_instruction':instruction,'automatic_function_calling':types.AutomaticFunctionCallingConfig(disable=True)}
-            if mode in {'chat','dashboard_stage','dashboard_daily','dashboard_monitor'}:
+            if mode in {'chat','dashboard_stage','dashboard_daily','dashboard_monitor','dashboard_market'}:
                 config_options['tools']=[types.Tool(function_declarations=tools.declarations())]
             else:
                 config_options.update(response_mime_type='application/json',response_schema={'type':'OBJECT','properties':{'highlight_fields':{'type':'ARRAY','items':{'type':'STRING','enum':['current_crop','current_season_stage','planting_date','primary_goal','next_crop_preference']}}},'required':['highlight_fields']})
             config=types.GenerateContentConfig(**config_options)
             messages=list(contents); used=[]; evidence=[]
-            for _ in range(6):
+            for _ in range(11 if mode == 'dashboard_market' else 6):
                 response = client.models.generate_content(model=model, contents=messages, config=config)
                 calls=response.function_calls or []
                 if not calls:
                     result=response.text
                     break
-                if len(used)+len(calls)>5:
+                if len(used)+len(calls)>(10 if mode == 'dashboard_market' else 5):
                     raise EngineUnavailableError('Limite de chamadas de ferramentas atingido.')
                 if not response.candidates or not response.candidates[0].content:
                     raise EngineUnavailableError('Resposta de ferramenta inválida.')
@@ -67,7 +67,7 @@ def _vertex_generate(model: str, contents: list[dict], instruction: str, mode: s
                     arguments=dict(call.args or {})
                     output=tools.execute(name, arguments)
                     used.append(name)
-                    if mode in {'dashboard_stage','dashboard_daily','dashboard_monitor'}:evidence.append({'tool':name,'arguments':arguments,'result':output})
+                    if mode in {'dashboard_stage','dashboard_daily','dashboard_monitor','dashboard_market'}:evidence.append({'tool':name,'arguments':arguments,'result':output})
                     responses.append(types.Part.from_function_response(name=name,response=output))
                 messages.append(types.Content(role='user',parts=responses))
             else:
@@ -78,7 +78,7 @@ def _vertex_generate(model: str, contents: list[dict], instruction: str, mode: s
         raise EngineUnavailableError('Não foi possível obter uma resposta do Vertex AI.') from exc
     if not isinstance(result, str) or not result.strip():
         raise EngineUnavailableError('O Vertex AI não retornou texto.')
-    return (result.strip(), tuple(used), tuple(evidence)) if mode in {'dashboard_stage','dashboard_daily','dashboard_monitor'} else (result.strip(), tuple(used))
+    return (result.strip(), tuple(used), tuple(evidence)) if mode in {'dashboard_stage','dashboard_daily','dashboard_monitor','dashboard_market'} else (result.strip(), tuple(used))
 
 
 class AgrionEngine:
@@ -93,7 +93,7 @@ class AgrionEngine:
             raise ValueError('A tarefa deve conter entre 1 e 8000 caracteres.')
         if language not in {'pt-BR', 'en-US', 'es-US'}:
             raise ValueError('Idioma não suportado.')
-        if mode not in {'chat','dashboard','dashboard_stage','dashboard_daily','dashboard_monitor'}:
+        if mode not in {'chat','dashboard','dashboard_stage','dashboard_daily','dashboard_monitor','dashboard_market'}:
             raise ValueError('Modo não suportado.')
         if context is not None and not isinstance(context, dict):
             raise ValueError('O contexto deve ser um objeto.')
@@ -139,6 +139,7 @@ class AgrionEngine:
                        'Para afirmações externas, cite URL exata recebida de ferramenta. As sugestões sem fontes externas devem ser gerais, prudentes e relacionadas aos dados conhecidos. '
                        'Diferencie hipóteses, dados históricos e previsões; não invente dados, fontes, fase, preços ou notícias. '
                        'Apresente um parecer útil e sugestões proporcionais aos dados disponíveis; indique limitações específicas somente quando relevantes e não invente fatos. ')
+        market_style = ('Investigue produção e mercado usando as ferramentas disponíveis e o contexto. Busque país e candidatos FAOSTAT, escolha o candidato mais adequado e consulte faostat_ultimo_preco. Não exija confirmação do usuário; explicite que a correspondência é estimada. Se não houver preço, produza parecer qualitativo útil. Nunca invente valores. Retorne somente JSON: {"summary": string, "item_code": string|null}. item_code deve ser o código consultado em faostat_ultimo_preco; resumo até 500 caracteres, sem valores numéricos de preço. ')
         monitor_style = ('Avalie somente as leituras atuais e o histórico recebido; as leituras nesta etapa são simulações identificadas, nunca dados reais. '
                          'Use ferramentas disponíveis para fundamentar riscos e respostas. Não interprete ausência de leitura como resolução. '
                          'Produza somente JSON sem markdown: {"profile":{"variables":[string],"notes":string},"alerts":[item]}. '
@@ -158,7 +159,7 @@ class AgrionEngine:
                        'Na previsão informe provedor, horários, períodos e limitações; previsões não são observações. Nunca invente ETo, coeficientes, limiares, custos, preços ou fluxos ausentes; pergunte quando forem necessários. '
                        'Exposição térmica não estima dano; ETc padrão não é evapotranspiração real; variação hídrica não é estoque do solo nem recomendação de irrigação; margem declarada não é lucro líquido. '
                        'Identifique dados ausentes e incertezas e informe quando uma consulta falhar.')
-        instruction = common + (chat_style + shared if mode == 'chat' else stage_style + shared if mode == 'dashboard_stage' else daily_style + shared if mode == 'dashboard_daily' else monitor_style + shared if mode == 'dashboard_monitor' else dashboard_style)
+        instruction = common + (chat_style + shared if mode == 'chat' else stage_style + shared if mode == 'dashboard_stage' else daily_style + shared if mode == 'dashboard_daily' else monitor_style + shared if mode == 'dashboard_monitor' else market_style + shared if mode == 'dashboard_market' else dashboard_style)
         generated = self._generate(self.model, contents, instruction, mode=mode) if self._generate is _vertex_generate else self._generate(self.model, contents, instruction)
         text, used, evidence = (generated[0], generated[1], generated[2] if len(generated)>2 else ()) if isinstance(generated, tuple) else (generated, (), ())
         if not isinstance(text, str) or not text.strip():

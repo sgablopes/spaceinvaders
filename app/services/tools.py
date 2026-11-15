@@ -33,6 +33,8 @@ class AnalysisTools:
     def declarations(self):
         result=[{'name': name, 'description': description, 'parameters': {'type': 'OBJECT', 'properties': _QUERY}} for name, (_, description) in _SOURCES.items()]
         result.extend([
+            {'name':'faostat_candidatos','description':'Busca candidatos de culturas FAOSTAT pelo nome em português ou inglês. Compare as evidências e selecione o candidato mais adequado; correspondências não são revisadas.','parameters':{'type':'OBJECT','properties':{'q':{'type':'STRING'},'country_iso2':{'type':'STRING'},'area_code':{'type':'STRING'}},'required':['q']}},
+            {'name':'faostat_ultimo_preco','description':'Último preço histórico nacional disponível no snapshot para país e produto escolhidos. Não é cotação atual.','parameters':{'type':'OBJECT','properties':{'item_code':{'type':'STRING'},'country_iso2':{'type':'STRING'},'area_code':{'type':'STRING'},'element_code':{'type':'STRING'},'frequency':{'type':'STRING','enum':['annual','monthly']}},'required':['item_code']}},
             {'name':'camadas_gaez','description':'Lista camadas GAEZ v5; use paginação e escolha a camada exata antes de consultar um ponto.','parameters':{'type':'OBJECT','properties':{'variable':{'type':'string'},'filename_prefix':{'type':'string'},'page_token':{'type':'string'}}}},
             {'name':'ponto_gaez','description':'Consulta uma camada GAEZ por coordenada WGS84. Não infira unidades ou classes ausentes.','parameters':{'type':'OBJECT','properties':{'layer':{'type':'string'},'latitude':{'type':'number'},'longitude':{'type':'number'}},'required':['layer','latitude','longitude']}}
         ])
@@ -88,8 +90,8 @@ class AnalysisTools:
                 if not isinstance(output,dict):return {'error':'invalid_response'}
                 if len(json.dumps(output,ensure_ascii=False,allow_nan=False))>120000:return {'error':'response_too_large','message':'Solicite um período menor.'}
                 return output
-            if name in {'faostat_paises','faostat_produtos','faostat_precos'}:
-                allowed={'faostat_paises':{'q'},'faostat_produtos':{'q','area_code','country_iso2'},'faostat_precos':{'item_code','area_code','country_iso2','start_year','end_year','frequency','month','element_code','limit','offset'}}[name]
+            if name in {'faostat_paises','faostat_produtos','faostat_precos','faostat_candidatos','faostat_ultimo_preco'}:
+                allowed={'faostat_paises':{'q'},'faostat_produtos':{'q','area_code','country_iso2'},'faostat_candidatos':{'q','area_code','country_iso2'},'faostat_ultimo_preco':{'item_code','area_code','country_iso2','element_code','frequency'},'faostat_precos':{'item_code','area_code','country_iso2','start_year','end_year','frequency','month','element_code','limit','offset','order'}}[name]
                 if set(args)-allowed:raise ValueError()
                 params=dict(args)
                 if 'q' in args and (not isinstance(args['q'],str) or not 1<=len(args['q'])<=200):raise ValueError()
@@ -97,13 +99,16 @@ class AnalysisTools:
                     if key in args and (not isinstance(args[key],str) or not re.fullmatch(r'[0-9]{1,10}',args[key])):raise ValueError()
                 if 'country_iso2' in args and (not isinstance(args['country_iso2'],str) or not re.fullmatch(r'[A-Z]{2}',args['country_iso2'])):raise ValueError()
                 if 'area_code' in args and 'country_iso2' in args:raise ValueError()
+                if name=='faostat_candidatos' and (not isinstance(args.get('q'),str) or len(args['q'].strip())<2):raise ValueError()
+                if name=='faostat_ultimo_preco' and ('item_code' not in args or not ({'area_code','country_iso2'} & set(args)) or args.get('frequency','annual') not in {'annual','monthly'}):raise ValueError()
                 if name=='faostat_precos':
                     if 'item_code' not in args or not ({'area_code','country_iso2'} & set(args)):raise ValueError()
                     for key,low,high in [('start_year',1900,2100),('end_year',1900,2100),('month',1,12),('limit',1,30),('offset',0,100000)]:
                         if key in args and (type(args[key]) is not int or not low<=args[key]<=high):raise ValueError()
                     if args.get('start_year',1900)>args.get('end_year',2100) or args.get('frequency','annual') not in {'annual','monthly','all'} or 'month' in args and args.get('frequency')!='monthly':raise ValueError()
                     params.setdefault('limit',10)
-                path='/v1/data/faostat/'+{'faostat_paises':'countries','faostat_produtos':'items','faostat_precos':'prices'}[name]
+                    if args.get('order','asc') not in {'asc','desc'}:raise ValueError()
+                path='/v1/data/faostat/'+{'faostat_paises':'countries','faostat_produtos':'items','faostat_precos':'prices','faostat_candidatos':'items/candidates','faostat_ultimo_preco':'prices/latest'}[name]
             elif name in _SOURCES:
                 if set(args)-{'q','filtros_json','limit','offset'}: raise ValueError()
                 q=args.get('q');limit=args.get('limit',10);offset=args.get('offset',0)

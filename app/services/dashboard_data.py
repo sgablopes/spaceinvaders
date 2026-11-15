@@ -137,3 +137,35 @@ def daily_section(context, engine=None):
         return {'status':'ready','generated_at':datetime.now(timezone.utc).isoformat(),'summary':summary,'observations':observations,'recommendations':recommendations}
     except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError):
         return {'status':'unavailable','note':'Não há fontes suficientes para a análise diária neste momento.'}
+
+
+def market_section(context, engine=None):
+    """Parecer da IA; preços são extraídos da resposta real da ferramenta."""
+    try:
+        result=(engine or AgrionEngine()).run(task='Analise a produção e o mercado da cultura e procure o último preço histórico disponível.',context=context,mode='dashboard_market')
+        text=result.text.strip()
+        if text.startswith('```') and text.endswith('```'):text=text.split('\n',1)[1].rsplit('```',1)[0]
+        data=json.loads(text)
+        if not isinstance(data,dict) or set(data)!={'summary','item_code'}:raise ValueError()
+        summary=data['summary'];code=data['item_code']
+        if not isinstance(summary,str) or not summary.strip() or len(summary)>500 or (code is not None and (not isinstance(code,str) or not code.isascii() or not code.isdigit())):raise ValueError()
+        price=None
+        candidates=set()
+        for entry in result.tool_evidence:
+            if not isinstance(entry,dict) or entry.get('tool')!='faostat_candidatos':continue
+            output=entry.get('result') or {};response=output.get('data') or {}
+            if isinstance(response,dict):
+                for candidate in (response.get('candidates') or [])+(response.get('additional_partial_candidates') or []):
+                    if isinstance(candidate,dict) and isinstance(candidate.get('item_code'),str):candidates.add(candidate['item_code'])
+        for entry in result.tool_evidence:
+            if not isinstance(entry,dict) or entry.get('tool')!='faostat_ultimo_preco':continue
+            args=entry.get('arguments') or {};output=entry.get('result') or {};response=output.get('data') or {}
+            if code not in candidates or args.get('item_code')!=code or not isinstance(response,dict) or response.get('selection_status')!='found':continue
+            items=response.get('items') or []
+            if len(items)!=1 or not isinstance(items[0],dict):continue
+            item=items[0];number=item.get('value')
+            if item.get('item_code')!=code or item.get('value_kind') not in {'usd_per_tonne','local_currency_per_tonne','standard_local_currency_per_tonne'} or isinstance(number,bool) or not isinstance(number,(int,float)) or not math.isfinite(number):continue
+            price={'value':number,'unit':item.get('unit'),'value_kind':item.get('value_kind'),'year':item.get('year'),'country':item.get('area'),'product':item.get('item'),'flag':item.get('flag'),'frequency':response.get('frequency'),'source_url':'https://www.fao.org/faostat/en/#data/PP'}
+        return {'status':'ready','summary':summary.strip(),'price':price,'generated_at':datetime.now(timezone.utc).isoformat()}
+    except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError):
+        return {'status':'unavailable','note':'Não foi possível preparar a análise de produção e mercado.'}

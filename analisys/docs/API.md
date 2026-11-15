@@ -62,6 +62,10 @@ Maize genérico, uma safra de sequeiro com plantio em `start_date`; `soil`, `ini
 
 `frequency=annual` é o padrão; `monthly` permite `month=1..12`, e `all` mantém ambas separadas. `limit` até 500 e `offset` permitem paginação estável. A resposta preserva `value`, `value_text`, `unit`, `element`, `value_kind`, `flag`, códigos e todos os campos originais em `raw`. 5539 é índice, com unidade vazia; não é preço monetário. LCU/SLC não são convertidas em moeda ISO. Ausência retorna lista vazia e não zero.
 
+Para obter a última observação sem percorrer páginas: `GET /v1/data/faostat/prices/latest?country_iso2=BR&item_code=56`. Os padrões são `element_code=5532` (USD/t) e `frequency=annual`. A resposta identifica `selected_period`, `selection_status=found|not_found|ambiguous`, fonte e registros originais. Exclui somente valores nulos, mantendo zero. Não mistura frequências/unidades nem escolhe uma duplicata. Último disponível no snapshot não significa preço atual. O histórico também aceita `order=desc`; o padrão `asc` permanece.
+
+Para apoiar a IA na identificação do produto: `GET /v1/data/faostat/items/candidates?q=milho` (opcional `country_iso2=BR`). Usa nomes/aliases existentes na biblioteca e identidades científicas literais para consultar ECOCROP, devolvendo registros de origem, IDs separados e candidatos FAOSTAT com evidências lexicais. **Não é tabela de equivalência validada**: `requires_review=true`, `mapping_status=candidate_unreviewed`, `selected_item_code=null`, inclusive com um único candidato. A IA deve comparar finalidade e forma comercial e confirmar o item antes de consultar preços. Consulte [DELIVERY_FAOSTAT.md](DELIVERY_FAOSTAT.md) para ambiguidades e fluxo I14.
+
 O I14 mantém `price_per_t` manual e aceita, alternativamente, `faostat_price` com país/produto/ano e referência explícita de cenário. Esse modo somente utiliza USD/t (5532), exige moeda USD e mantém `cost_per_ha` obrigatório. Não prevê preços nem usa preço como custo. Não há fallback para outro ano/produto/país. Exemplos completos e provas reais estão em [DELIVERY_FAOSTAT.md](DELIVERY_FAOSTAT.md).
 
 ## NASA POWER diário
@@ -80,6 +84,8 @@ O I14 mantém `price_per_t` manual e aceita, alternativamente, `faostat_price` c
 ```
 
 Até 366 dias inclusivos, sem datas futuras; não fornece forecast. `result.series` contém valores diários, `result.parameters` declara unidades, `quality.missing_dates` identifica lacunas, `provenance` e hashes identificam fonte e versão consultadas. Sem `require_complete`, lacunas geram status `partial` e null; com ele, erro 404. Zero de chuva não é lacuna. UTC e LST não são convertidos nem equiparados.
+
+NASA POWER, Meteomatics e Open-Meteo disponibilizam as respostas sem checagens adicionais de consistência meteorológica: comparação de coordenadas, faixas físicas, Tmin/Tmax e correspondência estrita de metadados não bloqueiam a leitura. `status=ok` indica cobertura da consulta, não validação científica. As coordenadas solicitadas permanecem em `result.location`; a NASA preserva a geometria retornada em `provenance[].source_geometry`. O detalhamento dos limites desta política está em [DELIVERY_WEATHER.md](DELIVERY_WEATHER.md).
 
 Além dos seis parâmetros padrão preservados, há seleções opcionais `WS2M` (vento 2 m, m/s), `T2MDEW` (ponto de orvalho, °C) e `PS` (pressão, kPa), adicionadas para a preparação de ETo. O endpoint NASA continua fornecendo dados, sem calcular ETo nele; o método é aplicado pela simulação e documentado separadamente. O limite de seleção agora é nove parâmetros; campos não selecionados permanecem null.
 
@@ -256,7 +262,7 @@ python -B -m unittest discover -s tests -v
 python -B tools/verify_external.py
 ```
 
-O primeiro comando roda 101 testes: os 82 anteriores, 13 de FAOSTAT/I14 e seis de distribuição do banco compactado, incluindo fontes locais reais e fixtures identificadas como sintéticas. O motor AquaCrop é executado realmente nos testes de safra com clima controlado; não há chamadas externas na suíte. Verificam-se contagens, relações, paginação, índices, hashes, unidades, falhas e contratos. Sem o CSV, somente a comparação independente da linha original é marcada como ignorada; os testes do snapshot continuam executáveis.
+O primeiro comando roda 113 testes: os 107 anteriores e seis novos casos de descoberta FAOSTAT (ordenação, última observação e candidatos de culturas), incluindo fontes locais reais e fixtures identificadas como sintéticas. O motor AquaCrop é executado realmente nos testes de safra com clima controlado; não há chamadas externas na suíte. Verificam-se contagens, relações, paginação, índices, hashes, preservação de unidades, falhas e contratos. Sem o CSV, somente a comparação independente da linha original é marcada como ignorada; os testes do snapshot continuam executáveis.
 
 O segundo comando é opcional e acessa a rede real. Grava `.runtime/gaez-live-check.json`, identificando expressamente que são consultas externas reais. Esse relatório não é uma recomendação agronômica.
 
