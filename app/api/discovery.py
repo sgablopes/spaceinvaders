@@ -81,6 +81,12 @@ class GenerationExtraction(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class GoalCategory(BaseModel):
+    category: Literal["maximize_profit", "increase_yield", "restore_soil", "reduce_risk", "reduce_costs", "diversify", "other", "none"] = Field(
+        description="Choose the primary goal explicitly stated by the farmer, or none if no goal was stated."
+    )
+
+
 def _uuid(value):
     try:
         return str(uuid.UUID(value)) == value
@@ -186,6 +192,26 @@ def extract():
         )
         result = Extraction.model_validate_json(response.text)
         patches = [p for p in result.patches if _validate_value(p) and p.evidence_excerpt and p.evidence_excerpt in body["transcript"]]
+        if not any(p.field == "primary_goal" for p in patches):
+            goal_candidates = [p for p in result.patches if p.field == "primary_goal" and p.status in {"confirmed", "uncertain"} and p.evidence_excerpt and p.evidence_excerpt in body["transcript"]]
+            if goal_candidates:
+                try:
+                    goal = GoalCategory.model_validate_json(client.models.generate_content(
+                        model=os.getenv("GEMINI_EXTRACTION_MODEL", "gemini-3.5-flash-lite"),
+                        contents=body["transcript"],
+                        config=types.GenerateContentConfig(
+                            system_instruction="Classifique apenas o objetivo explicitamente dito pelo agricultor. Se combinar lucro e baixo risco, escolha o objetivo principal e preserve a nuance na evidência. Se não houver objetivo, use none.",
+                            response_mime_type="application/json",
+                            response_schema=GoalCategory,
+                        ),
+                    ).text)
+                    if goal.category != "none":
+                        original = goal_candidates[0]
+                        repaired = Patch(field="primary_goal", operation=original.operation, value={"category": goal.category, "description": original.evidence_excerpt}, status=original.status, confidence=original.confidence, evidence_excerpt=original.evidence_excerpt)
+                        if _validate_value(repaired):
+                            patches.append(repaired)
+                except Exception as error:
+                    current_app.logger.warning("Discovery goal classification failure (%s)", type(error).__name__)
         if result.patches and not patches:
             current_app.logger.warning("Discovery extraction rejected all %d generated patches", len(result.patches))
         return jsonify(interview_id=body["interview_id"], turn_id=body["turn_id"], sequence=body["sequence"], base_profile_revision=body["profile_revision"], patches=[p.model_dump() for p in patches], warnings=result.warnings[:5])

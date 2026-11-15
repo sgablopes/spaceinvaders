@@ -42,6 +42,18 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(set(properties['field']['enum']), FIELDS)
         self.assertEqual(set(properties['status']['enum']), {'confirmed', 'uncertain', 'unknown'})
 
+    def test_goal_with_empty_generated_value_is_classified_from_explicit_evidence(self):
+        import json
+        self.body['transcript'] = 'É fazer dinheiro sem arriscar muito.'
+        generated = {"patches": [{"field": "primary_goal", "operation": "set", "value": {}, "status": "confirmed", "confidence": "high", "evidence_excerpt": "fazer dinheiro sem arriscar muito"}], "warnings": []}
+        responses = iter([generated, {"category": "maximize_profit"}])
+        fake = SimpleNamespace(models=SimpleNamespace(generate_content=lambda **_: SimpleNamespace(text=json.dumps(next(responses)))))
+        with patch.dict(os.environ, {"GOOGLE_CLOUD_PROJECT": "test-project", "GOOGLE_CLOUD_LOCATION": "us-central1", "GOOGLE_CLOUD_EXTRACTION_LOCATION": "us"}), patch('app.api.discovery.genai.Client', return_value=fake):
+            response = self.client.post('/api/interview/extract', json=self.body)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['patches'][0]['field'], 'primary_goal')
+        self.assertEqual(response.json['patches'][0]['value']['category'], 'maximize_profit')
+
     def test_multiple_provider_patches_are_filtered_to_explicit_valid_facts(self):
         self.body['transcript'] = 'Plantei milho, antes soja, faltou chuva, não tenho irrigação e tenho trator pequeno.'
         patches = [
