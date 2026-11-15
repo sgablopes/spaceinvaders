@@ -97,6 +97,61 @@ class FaostatTests(unittest.TestCase):
         self.assertEqual(first["total"], 2)
         self.assertNotEqual(first["items"][0]["source_row"], second["items"][0]["source_row"])
 
+    def test_descending_history_keeps_default_and_stable_pages(self):
+        descending = self.query(order="desc", limit=1).json()
+        self.assertEqual(descending["items"][0]["year"], 2024)
+        self.assertEqual(self.query(order="desc", limit=1, offset=1).json()["items"][0]["year"], 2023)
+        self.assertEqual(self.query().json()["items"][0]["year"], 2023)
+        self.assertEqual(self.query(order="desc; DROP TABLE observations").status_code, 422)
+
+    def test_latest_price_has_explicit_frequency_element_and_period(self):
+        response = self.client.get(PREFIX + "/prices/latest", params={"country_iso2": "BR", "item_code": "56"})
+        self.assertEqual(response.status_code, 200, response.text)
+        latest = response.json()
+        self.assertEqual(latest["selection_status"], "found")
+        self.assertEqual(latest["selected_period"], {"year": 2024, "month": None})
+        self.assertEqual(latest["items"][0]["value"], 142.2)
+        self.assertEqual(latest["items"][0]["element_code"], "5532")
+        monthly = self.client.get(PREFIX + "/prices/latest", params={"area_code": "21", "item_code": "56",
+            "frequency": "monthly", "element_code": "5530"}).json()
+        self.assertEqual(monthly["selected_period"], {"year": 2025, "month": 1})
+        self.assertEqual(monthly["items"][0]["value"], 11)
+        february = self.store.latest_price("21", "56", frequency="monthly", month=2, element_code="5530")
+        self.assertEqual(february["selected_period"], {"year": 2024, "month": 2})
+
+    def test_latest_never_substitutes_frequency_or_product_and_keeps_zero(self):
+        for params in ({"frequency": "monthly"}, {"item_code": "999999"}, {"start_year": 2030}):
+            query = {"country_iso2": "BR", "item_code": "56", **params}
+            latest = self.client.get(PREFIX + "/prices/latest", params=query).json()
+            self.assertEqual(latest["selection_status"], "not_found")
+            self.assertEqual(latest["items"], [])
+            self.assertIsNone(latest["selected_period"])
+        zero = self.store.latest_price("21", "56", end_year=2022)
+        self.assertEqual(zero["items"][0]["value"], 0)
+        self.assertTrue(zero["non_null_only"])
+        self.assertEqual(self.store.latest_price("21", "56", end_year=2021)["selection_status"], "not_found")
+
+    def test_latest_rejects_only_incompatible_query_filters(self):
+        for params in ({"frequency": "all"}, {"month": 1}, {"start_year": 2025, "end_year": 2024},
+                       {"country_iso2": "ET"}, {"area_code": "21"}, {"month": 13}):
+            response = self.client.get(PREFIX + "/prices/latest", params={"country_iso2": "BR", "item_code": "56", **params})
+            self.assertEqual(response.status_code, 422, response.text)
+
+    def test_crop_candidates_use_existing_aliases_with_source_ids_and_no_automatic_selection(self):
+        for query in ("milho", "maize", "Zea mays", "ECO_2175"):
+            response = self.client.get(PREFIX + "/items/candidates", params={"q": query, "country_iso2": "BR"})
+            self.assertEqual(response.status_code, 200, response.text)
+            body = response.json()
+            self.assertTrue(body["requires_review"])
+            self.assertIsNone(body["selected_item_code"])
+            self.assertEqual(body["mapping_status"], "candidate_unreviewed")
+            self.assertEqual(body["candidates"][0]["item_code"], "56")
+            self.assertEqual(body["knowledge_cultures"][0]["data"]["cultura_id"], "milho")
+            self.assertTrue(any(c["data"]["crop_id"] == "ECO_2175" for c in body["ecocrop_cultures"]))
+            self.assertTrue(body["sources"]["knowledge"]["sha256"])
+        self.assertEqual(self.client.get(PREFIX + "/items/candidates", params={"q": "no_such_crop_xyz"}).json()["candidates"], [])
+        self.assertEqual(self.client.get(PREFIX + "/items/candidates", params={"q": "  "}).status_code, 422)
+
     def test_months_indexes_and_local_currency_not_confused(self):
         months = self.query(frequency="monthly", start_year=2024, end_year=2025, element_code="5530").json()
         self.assertEqual(len(months["items"]), 3)
@@ -212,6 +267,10 @@ class FaostatTests(unittest.TestCase):
             with self.assertRaises(ServiceError) as caught:
                 calculate(store, MarginRequest.model_validate(margin_payload()["inputs"]["crop_margin"]), "test")
             self.assertEqual(caught.exception.code, "FAOSTAT_PRICE_AMBIGUOUS")
+            latest = store.latest_price("21", "56")
+            self.assertEqual(latest["selection_status"], "ambiguous")
+            self.assertEqual(latest["total"], 2)
+            self.assertEqual(len(latest["items"]), 2)
 
     def test_missing_files_do_not_fabricate_dataset(self):
         with tempfile.TemporaryDirectory(dir=ROOT / ".runtime") as directory:
@@ -224,11 +283,36 @@ class FaostatTests(unittest.TestCase):
     def test_openapi_discovery_and_original_analysis_groups(self):
         schema = self.client.get("/openapi.json").json()
         self.assertEqual(schema["paths"][PREFIX + "/prices"]["get"]["operationId"], "get_faostat_producer_prices")
+        self.assertEqual(schema["paths"][PREFIX + "/prices/latest"]["get"]["operationId"], "get_latest_faostat_producer_price")
+        self.assertIn("CropCandidatePage", schema["components"]["schemas"])
+        self.assertIn("LatestPricePage", schema["components"]["schemas"])
         self.assertEqual(len([p for p in schema["paths"] if p.startswith("/v1/analysis/")]), 4)
         self.assertTrue(any(c["id"] == "get_faostat_producer_prices" for c in self.client.get("/v1/capabilities").json()["capabilities"]))
 
 
 class RealFaostatTests(unittest.TestCase):
+    def test_latest_real_price_and_ambiguous_commercial_crop_candidates(self):
+        from src.store import Store
+        from src.faostat_candidates import candidates
+        faostat = FaostatStore(ROOT)
+        faostat.prepare()
+        latest = faostat.latest_price("21", "56")
+        self.assertEqual(latest["selected_period"], {"year": 2024, "month": None})
+        self.assertEqual(latest["items"][0]["value"], 142.2)
+        self.assertEqual(faostat.latest_price("21", "56", frequency="monthly")["selection_status"], "not_found")
+        local = Store(ROOT, ROOT / ".runtime/catalog.sqlite3")
+        local.prepare()
+        maize = candidates(local, faostat, "milho")
+        codes = {item["item_code"] for item in maize["candidates"]}
+        self.assertIn("56", codes)
+        self.assertIn("446", codes)  # Milho em grão e milho verde não são automaticamente equivalentes.
+        self.assertTrue(maize["requires_review"])
+        soy = candidates(local, faostat, "soja")
+        self.assertEqual({item["item_code"] for item in soy["candidates"]}, {"236"})
+        self.assertTrue(soy["additional_partial_candidates"])
+        for query, label in (("tomate", "Tomatoes"), ("batata", "Potatoes")):
+            self.assertIn(label, {item["name"] for item in candidates(local, faostat, query)["candidates"]})
+
     @unittest.skipUnless((ROOT / CSV).exists(), "Conferência independente requer CSV original; snapshot é validado nos testes de distribuição.")
     def test_real_sources_hashes_coverage_and_selected_csv_row(self):
         before = {name: sha256(ROOT / name) for name in (CSV, COUNTRIES)}

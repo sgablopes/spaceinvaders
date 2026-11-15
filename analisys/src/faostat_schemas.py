@@ -53,3 +53,35 @@ class PricePage(Schema):
     offset: int
     items: list[PriceObservation]
     source: dict[str, Any]
+
+
+class LatestPricePage(PricePage):
+    selection_status: Literal["found", "not_found", "ambiguous"]
+    frequency: Literal["annual", "monthly"]
+    element_code: str
+    non_null_only: Literal[True]
+    selected_period: dict[str, int | None] | None
+
+
+class CropCandidate(Schema):
+    item_code: str
+    cpc_raw: str
+    name: str
+    mapping_status: Literal["candidate_unreviewed"]
+    match_strength: Literal["complete_alias_tokens", "partial_alias_tokens"]
+    evidence: list[dict[str, Any]]
+
+
+class CropCandidatePage(Schema):
+    query: str
+    mapping_status: Literal["candidate_unreviewed"]
+    requires_review: Literal[True]
+    selected_item_code: None
+    candidates: list[CropCandidate]
+    additional_partial_candidates: list[CropCandidate]
+    knowledge_cultures: list[dict[str, Any]]
+    ecocrop_cultures: list[dict[str, Any]]
+    search_coverage: dict[str, Any]
+    sources: dict[str, Any]
+    method: str
+    limitations: list[str]

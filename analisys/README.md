@@ -86,7 +86,7 @@ Para trabalho simultâneo com o desenvolvedor principal, use um checkout ou work
 
 ## Estado e pendências
 
-- API de consulta, índices locais, container isolado e 101 testes aprovados, incluindo distribuição do banco FAOSTAT sem CSV, fontes agronômicas, economia, NASA, indicadores, meteorologia e AquaCrop-OSPy.
+- API de consulta, índices locais, container isolado e 113 testes aprovados, incluindo distribuição do banco FAOSTAT sem CSV, consulta da última observação, candidatos de culturas não revisados, fontes agronômicas, economia, NASA, indicadores, meteorologia e AquaCrop-OSPy. Respostas meteorológicas são disponibilizadas sem checagens adicionais de consistência; detalhes em [DELIVERY_WEATHER.md](docs/DELIVERY_WEATHER.md).
 - Container saudável em `127.0.0.1:8001`; consultas HTTP locais e GAEZ real para milho e soja validadas. Veja [o registro de validação](docs/VALIDACAO.md).
 - Unidades/classes GAEZ exigem interpretação específica quando ausentes do GeoTIFF.
 - NASA POWER preservada. Meteomatics autenticada e Open-Meteo validadas por HTTP no Brasil/EUA; fallback sem mistura de provedores, também nos indicadores forecast.

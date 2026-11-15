@@ -35,6 +35,19 @@ def main():
             report["checks"].append({"case": label, "response": result})
         absent = get(prefix + "/prices", country_iso2="BR", item_code="56", element_code="5532", start_year=2030, end_year=2030)
         assert absent["total"] == 0 and not absent["items"]
+        latest = get(prefix + "/prices/latest", country_iso2="BR", item_code="56")
+        assert latest["selection_status"] == "found" and latest["selected_period"] == {"year": 2024, "month": None}
+        assert latest["items"][0]["value"] == 142.2
+        report["checks"].append({"case": "BR_maize_latest_annual_USD", "response": latest})
+        monthly_usd = get(prefix + "/prices/latest", country_iso2="BR", item_code="56", frequency="monthly")
+        assert monthly_usd["selection_status"] == "not_found" and not monthly_usd["items"]
+        for query, expected in (("milho", {"56", "446"}), ("soja", {"236"})):
+            compared = get(prefix + "/items/candidates", q=query)
+            assert {item["item_code"] for item in compared["candidates"]} == expected
+            assert compared["requires_review"] and compared["selected_item_code"] is None
+            report["checks"].append({"case": query + "_unreviewed_candidates", "response": compared})
+        descending = get(prefix + "/prices", country_iso2="BR", item_code="56", element_code="5532", order="desc", limit=1)
+        assert descending["items"][0]["source_row"] == latest["items"][0]["source_row"]
         payload = {"include": ["I14"], "inputs": {"crop_margin": {
             "crop_id": "maize", "start_date": "2026-01-01", "end_date": "2026-12-31", "area_ha": 2,
             "expected_yield_t_per_ha": 3, "cost_per_ha": 200, "currency": "USD",

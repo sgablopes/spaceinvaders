@@ -112,52 +112,35 @@ def query_parameters(payload):
 def records(raw, key, variables):
     if not variables:
         return {}
-    block, units = raw[key], raw[key + "_units"]
-    if units["time"] != "unixtime":
-        raise ValueError("Unidade temporal incompatível.")
+    block = raw[key]
     times = block["time"]
-    if not isinstance(times, list) or len(times) > 500:
-        raise ValueError("Quantidade de timestamps inválida.")
-    dates = []
-    for t in times:
-        if type(t) is not int:
-            raise ValueError("Epoch inteiro UTC obrigatório.")
-        d = datetime.fromtimestamp(t, timezone.utc)
-        if d.minute or d.second or d.microsecond or (key == "daily" and d.hour):
-            raise ValueError("Timestamp desalinhado.")
-        dates.append(d)
-    if len(set(dates)) != len(dates) or dates != sorted(dates):
-        raise ValueError("Timestamps duplicados/desordenados.")
+    dates = [datetime.fromtimestamp(t, timezone.utc) for t in times]
     result = {}
     for parameter, variable, unit in variables:
-        if units[variable] != unit or not isinstance(block[variable], list) or len(block[variable]) != len(dates):
-            raise ValueError("Unidade ou comprimento incompatível.")
         result[parameter] = {}
-        for d, value in zip(dates, block[variable]):
+        for index, d in enumerate(dates):
+            value = block[variable][index] if index < len(block[variable]) else None
             if value is not None:
                 if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
                     raise ValueError("Valor numérico incompatível.")
-                if (parameter.startswith("temperature") and not -100 <= value <= 100) or (parameter == "relative_humidity" and not 0 <= value <= 100) or (parameter in {"precipitation", "wind_speed", "solar_radiation"} and value < 0):
-                    raise ValueError("Valor fora da faixa física.")
             result[parameter][d] = value
     return result
 
 
 def normalize(raw, payload, url, accessed, digest):
-    if raw.get("error") or raw["utc_offset_seconds"] != 0 or raw["timezone"] not in {"GMT", "UTC"}:
-        raise ValueError("Resposta não UTC.")
+    if raw.get("error"):
+        raise ValueError("Provedor informou erro na consulta.")
     grid = [raw["latitude"], raw["longitude"], raw["elevation"]]
-    if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in grid) or not -90 <= grid[0] <= 90 or not -180 <= grid[1] <= 180:
-        raise ValueError("Coordenadas da célula inválidas.")
-    # Coordenadas retornadas são da célula selecionada, não exatamente do ponto solicitado.
-    if abs(grid[0] - payload.location.latitude) > 1 or abs((grid[1] - payload.location.longitude + 180) % 360 - 180) > 1:
-        raise ValueError("Célula distante do ponto solicitado.")
     hourly = records(raw, "hourly", [(p, *HOURLY[p]) for p in payload.parameters if p in HOURLY])
     daily = records(raw, "daily", [(p, DAILY[p], "°C") for p in payload.parameters if p in DAILY])
     count = int((payload.end_time - payload.start_time).total_seconds() / (3600 * payload.step_hours)) + 1
     missing, ends, metadata = {p: [] for p in payload.parameters}, {p: None for p in payload.parameters}, {}
     for p in payload.parameters:
         _, field, unit, semantics = PARAMETERS[p]
+        block = "daily" if p in DAILY else "hourly"
+        variable = DAILY[p] if p in DAILY else HOURLY[p][0]
+        source_unit = raw[block + "_units"][variable]
+        unit = {"°C": "C"}.get(source_unit, source_unit)
         metadata[p] = {"provider_parameter": DAILY[p] if p in DAILY else HOURLY[p][0], "field": field, "unit": unit,
             "temporal_semantics": semantics, "interval_hours": payload.step_hours if semantics != "instantaneous" else None}
     series, valid = [], 0
@@ -179,8 +162,6 @@ def normalize(raw, payload, url, accessed, digest):
                 valid += 1
                 ends[p] = t
             row[metadata[p]["field"]] = value
-        if row.get("temperature_min_c") is not None and row.get("temperature_max_c") is not None and row["temperature_min_c"] > row["temperature_max_c"]:
-            raise ValueError("Tmin maior que Tmax.")
         series.append(row)
     if not valid:
         raise ForecastError(404, "DATA_UNAVAILABLE", "Open-Meteo sem valores no intervalo solicitado.")
@@ -196,8 +177,10 @@ def normalize(raw, payload, url, accessed, digest):
         "provenance": [{"provider": "Open-Meteo", "source_url": url, "source_requested": "best_match",
             "api_version": "v1", "accessed_at": accessed, "spatial_resolution": "Célula nearest do conjunto best_match; resolução depende do modelo, com ajuste de altitude pelo provedor.",
             "documentation_url": DOCS, "license": "CC BY 4.0; atribuir Open-Meteo e provedores. API gratuita somente para uso não comercial.",
-            "grid_latitude": grid[0], "grid_longitude": grid[1], "elevation_m": grid[2]}],
+            "grid_latitude": grid[0], "grid_longitude": grid[1], "elevation_m": grid[2],
+            "source_timezone": raw.get("timezone"), "source_utc_offset_seconds": raw.get("utc_offset_seconds")}],
         "quality": {"missing_times": missing, "warnings": [
+            "Resposta disponibilizada sem checagem de consistência meteorológica; status indica cobertura, não validação científica.",
             "Previsão operacional, não observação de talhão. Modelo/ciclo exatos não são identificados por best_match.",
             "Extremos diários Open-Meteo agregam valores horários; não garantem equivalência aos extremos Meteomatics.",
             "generationtime_ms é duração de processamento, não instante de emissão da previsão."]},

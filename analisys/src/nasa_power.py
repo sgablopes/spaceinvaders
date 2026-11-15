@@ -116,30 +116,16 @@ class NasaPower:
 
 def normalize(raw, payload, source_url, upstream_hash):
     header = raw["header"]
-    if header["time_standard"] != payload.time_standard:
-        raise ValueError("Base temporal incompatível.")
-    if str(header["start"]) != payload.start_date.strftime("%Y%m%d") or str(header["end"]) != payload.end_date.strftime("%Y%m%d"):
-        raise ValueError("Período incompatível.")
     geometry = raw["geometry"]
-    coordinates = geometry["coordinates"]
-    if geometry["type"] != "Point" or not math.isclose(coordinates[0], payload.location.longitude, abs_tol=1e-6) or not math.isclose(coordinates[1], payload.location.latitude, abs_tol=1e-6):
-        raise ValueError("Localização incompatível.")
     fill = header["fill_value"]
-    if isinstance(fill, bool) or not isinstance(fill, (int, float)) or not math.isfinite(fill) or fill >= 0:
-        raise ValueError("Sentinel da fonte inválido.")
     parameters = raw["properties"]["parameter"]
     count = (payload.end_date - payload.start_date).days + 1
     dates = [payload.start_date + timedelta(days=i) for i in range(count)]
-    expected_keys = {d.strftime("%Y%m%d") for d in dates}
     metadata, missing = {}, {p: [] for p in payload.parameters}
     for parameter in payload.parameters:
-        field, unit = PARAMETERS[parameter]
+        field, _ = PARAMETERS[parameter]
         original = raw["parameters"][parameter]
-        if original["units"] != unit:
-            raise ValueError("Unidade incompatível.")
-        if not isinstance(parameters[parameter], dict) or not set(parameters[parameter]).issubset(expected_keys):
-            raise ValueError("Datas incompatíveis.")
-        metadata[parameter] = {"field": field, "unit": unit, "source_unit": original["units"], "long_name": original["longname"]}
+        metadata[parameter] = {"field": field, "unit": original["units"], "source_unit": original["units"], "long_name": original["longname"]}
     series, valid_values = [], 0
     for day in dates:
         row = {"date": day, "missing_parameters": []}
@@ -153,29 +139,26 @@ def normalize(raw, payload, source_url, upstream_hash):
             else:
                 if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
                     raise ValueError("Número inválido.")
-                if (parameter.startswith("T2M") and not -100 <= value <= 100) or (parameter == "RH2M" and not 0 <= value <= 100) or (parameter in {"PRECTOTCORR", "ALLSKY_SFC_SW_DWN", "WS2M"} and value < 0) or (parameter == "PS" and not 0 < value <= 120):
-                    raise ValueError("Valor fora dos limites de sanidade.")
                 valid_values += 1
             row[field] = value
-        if row.get("tmin_c") is not None and row.get("tmax_c") is not None and row["tmin_c"] > row["tmax_c"]:
-            raise ValueError("Tmin maior que Tmax.")
         series.append(row)
     if not valid_values:
         raise NasaError(404, "DATA_UNAVAILABLE", "NASA POWER não retornou valores disponíveis no intervalo.")
     accessed = datetime.now(timezone.utc)
     return {"status": "partial" if any(missing.values()) else "ok",
             "result": {"location": payload.location, "period": {"start": payload.start_date, "end": payload.end_date,
-                       "time_standard": payload.time_standard, "timezone": "UTC" if payload.time_standard == "UTC" else None},
+                       "time_standard": header["time_standard"], "timezone": "UTC" if header["time_standard"] == "UTC" else None},
                        "parameters": metadata, "days_expected": count,
                        "days_complete": sum(not r["missing_parameters"] for r in series), "series": series},
             "method": {"assumptions": ["Leitura diária comunidade AG, sem interpolação ou conversão entre UTC/LST.",
-                                       "Unidades validadas contra o contrato; sem cálculo de ETo ou indicadores.",
+                                       "Unidades e base temporal da fonte preservadas; sem validação de consistência da resposta ou cálculo de indicadores.",
                                        "Sentinel da fonte, -999, null ou dia ausente são representados como null."]},
             "provenance": [{"dataset": header["sources"], "source_url": source_url, "accessed_at": accessed,
                             "api_version": header.get("api", {}).get("version"), "source_geometry": geometry,
                             "spatial_resolution": "Resolução nativa por produto NASA POWER; ponto consultado não é medição de talhão.",
                             "documentation_url": DOCS}],
             "quality": {"missing_dates": missing, "warnings": ["Estimativa regional; não observação medida no talhão.",
+                        "Resposta disponibilizada sem checagem de consistência meteorológica; status indica cobertura, não validação científica.",
                         "Disponibilidade recente varia por parâmetro; histórico/quase tempo real não é forecast.",
                         "Campos de parâmetros não selecionados ficam null; consulte result.parameters para distingui-los de lacunas."]},
             "limitations": ["Sem previsão meteorológica, ETo calculada ou recomendação agronômica.",

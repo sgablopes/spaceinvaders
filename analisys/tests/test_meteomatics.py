@@ -153,21 +153,39 @@ class MeteomaticsTests(unittest.TestCase):
                 service.forecast(ForecastRequest.model_validate({**REQUEST, **changes}))
             self.assertEqual(error.exception.status, 422)
 
-    def test_malformed_units_locations_dates_and_values_are_rejected(self):
-        for kind in ("unit", "coordinate", "duplicate_time", "extra_time", "duplicate_parameter", "negative", "boolean", "status", "version"):
+    def test_unreadable_values_and_provider_errors_are_rejected(self):
+        for kind in ("boolean", "status"):
             raw = fixture()
-            if kind == "unit": raw["data"][0]["parameter"] = "t_2m:K"
-            if kind == "coordinate": raw["data"][0]["coordinates"][0]["lat"] = 0
-            if kind == "duplicate_time": raw["data"][0]["coordinates"][0]["dates"].append(deepcopy(raw["data"][0]["coordinates"][0]["dates"][0]))
-            if kind == "extra_time": raw["data"][0]["coordinates"][0]["dates"][0]["date"] = "2030-01-01T10:00:00Z"
-            if kind == "duplicate_parameter": raw["data"].append(deepcopy(raw["data"][0]))
-            if kind == "negative": raw["data"][1]["coordinates"][0]["dates"][0]["value"] = -1
             if kind == "boolean": raw["data"][0]["coordinates"][0]["dates"][0]["value"] = True
             if kind == "status": raw["status"] = "ERROR"
-            if kind == "version": raw["version"] = "private-test-account"
             with self.subTest(kind=kind), self.assertRaises(ForecastError) as error:
                 self.service(raw).forecast(ForecastRequest.model_validate(REQUEST))
             self.assertEqual(error.exception.status, 502)
+
+    def test_response_coordinates_versions_duplicates_and_ranges_do_not_block(self):
+        raw = fixture()
+        raw["version"] = "3.0-beta"
+        raw["data"][0]["coordinates"][0]["lat"] = 0
+        records = raw["data"][0]["coordinates"][0]["dates"]
+        records.append({**records[0], "value": 140})
+        records.append({"date": "2030-01-01T10:00:00Z", "value": 30})
+        raw["data"].append(deepcopy(raw["data"][0]))
+        raw["data"].append({"parameter": "unrequested_parameter", "coordinates": []})
+        raw["data"][1]["coordinates"][0]["dates"][0]["value"] = -1
+        result = self.service(raw).forecast(ForecastRequest.model_validate(REQUEST))
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.provenance[0].api_version, "3.0-beta")
+        self.assertEqual(result.result.series[0].temperature_c, 140)
+        self.assertEqual(result.result.series[0].precipitation_mm, -1)
+        self.assertEqual(len(result.result.series), 3)
+
+    def test_unrequested_units_are_ignored_without_inventing_conversion(self):
+        raw = fixture()
+        raw["data"][0]["parameter"] = "t_2m:K"
+        result = self.service(raw).forecast(ForecastRequest.model_validate(REQUEST))
+        self.assertEqual(result.status, "partial")
+        self.assertIsNone(result.result.series[0].temperature_c)
+        self.assertIn("temperature", result.result.series[0].missing_parameters)
 
     def test_auth_quota_errors_are_sanitized_and_not_retried(self):
         for status, code, expected in ((401, "UPSTREAM_AUTHENTICATION_FAILED", 503), (402, "UPSTREAM_ACCESS_DENIED", 503),

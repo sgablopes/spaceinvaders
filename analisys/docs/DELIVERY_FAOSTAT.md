@@ -70,6 +70,32 @@ O produto deve ser identificado pelo **Item Code FAOSTAT**, por exemplo `56` par
 
 ## Endpoints de consulta
 
+### Apoio à correspondência de culturas
+
+`GET /v1/data/faostat/items/candidates?q=milho` reúne nomes portugueses, aliases ingleses e identidades científicas **já presentes** na biblioteca e no ECOCROP, com códigos FAOSTAT disponíveis. Aceita também, por exemplo, `q=soja`, `q=Zea%20mays` e `q=ECO_2175`. `country_iso2` ou `area_code` opcionais restringem os produtos aos que têm alguma observação no país, sem prometer cobertura no ano/elemento desejado.
+
+A comparação é lexical, com redução simples de plural inglês, sem modelo de IA externo, tradução nova ou inferência taxonômica. Cada candidato informa `evidence`: alias literal usado, termos coincidentes, `cultura_id` e linha da biblioteca. Quando todos os termos de algum alias aparecem no produto, o candidato tem `match_strength=complete_alias_tokens`; correspondências parciais ficam em `additional_partial_candidates`. Sem correspondência completa, `candidates` contém os parciais, identificados como `partial_alias_tokens`. Adjetivos como dry/common isolados não identificam cultura. Isso é uma prioridade lexical, não probabilidade nem aprovação de equivalência. `knowledge_cultures` e `ecocrop_cultures` mantêm registros e IDs próprios; `sources` traz arquivos/hashes de origem. A busca direta ECOCROP limita-se a 100 resultados e informa truncamento em `search_coverage`; os endpoints originais dos catálogos continuam disponíveis para pesquisa completa.
+
+**Todos os candidatos são não revisados** (`mapping_status=candidate_unreviewed`, `requires_review=true`, `selected_item_code=null`), mesmo se houver só um. O resultado não estabelece equivalência científica ou comercial. Para milho, a base completa devolve tanto `56` (Maize (corn)) quanto `446` (Green corn (maize)); não se seleciona um deles automaticamente. Soja sugere `236` (Soya beans), apoiada nos aliases existentes, sem declarar equivalência revisada. Correspondência de feijão pode abranger espécies/produtos distintos. Nenhum resultado autoriza selecionar o primeiro, presumir produto a partir do ECO ID ou usar culturas como preços/custos intercambiáveis.
+
+Fluxo do consumidor AGRION: pesquisar o catálogo/candidatos, comparar espécie, finalidade e forma comercial, confirmar explicitamente o `item_code`, consultar a última observação e usar seu período/código exatos no I14 com referência da hipótese. Se o catálogo não representar a cultura/produto ou houver ambiguidade sem resolução, informar pendência e não simular preço. Uma tabela de equivalências revisada continua dependente de revisão humana; não foi fabricada a partir desses candidatos.
+
+### Última observação disponível
+
+```sh
+curl "http://127.0.0.1:8001/v1/data/faostat/prices/latest?country_iso2=BR&item_code=56"
+curl "http://127.0.0.1:8001/v1/data/faostat/prices/latest?area_code=101&item_code=56&frequency=monthly&element_code=5530"
+curl "http://127.0.0.1:8001/v1/data/faostat/prices?country_iso2=BR&item_code=56&element_code=5532&order=desc&limit=5"
+```
+
+`/prices/latest` exige produto e um país inequívoco. Os padrões são `annual`, `5532` (USD/t) e anos 1991–2100. `frequency` aceita **annual ou monthly**, sem misturar anual e mensal; `month` opcional somente mensal seleciona o mês mais recente desse número ao longo dos anos. `start_year`/`end_year` permitem limitar o período. A busca ordena ano/mês de forma decrescente no índice existente e considera apenas `value IS NOT NULL`; **zero continua sendo observação**. Não recua para outro país/produto/unidade/frequência. Não é cotação atual nem previsão, apenas última observação disponível **na edição local**. USD mensal, ausente neste snapshot, retorna `not_found` sem trocar por USD anual ou LCU mensal.
+
+A resposta mantém o envelope `PricePage` e acrescenta `frequency`, `element_code`, `non_null_only=true`, `selected_period={year,month}` e `selection_status`. `found` significa uma observação não nula no último período; `not_found` retorna `items=[]` e período null; `ambiguous` conserva todas as observações desse último período até o limite de 500 e informa o total, sem escolher entre duplicatas. O consumidor deve exigir `found` para uso automático; o I14 já recusa duplicatas. Tipos de preço e índices continuam distintos, inclusive quando se pede explicitamente o elemento 5539.
+
+O histórico `/prices` aceita `order=asc|desc` (padrão asc preservado), ordenando ano/mês no sentido escolhido e desempates por elemento/linha original. `order=desc&limit=1` pode ser usado para inspeção, mas não fornece as garantias de exclusão de nulos e sinalização de duplicatas de `/prices/latest`. Não é preciso varrer todas as páginas ou descobrir o ano global do dataset. O schema e o snapshot SQLite não mudaram; não há reimportação nem novo pacote de dados por essa extensão.
+
+Verificação da continuação: suíte geral com **113 testes aprovados**; seis casos novos cobrem ordem/paginação, recência por série e mês, zero/null/ausência, filtros, IDs e evidências de candidatos, e ambiguidades comerciais reais. A recusa de seleção de observações duplicadas e o schema OpenAPI também foram estendidos nos casos existentes. `EXPLAIN QUERY PLAN` confirmou busca em `prices_series`, sem varredura global. O script `tools/verify_faostat.py` agora confere por HTTP os novos endpoints: Brasil/milho retorna 2024 e 142,20 USD/t; USD mensal fica ausente; milho sugere 56/446 e soja prioriza 236, sem seleção automática. O I14 continua com o mesmo cálculo e escolha exata de preço. Os detalhes de execução ficam em `.runtime/faostat-http-check.json`.
+
 Base local `http://127.0.0.1:8001`; na rede Docker existente, `http://agrion-data:8000`. Tudo pertence à mesma API. O `/docs` apresenta os schemas, e `/v1/capabilities` inclui `get_faostat_producer_prices`. A fonte também aparece em `/api/v1/datasets`.
 
 | GET | Finalidade |
@@ -77,7 +103,9 @@ Base local `http://127.0.0.1:8001`; na rede Docker existente, `http://agrion-dat
 | `/v1/data/faostat/metadata` | Contagens, anos por elemento/período, unidades, flags, ambiguidades ISO e hashes |
 | `/v1/data/faostat/countries?q=Brasil` | Correspondências FAOSTAT, M49, ISO e gid; dados brutos e presença de preços |
 | `/v1/data/faostat/items?country_iso2=BR&q=Maize` | Produtos disponíveis no país e respectivos códigos; filtro de país opcional |
+| `/v1/data/faostat/items/candidates?q=milho` | Candidatos lexicais com origem, sem equivalência validada ou seleção automática |
 | `/v1/data/faostat/prices` | Séries de observações por país/produto/período |
+| `/v1/data/faostat/prices/latest` | Última observação não nula de uma série, com sinalização de ausência/duplicidade |
 
 Exemplos reais:
 

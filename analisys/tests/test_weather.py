@@ -108,19 +108,40 @@ class WeatherTests(unittest.TestCase):
         self.raw["hourly"]["precipitation"] = [0] * len(self.raw["hourly"]["time"])
         self.assertEqual(self.backup.forecast(self.query).result.series[0].precipitation_mm, 0)
 
-    def test_corrupt_units_times_coordinates_and_values_are_rejected(self):
-        for mutate in (lambda r: r["hourly_units"].update(precipitation="inch"),
-                       lambda r: r.update(utc_offset_seconds=3600),
-                       lambda r: r.update(latitude=40),
-                       lambda r: r["daily"]["time"].append(r["daily"]["time"][0]),
-                       lambda r: r["hourly"]["precipitation"].__setitem__(0, True),
-                       lambda r: r["daily"]["temperature_2m_min"].__setitem__(0, 90)):
+    def test_unreadable_numeric_values_are_rejected(self):
+        for mutate in (lambda r: r["hourly"]["precipitation"].__setitem__(0, True),
+                       lambda r: r["hourly"]["precipitation"].__setitem__(0, "not-a-number")):
             self.raw = fixture(self.query)
             mutate(self.raw)
             self.backup.cache.clear()
             with self.subTest(mutate=mutate), self.assertRaises(ForecastError) as caught:
                 self.backup.forecast(self.query)
             self.assertEqual(caught.exception.status, 502)
+
+    def test_response_metadata_ranges_and_duplicates_do_not_block(self):
+        self.raw["hourly_units"]["precipitation"] = "inch"
+        self.raw.update(latitude=40, utc_offset_seconds=3600, timezone="Provider/Local")
+        self.raw["daily"]["temperature_2m_min"][0] = 140
+        self.raw["daily"]["time"].append(self.raw["daily"]["time"][0])
+        self.raw["daily"]["temperature_2m_min"].append(140)
+        self.raw["daily"]["temperature_2m_max"].append(30)
+        result = self.backup.forecast(self.query)
+        self.assertEqual(result.status, "ok")
+        self.assertEqual(result.result.parameters["precipitation"].unit, "inch")
+        self.assertEqual(result.result.series[0].temperature_min_c, 140)
+        self.assertEqual(result.provenance[0].grid_latitude, 40)
+        self.assertEqual(result.provenance[0].source_timezone, "Provider/Local")
+        self.assertEqual(result.provenance[0].source_utc_offset_seconds, 3600)
+
+    def test_unordered_times_and_short_arrays_become_missing_not_rejection(self):
+        for block in ("daily", "hourly"):
+            for values in self.raw[block].values():
+                values.reverse()
+        self.raw["hourly"]["precipitation"].pop()
+        result = self.backup.forecast(self.query)
+        self.assertEqual(result.status, "partial")
+        self.assertIsNone(result.result.series[0].precipitation_mm)
+        self.assertEqual(result.result.series[1].precipitation_mm, 12)
 
     def test_cache_expiry_capacity_and_copy(self):
         first = self.backup.forecast(self.query)

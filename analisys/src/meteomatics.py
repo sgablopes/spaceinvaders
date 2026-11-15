@@ -6,7 +6,6 @@ import hashlib
 import json
 import math
 import os
-import re
 from threading import Lock
 import time
 from uuid import uuid4
@@ -146,26 +145,21 @@ class Meteomatics:
 
 
 def normalize(raw, payload, source_url, accessed, digest):
-    if raw["status"] != "OK" or not re.fullmatch(r"\d+(?:\.\d+){0,3}", raw["version"]):
-        raise ValueError("Status ou versão incompatível.")
+    if raw["status"] != "OK":
+        raise ValueError("Provedor informou erro na consulta.")
     provider_time = utc(raw["dateGenerated"])
     count = int((payload.end_time - payload.start_time).total_seconds() / (payload.step_hours * 3600)) + 1
     times = [payload.start_time + timedelta(hours=i * payload.step_hours) for i in range(count)]
-    expected = set(times)
     codes = {PARAMETERS[p][0].format(hours=payload.step_hours): p for p in payload.parameters}
     values, metadata, missing = {}, {}, {p: [] for p in payload.parameters}
     for item in raw["data"]:
         code = item["parameter"]
-        if code not in codes or code in values:
-            raise ValueError("Parâmetro inesperado ou duplicado.")
+        if code not in codes:
+            continue
         coords = item["coordinates"]
-        if len(coords) != 1 or not math.isclose(coords[0]["lat"], payload.location.latitude, rel_tol=0, abs_tol=1e-6) or not math.isclose(coords[0]["lon"], payload.location.longitude, rel_tol=0, abs_tol=1e-6):
-            raise ValueError("Localização incompatível.")
-        records = {}
+        records = values.setdefault(code, {})
         for record in coords[0]["dates"]:
             timestamp = utc(record["date"])
-            if timestamp not in expected or timestamp in records:
-                raise ValueError("Timestamp inesperado ou duplicado.")
             records[timestamp] = record["value"]
         values[code] = records
     for code, parameter in codes.items():
@@ -187,13 +181,9 @@ def normalize(raw, payload, source_url, accessed, digest):
             else:
                 if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
                     raise ValueError("Número inválido.")
-                if (parameter.startswith("temperature") and not -100 <= value <= 100) or (parameter == "relative_humidity" and not 0 <= value <= 100) or (parameter in {"precipitation", "wind_speed", "solar_radiation"} and value < 0):
-                    raise ValueError("Valor inválido.")
                 valid += 1
                 ends[parameter] = timestamp
             row[metadata[parameter]["field"]] = value
-        if row.get("temperature_min_c") is not None and row.get("temperature_max_c") is not None and row["temperature_min_c"] > row["temperature_max_c"]:
-            raise ValueError("Mínima maior que máxima.")
         series.append(row)
     if not valid:
         raise ForecastError(404, "DATA_UNAVAILABLE", "Nenhuma previsão disponível no intervalo solicitado.")
@@ -210,6 +200,7 @@ def normalize(raw, payload, source_url, accessed, digest):
             "spatial_resolution": "Depende da fonte/modelo contratado; ponto interpolado pelo provedor não é medição de talhão.",
             "documentation_url": DOCS}],
         "quality": {"missing_times": missing, "warnings": ["Previsão operacional sujeita a atualização e incerteza; não é histórico NASA POWER.",
+            "Resposta disponibilizada sem checagem de consistência meteorológica; status indica cobertura, não validação científica.",
             "dateGenerated é geração da resposta do provedor; não foi identificado o horário de inicialização de cada modelo.",
             "Fonte mix pode combinar modelos e interpolar espaço/tempo; não há resolução fixa ou horizonte garantido por este conector."]},
         "limitations": ["A conta deve autorizar parâmetros, fonte, horizonte, volume e redistribuição; licença não foi presumida.",
