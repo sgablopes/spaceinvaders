@@ -1,10 +1,10 @@
 (function () {
   'use strict';
-  const ESSENTIAL = ['last_crop','previous_crop','last_harvest_result','main_difficulties','irrigation','mechanization','primary_goal'];
+  const ESSENTIAL = ['last_crop','previous_crop','last_harvest_result','main_difficulties','irrigation','mechanization','primary_goal','next_crop_preference','current_season_stage'];
   const OPTIONAL = ['fertilization','soil_management','cover_crops','other_crops','water_access','budget_constraints','technical_resources'];
   const envelope = () => ({value:null,status:'pending',source:'farmer_report',evidence:[],confidence:null,unknown_reason:null,updated_at:null,revision:0});
   function create(property) {
-    return {schema_version:'1.0.0',profile_id:crypto.randomUUID(),property_id:property.propertyId,person:{display_name:property.personName},property:{name:property.propertyName,area_hectares:property.areaHectares,geometry_source:'existing_property_registration'},fields:Object.fromEntries(ESSENTIAL.map(id=>[id,envelope()])),additional_fields:{},interview_history:[],revision:0,updated_at:new Date().toISOString()};
+    return {schema_version:'1.1.0',profile_id:crypto.randomUUID(),property_id:property.propertyId,person:{display_name:property.personName},property:{name:property.propertyName,area_hectares:property.areaHectares,geometry_source:'existing_property_registration'},fields:Object.fromEntries(ESSENTIAL.map(id=>[id,envelope()])),additional_fields:{},interview_history:[],revision:0,updated_at:new Date().toISOString()};
   }
   function apply(profile, response, transcript, history=[]) {
     if (response.base_profile_revision !== profile.revision) return {profile, applied:[]};
@@ -31,7 +31,7 @@
     return {profile:next,applied};
   }
   function analysisInput(profile, property) {
-    return {schema_version:'1.0.0',property_id:property.propertyId,geometry:property.geometry,area_hectares:property.areaHectares,agricultural_profile:{...profile.fields,...profile.additional_fields},data_quality:{pending_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='pending'),uncertain_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='uncertain'),unknown_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='unknown')}};
+    return {schema_version:'1.1.0',property_id:property.propertyId,geometry:property.geometry,area_hectares:property.areaHectares,agricultural_profile:{...profile.fields,...profile.additional_fields},data_quality:{pending_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='pending'),uncertain_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='uncertain'),unknown_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='unknown')}};
   }
   window.AgrionProfile={ESSENTIAL,create,apply,analysisInput};
 })();

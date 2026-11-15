@@ -28,7 +28,7 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(_live_text_frame('{"setupComplete":{}}'), '{"setupComplete":{}}')
 
     def test_live_state_update_only_uses_canonical_statuses(self):
-        fields = {field: 'pending' for field in ['last_crop', 'previous_crop', 'last_harvest_result', 'main_difficulties', 'irrigation', 'mechanization', 'primary_goal']}
+        fields = {field: 'pending' for field in ['last_crop', 'previous_crop', 'last_harvest_result', 'main_difficulties', 'irrigation', 'mechanization', 'primary_goal', 'next_crop_preference', 'current_season_stage']}
         fields['last_crop'] = 'confirmed'
         text = _live_state_instruction('Agrion.', {'fields': fields, 'intro_stage': 2, 'clarify': True})
         self.assertIn('last_crop', text)
@@ -74,6 +74,31 @@ class DiscoveryTests(unittest.TestCase):
         self.assertTrue(_validate_value(Patch(**base, value={'financial_amount': 12000, 'currency': 'BRL'})))
         self.assertFalse(_validate_value(Patch(**base, value={'quantity': 50})))
 
+    def test_first_cultivation_and_new_fields_have_canonical_values(self):
+        base = {'operation': 'set', 'status': 'confirmed', 'evidence_excerpt': 'Nunca plantei aqui'}
+        self.assertTrue(_validate_value(Patch(**base, field='last_crop', value={'crop': None, 'never_cultivated': True})))
+        self.assertTrue(_validate_value(Patch(**base, field='previous_crop', value={'crop': None, 'no_previous_cultivation': True})))
+        self.assertTrue(_validate_value(Patch(**base, field='last_harvest_result', value={'qualitative_result': 'not_applicable'})))
+        self.assertTrue(_validate_value(Patch(**base, field='next_crop_preference', value={'crop': None, 'no_preference': True})))
+        self.assertTrue(_validate_value(Patch(**base, field='current_season_stage', value={'stage': 'not_started'})))
+        self.assertFalse(_validate_value(Patch(**base, field='last_crop', value={'crop': 'soja', 'never_cultivated': True})))
+        self.assertFalse(_validate_value(Patch(**base, field='next_crop_preference', value={'crop': None, 'no_preference': False})))
+
+    def test_never_planted_resolves_past_crop_and_harvest_from_same_evidence(self):
+        import json
+        self.body['transcript'] = 'Nunca plantei nada nesta área. Vou começar agora.'
+        generated = {'patches': [{'field': 'last_crop', 'operation': 'set',
+            'value': {'crop': None, 'never_cultivated': True}, 'status': 'confirmed',
+            'evidence_excerpt': 'Nunca plantei nada nesta área'}]}
+        fake = SimpleNamespace(models=SimpleNamespace(generate_content=lambda **_: SimpleNamespace(text=json.dumps(generated))))
+        with patch.dict(os.environ, {'GOOGLE_CLOUD_PROJECT': 'test-project', 'GOOGLE_CLOUD_LOCATION': 'us-central1'}), patch('app.api.discovery.genai.Client', return_value=fake):
+            response = self.client.post('/api/interview/extract', json=self.body)
+        self.assertEqual(response.status_code, 200)
+        values = {item['field']: item['value'] for item in response.json['patches']}
+        self.assertEqual(values['last_crop']['never_cultivated'], True)
+        self.assertEqual(values['previous_crop']['no_previous_cultivation'], True)
+        self.assertEqual(values['last_harvest_result']['qualitative_result'], 'not_applicable')
+
     def test_missing_vertex_configuration_is_explicit(self):
         with patch.dict(os.environ, {"GOOGLE_CLOUD_PROJECT": "", "GOOGLE_CLOUD_LOCATION": ""}):
             self.assertEqual(self.client.post('/api/interview/extract', json=self.body).status_code, 503)
@@ -111,6 +136,8 @@ class DiscoveryTests(unittest.TestCase):
             ('irrigation', 'Não tenho irrigação.', {'water_regime': 'rainfed', 'irrigation_method': 'none'}),
             ('mechanization', 'Tenho um trator pequeno.', {'work_mode': 'unknown', 'equipment': ['trator pequeno']}),
             ('primary_goal', 'Quero ganhar dinheiro.', {'category': 'maximize_profit'}),
+            ('next_crop_preference', 'Prefiro plantar milho.', {'crop': 'milho'}),
+            ('current_season_stage', 'Ainda estou planejando.', {'stage': 'planning'}),
         ]
         for field, transcript, recovered in examples:
             with self.subTest(field=field):
