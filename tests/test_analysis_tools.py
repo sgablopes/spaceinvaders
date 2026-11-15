@@ -8,6 +8,28 @@ spec.loader.exec_module(module)
 
 
 class ToolsTest(unittest.TestCase):
+    def test_climate_tools_registered_and_forward_results(self):
+        class Climate:
+            def nasa_daily(self, **args):return {'ok':True,'data':{'status':'partial','provenance':{'provider':'NASA POWER'},'args':args}}
+            def rainfall(self, **args):return {'ok':True,'data':{'result':{'total_mm':0}}}
+            def gdd(self, **args):return {'ok':False,'error':{'code':'DATA_INCOMPLETE'}}
+        tools=module.AnalysisTools(climate=Climate())
+        names={entry['name'] for entry in tools.declarations()}
+        self.assertTrue({'nasa_clima_diario','chuva_acumulada','graus_dia_acumulados'}<=names)
+        self.assertFalse(any('meteomatics' in name for name in names))
+        location={'latitude':-16.5,'longitude':-49.3}
+        nasa=tools.execute('nasa_clima_diario',{'location':location,'start_date':'2025-01-01','end_date':'2025-01-02','parameters':['T2M']})
+        self.assertEqual(nasa['data']['status'],'partial')
+        self.assertEqual(nasa['data']['provenance']['provider'],'NASA POWER')
+        self.assertEqual(tools.execute('chuva_acumulada',{'location':location,'reference_date':'2025-01-02'})['data']['result']['total_mm'],0)
+        self.assertEqual(tools.execute('graus_dia_acumulados',{})['error']['code'],'DATA_INCOMPLETE')
+
+    def test_climate_bad_parameters_are_reported(self):
+        class Climate:
+            def nasa_daily(self, **kwargs):raise ValueError('inválido')
+            def rainfall(self, **kwargs):return {}
+            def gdd(self, **kwargs):return {}
+        self.assertEqual(module.AnalysisTools(climate=Climate()).execute('nasa_clima_diario',{})['error'],'invalid_arguments')
     def test_query_preserves_source_and_pagination(self):
         calls=[]
         def request(path, params):

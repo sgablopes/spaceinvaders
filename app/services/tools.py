@@ -22,12 +22,13 @@ _SOURCES = {
 
 
 class AnalysisTools:
-    def __init__(self, base_url=None, request=None):
+    def __init__(self, base_url=None, request=None, climate=None):
         self.base_url=(base_url or os.getenv('AGRION_ANALYSIS_URL', 'http://agrion-data:8000')).rstrip('/')
         parsed=urlsplit(self.base_url)
         if parsed.scheme not in {'http', 'https'} or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in {'', '/'}:
             raise ValueError('URL da API de análises inválida.')
         self._request=request or self._http_get
+        self._climate=climate
 
     def declarations(self):
         result=[{'name': name, 'description': description, 'parameters': {'type': 'OBJECT', 'properties': _QUERY}} for name, (_, description) in _SOURCES.items()]
@@ -35,12 +36,28 @@ class AnalysisTools:
             {'name':'camadas_gaez','description':'Lista camadas GAEZ v5; use paginação e escolha a camada exata antes de consultar um ponto.','parameters':{'type':'OBJECT','properties':{'variable':{'type':'string'},'filename_prefix':{'type':'string'},'page_token':{'type':'string'}}}},
             {'name':'ponto_gaez','description':'Consulta uma camada GAEZ por coordenada WGS84. Não infira unidades ou classes ausentes.','parameters':{'type':'OBJECT','properties':{'layer':{'type':'string'},'latitude':{'type':'number'},'longitude':{'type':'number'}},'required':['layer','latitude','longitude']}}
         ])
+        location={'type':'OBJECT','properties':{'latitude':{'type':'NUMBER'},'longitude':{'type':'NUMBER'}},'required':['latitude','longitude']}
+        day={'type':'STRING','description':'Data civil exata AAAA-MM-DD; não invente datas ausentes.'}
+        result.extend([
+            {'name':'nasa_clima_diario','description':'Dados históricos diários NASA POWER, estimativas regionais, não previsão ou medição de campo. Até 366 dias.','parameters':{'type':'OBJECT','properties':{'location':location,'start_date':day,'end_date':day,'parameters':{'type':'ARRAY','items':{'type':'STRING','enum':['T2M','T2M_MAX','T2M_MIN','PRECTOTCORR','RH2M','ALLSKY_SFC_SW_DWN']}},'time_standard':{'type':'STRING','enum':['UTC','LST']},'require_complete':{'type':'BOOLEAN'}},'required':['location','start_date','end_date','parameters']}},
+            {'name':'chuva_acumulada','description':'Calcula chuva histórica em janelas retrospectivas 7, 15, 30 e 90 dias, com NASA POWER.','parameters':{'type':'OBJECT','properties':{'location':location,'reference_date':day,'day_basis':{'type':'STRING','enum':['UTC','LST']}},'required':['location','reference_date']}},
+            {'name':'graus_dia_acumulados','description':'Calcula graus-dia históricos NASA POWER; exige cultura, período exato e temperatura-base explícita. Não calcula estágio fenológico observado.','parameters':{'type':'OBJECT','properties':{'location':location,'crop_id':{'type':'STRING'},'start_date':day,'end_date':day,'base_temperature_c':{'type':'NUMBER'},'base_temperature_reference':{'type':'STRING','description':'Origem explícita da temperatura-base, quando disponível.'}},'required':['location','crop_id','start_date','end_date','base_temperature_c']}}
+        ])
         return result
 
     def execute(self, name, args):
         if not isinstance(args, dict):
             return {'error':'invalid_arguments'}
         try:
+            if name in {'nasa_clima_diario','chuva_acumulada','graus_dia_acumulados'}:
+                if self._climate is None:
+                    from .climate_tools import ClimateTools
+                    self._climate=ClimateTools(base_url=self.base_url)
+                method={'nasa_clima_diario':self._climate.nasa_daily,'chuva_acumulada':self._climate.rainfall,'graus_dia_acumulados':self._climate.gdd}[name]
+                output=method(**args)
+                if not isinstance(output,dict):return {'error':'invalid_response'}
+                if len(json.dumps(output,ensure_ascii=False,allow_nan=False))>120000:return {'error':'response_too_large','message':'Solicite um período menor.'}
+                return output
             if name in _SOURCES:
                 if set(args)-{'q','filtros_json','limit','offset'}: raise ValueError()
                 q=args.get('q');limit=args.get('limit',10);offset=args.get('offset',0)

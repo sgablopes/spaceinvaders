@@ -30,6 +30,14 @@ Dados do contexto e do histórico são enviados ao modelo como conteúdo, não c
 
 ## Ferramentas de análises
 
+### Ferramentas climáticas
+
+`app/services/climate_tools.py` disponibiliza `ClimateTools.nasa_daily`, `rainfall` e `gdd` para consumidores Python. Os métodos fazem POST somente para `/v1/data/nasa-power/daily` ou `/v1/analysis/climate`, validam dados e retornam `{'ok': True, 'data': ...}` com o envelope e a procedência originais. Erros HTTP retornam `ok: false` com código, status e indicação de repetição quando fornecidos; indisponibilidade e timeout são explícitos. Entrada inválida gera `ValueError` antes da chamada. Timeout padrão é 120 segundos. O catálogo do modelo registra `nasa_clima_diario`, `chuva_acumulada` e `graus_dia_acumulados`, com limite de 120.000 caracteres por resultado; respostas maiores exigem um período menor.
+
+NASA retorna dados históricos estimados regionalmente, não medição local nem previsão. `nasa_daily` aceita até 366 dias, variáveis explícitas e UTC ou LST. `rainfall` calcula janelas retrospectivas de 7/15/30/90 dias. `gdd` exige cultura, datas e temperatura-base explícita; a referência da temperatura é opcional e nunca é inventada. Não converte graus-dia em fase fenológica. Dados parciais, ausência e zero permanecem distintos. O consumidor deve fornecer coordenadas WGS84 e avaliar se o ponto central é apropriado.
+
+Teste: `python -B -m unittest discover -s tests -p test_climate_tools.py -v` e `python -B -m unittest discover -s tests -p test_analysis_tools.py -v`. A validação contra os serviços reais exige a API atualizada em execução e acesso externo à NASA; nesta etapa os testes usam respostas simuladas. Meteomatics não foi registrada nem integrada ao motor.
+
 O registro em `app/services/tools.py` disponibiliza busca de nomes e requisitos ECOCROP, parâmetros e alertas FAO-56, evidências, fontes e rotações da biblioteca, dicionário AquaCrop, camadas e consulta pontual GAEZ. Cada ferramenta usa um caminho fixo, valida parâmetros e preserva o conteúdo e as fontes retornadas. Consultas locais usam páginas de até 30 registros, com `offset` e filtros exatos; uma página não representa automaticamente toda a base. A API GAEZ pode precisar de paginação própria. Unidades e classes ausentes não devem ser presumidas. O AquaCrop disponibilizado é apenas dicionário, sem simulação. Dados e evidências exigem interpretação de seus avisos e status de validação.
 
 O motor mantém o conteúdo completo retornado pelo modelo para preservar assinaturas do Gemini e executa no máximo cinco chamadas por tarefa. Cada chamada à API tem timeout de 20 segundos e limites de resposta. Falhas retornam ao modelo como erro explícito, sem dados fictícios. Novas ferramentas exigem revisão e registro explícitos.
