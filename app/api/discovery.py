@@ -81,10 +81,51 @@ class GenerationExtraction(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
-class GoalCategory(BaseModel):
-    category: Literal["maximize_profit", "increase_yield", "restore_soil", "reduce_risk", "reduce_costs", "diversify", "other", "none"] = Field(
-        description="Choose the primary goal explicitly stated by the farmer, or none if no goal was stated."
-    )
+class CropValue(BaseModel):
+    crop: str | None
+    period_label: str | None = None
+    no_previous_cultivation: bool | None = None
+
+
+class HarvestValue(BaseModel):
+    qualitative_result: Literal["good", "average", "poor", "no_harvest"] | None
+    quantity: float | None = None
+    unit: str | None = None
+    crop: str | None = None
+    bag_weight_kg: float | None = None
+    notes: str | None = None
+
+
+class DifficultiesValue(BaseModel):
+    categories: list[Literal["drought", "excess_rain", "pests", "diseases", "soil", "input_costs", "labor", "machinery", "market", "other"]]
+    free_text: list[str] = Field(default_factory=list)
+    explicit_none: bool = False
+
+
+class IrrigationValue(BaseModel):
+    water_regime: Literal["rainfed", "irrigated", "mixed", "unknown"]
+    irrigation_method: Literal["none", "manual", "drip", "sprinkler", "center_pivot", "furrow", "other", "unknown"] | None = None
+    automated: bool | None = None
+    notes: str | None = None
+
+
+class MechanizationValue(BaseModel):
+    work_mode: Literal["manual", "mixed", "mechanized", "automated", "unknown"]
+    equipment: list[str] = Field(default_factory=list)
+    automation_level: Literal["none", "partial", "high", "unknown"] | None = None
+    notes: str | None = None
+
+
+class GoalValue(BaseModel):
+    category: Literal["maximize_profit", "increase_yield", "restore_soil", "reduce_risk", "reduce_costs", "diversify", "other"]
+    description: str | None = None
+
+
+class UnknownReason(BaseModel):
+    reason: Literal["does_not_know", "does_not_remember", "declined", "none"]
+
+
+RECOVERY_SCHEMAS = {"last_crop": CropValue, "previous_crop": CropValue, "last_harvest_result": HarvestValue, "main_difficulties": DifficultiesValue, "irrigation": IrrigationValue, "mechanization": MechanizationValue, "primary_goal": GoalValue}
 
 
 def _uuid(value):
@@ -138,21 +179,24 @@ def _validate_value(patch):
         return False
     if patch.status == "unknown":
         return value is None and patch.unknown_reason is not None
+    if patch.status == "uncertain" and value is None and patch.unknown_reason is None:
+        return True
     if patch.unknown_reason is not None or not isinstance(value, dict):
         return False
     if patch.field in {"last_crop", "previous_crop"}:
-        return set(value) <= {"crop", "period_label", "no_previous_cultivation"} and (isinstance(value.get("crop"), str) or value.get("no_previous_cultivation") is True)
+        return set(value) <= {"crop", "period_label", "no_previous_cultivation"} and (isinstance(value.get("crop"), str) and bool(value["crop"].strip()) or patch.field == "previous_crop" and value.get("no_previous_cultivation") is True)
     if patch.field == "last_harvest_result":
-        return set(value) <= {"crop", "quantity", "unit", "bag_weight_kg", "qualitative_result", "notes"} and value.get("qualitative_result") in {None, "good", "average", "poor", "no_harvest"} and (value.get("quantity") is None or isinstance(value["quantity"], (int, float)))
+        return set(value) <= {"crop", "quantity", "unit", "bag_weight_kg", "qualitative_result", "notes"} and value.get("qualitative_result") in {None, "good", "average", "poor", "no_harvest"} and (value.get("quantity") is None or isinstance(value["quantity"], (int, float))) and (value.get("qualitative_result") is not None or value.get("quantity") is not None)
     if patch.field == "main_difficulties":
-        return set(value) <= {"categories", "free_text", "explicit_none"} and set(value.get("categories", [])) <= DIFFICULTIES and isinstance(value.get("free_text", []), list)
+        categories=value.get("categories", []);free_text=value.get("free_text", [])
+        return set(value) <= {"categories", "free_text", "explicit_none"} and isinstance(categories, list) and set(categories) <= DIFFICULTIES and isinstance(free_text, list) and bool(categories or free_text or value.get("explicit_none") is True)
     if patch.field == "irrigation":
-        return set(value) <= {"water_regime", "irrigation_method", "automated", "notes"} and value.get("water_regime", "unknown") in {"rainfed", "irrigated", "mixed", "unknown"} and value.get("irrigation_method", "unknown") in {"none", "manual", "drip", "sprinkler", "center_pivot", "furrow", "other", "unknown"} and value.get("automated") in {True, False, None}
+        return set(value) <= {"water_regime", "irrigation_method", "automated", "notes"} and value.get("water_regime", "unknown") in {"rainfed", "irrigated", "mixed", "unknown"} and value.get("irrigation_method", "unknown") in {"none", "manual", "drip", "sprinkler", "center_pivot", "furrow", "other", "unknown"} and value.get("automated") in {True, False, None} and (value.get("water_regime") not in {None, "unknown"} or value.get("irrigation_method") not in {None, "unknown"})
     if patch.field == "mechanization":
-        return set(value) <= {"work_mode", "equipment", "automation_level", "notes"} and value.get("work_mode", "unknown") in {"manual", "mixed", "mechanized", "automated", "unknown"} and value.get("automation_level", "unknown") in {"none", "partial", "high", "unknown"} and isinstance(value.get("equipment", []), list)
+        return set(value) <= {"work_mode", "equipment", "automation_level", "notes"} and value.get("work_mode", "unknown") in {"manual", "mixed", "mechanized", "automated", "unknown"} and value.get("automation_level", "unknown") in {"none", "partial", "high", "unknown"} and isinstance(value.get("equipment", []), list) and (value.get("work_mode") not in {None, "unknown"} or bool(value.get("equipment")))
     if patch.field == "primary_goal":
         return set(value) <= {"category", "description"} and value.get("category") in GOALS
-    return isinstance(value, dict)
+    return bool(value)
 
 
 @discovery_blueprint.post("/api/interview/extract")
@@ -162,7 +206,7 @@ def extract():
     if request.content_length and request.content_length > 16000:
         return jsonify(error="invalid_request"), 422
     body = request.get_json(silent=True)
-    if not isinstance(body, dict) or not _uuid(body.get("interview_id")) or not _uuid(body.get("property_id")) or not isinstance(body.get("turn_id"), str) or len(body["turn_id"]) > 100 or not isinstance(body.get("sequence"), int) or body["sequence"] < 1 or body.get("speaker") != "farmer" or not isinstance(body.get("transcript"), str) or not 1 <= len(body["transcript"]) <= 3000 or not isinstance(body.get("profile_revision"), int) or body["profile_revision"] < 0 or not isinstance(body.get("profile_snapshot"), dict):
+    if not isinstance(body, dict) or not _uuid(body.get("interview_id")) or not _uuid(body.get("property_id")) or not isinstance(body.get("turn_id"), str) or len(body["turn_id"]) > 100 or not isinstance(body.get("sequence"), int) or body["sequence"] < 1 or body.get("speaker") != "farmer" or not isinstance(body.get("transcript"), str) or not 1 <= len(body["transcript"]) <= 3000 or not isinstance(body.get("assistant_context", ""), str) or len(body.get("assistant_context", "")) > 1000 or not isinstance(body.get("profile_revision"), int) or body["profile_revision"] < 0 or not isinstance(body.get("profile_snapshot"), dict):
         return jsonify(error="invalid_request"), 422
     if not _rate_limit("EXTRACTIONS", 120):
         return jsonify(error="rate_limited"), 429
@@ -178,40 +222,55 @@ def extract():
                 base_url=f"https://aiplatform.{extraction_location}.rep.googleapis.com",
             )
         client = genai.Client(**client_options)
-        response = client.models.generate_content(
-            model=os.getenv("GEMINI_EXTRACTION_MODEL", "gemini-3.5-flash-lite"),
-            contents=json.dumps({"transcript": body["transcript"], "profile_snapshot": body["profile_snapshot"]}, ensure_ascii=False),
-            config=types.GenerateContentConfig(
-                system_instruction=("Você extrai fatos agrícolas explícitos de qualquer idioma. Retorne somente patches no esquema. "
-                    "IDs dos campos e categorias devem permanecer nos enums canônicos ingleses, independentemente do idioma da conversa. "
-                    "Não deduza fatos, anos, unidades, produtividade, mecanização ou irrigação. Uma fala pode gerar vários patches. "
-                    "A evidência deve ser trecho literal da fala. 'Não sei' é unknown; estimativa é uncertain. "
-                    "Não altere geometria. Não faça recomendações."),
-                response_mime_type="application/json", response_schema=GenerationExtraction,
-            ),
-        )
+        model = os.getenv("GEMINI_EXTRACTION_MODEL", "gemini-3.5-flash-lite")
+        context = body.get("assistant_context", "")
+        contents = json.dumps({"farmer_transcript": body["transcript"], "previous_assistant_question": context, "profile_snapshot": body["profile_snapshot"]}, ensure_ascii=False)
+        instruction = ("Extraia somente fatos agrícolas explicitamente relatados pelo agricultor, em qualquer idioma. "
+            "A pergunta anterior esclarece a que campo uma resposta curta se refere, mas nunca serve como evidência. "
+            "IDs e categorias permanecem canônicos em inglês. Uma fala pode gerar vários patches. "
+            "Copie a evidência literalmente da fala do agricultor. Não invente fatos, datas, medidas ou equipamentos. "
+            "Não sei é unknown; estimativa é uncertain. Não altere geometria nem faça recomendações.")
+        config = types.GenerateContentConfig(system_instruction=instruction, response_mime_type="application/json", response_schema=GenerationExtraction)
+        response = client.models.generate_content(model=model, contents=contents, config=config)
         result = Extraction.model_validate_json(response.text)
-        patches = [p for p in result.patches if _validate_value(p) and p.evidence_excerpt and p.evidence_excerpt in body["transcript"]]
-        if not any(p.field == "primary_goal" for p in patches):
-            goal_candidates = [p for p in result.patches if p.field == "primary_goal" and p.status in {"confirmed", "uncertain"} and p.evidence_excerpt and p.evidence_excerpt in body["transcript"]]
-            if goal_candidates:
+        if not result.patches and context and len(body["transcript"]) < 150:
+            retry_config = types.GenerateContentConfig(system_instruction=instruction + " A resposta curta do agricultor responde à pergunta anterior. Identifique o campo perguntado e extraia o valor explícito, se houver.", response_mime_type="application/json", response_schema=GenerationExtraction)
+            result = Extraction.model_validate_json(client.models.generate_content(model=model, contents=contents, config=retry_config).text)
+        patches = []
+        for patch in result.patches:
+            if not patch.evidence_excerpt or patch.evidence_excerpt not in body["transcript"]:
+                continue
+            if _validate_value(patch):
+                patches.append(patch)
+                continue
+            if patch.status == "unknown" and patch.field in RECOVERY_SCHEMAS:
                 try:
-                    goal = GoalCategory.model_validate_json(client.models.generate_content(
-                        model=os.getenv("GEMINI_EXTRACTION_MODEL", "gemini-3.5-flash-lite"),
-                        contents=body["transcript"],
-                        config=types.GenerateContentConfig(
-                            system_instruction="Classifique apenas o objetivo explicitamente dito pelo agricultor. Se combinar lucro e baixo risco, escolha o objetivo principal e preserve a nuance na evidência. Se não houver objetivo, use none.",
-                            response_mime_type="application/json",
-                            response_schema=GoalCategory,
-                        ),
-                    ).text)
-                    if goal.category != "none":
-                        original = goal_candidates[0]
-                        repaired = Patch(field="primary_goal", operation=original.operation, value={"category": goal.category, "description": original.evidence_excerpt}, status=original.status, confidence=original.confidence, evidence_excerpt=original.evidence_excerpt)
-                        if _validate_value(repaired):
-                            patches.append(repaired)
+                    reason_response = client.models.generate_content(model=model, contents=patch.evidence_excerpt, config=types.GenerateContentConfig(
+                        system_instruction="Classifique apenas uma recusa ou desconhecimento explicitamente dito pelo agricultor. Se a fala não indicar isso, retorne none.",
+                        response_mime_type="application/json", response_schema=UnknownReason,
+                    ))
+                    reason = UnknownReason.model_validate_json(reason_response.text).reason
+                    repaired = patch.model_copy(update={"value": None, "unknown_reason": reason})
+                    if reason != "none" and _validate_value(repaired):
+                        patches.append(repaired)
                 except Exception as error:
-                    current_app.logger.warning("Discovery goal classification failure (%s)", type(error).__name__)
+                    current_app.logger.warning("Discovery unknown-answer recovery failure (%s, %s)", patch.field, type(error).__name__)
+                continue
+            schema = RECOVERY_SCHEMAS.get(patch.field)
+            if not schema or patch.status not in {"confirmed", "uncertain"}:
+                continue
+            try:
+                repair_contents = json.dumps({"farmer_transcript": body["transcript"], "previous_assistant_question": context, "field": patch.field}, ensure_ascii=False)
+                repaired_response = client.models.generate_content(model=model, contents=repair_contents, config=types.GenerateContentConfig(
+                    system_instruction="Preencha apenas o valor do campo indicado com fatos explícitos da fala do agricultor. A pergunta anterior esclarece o campo, mas não é evidência. Não invente dados; respeite o formato exigido pelo esquema.",
+                    response_mime_type="application/json", response_schema=schema,
+                ))
+                value = schema.model_validate_json(repaired_response.text).model_dump(exclude_none=True)
+                repaired = patch.model_copy(update={"value": value})
+                if _validate_value(repaired):
+                    patches.append(repaired)
+            except Exception as error:
+                current_app.logger.warning("Discovery field recovery failure (%s, %s)", patch.field, type(error).__name__)
         if result.patches and not patches:
             current_app.logger.warning("Discovery extraction rejected all %d generated patches", len(result.patches))
         return jsonify(interview_id=body["interview_id"], turn_id=body["turn_id"], sequence=body["sequence"], base_profile_revision=body["profile_revision"], patches=[p.model_dump() for p in patches], warnings=result.warnings[:5])

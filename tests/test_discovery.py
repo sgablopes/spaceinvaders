@@ -54,6 +54,60 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(response.json['patches'][0]['field'], 'primary_goal')
         self.assertEqual(response.json['patches'][0]['value']['category'], 'maximize_profit')
 
+    def test_recovery_covers_all_essential_value_shapes(self):
+        import json
+        examples = [
+            ('last_crop', 'Foi banana.', {'crop': 'banana'}),
+            ('previous_crop', 'Era cebola.', {'crop': 'cebola'}),
+            ('last_harvest_result', 'A colheita foi ruim.', {'qualitative_result': 'poor'}),
+            ('main_difficulties', 'Faltou chuva.', {'categories': ['drought']}),
+            ('irrigation', 'Não tenho irrigação.', {'water_regime': 'rainfed', 'irrigation_method': 'none'}),
+            ('mechanization', 'Tenho um trator pequeno.', {'work_mode': 'unknown', 'equipment': ['trator pequeno']}),
+            ('primary_goal', 'Quero ganhar dinheiro.', {'category': 'maximize_profit'}),
+        ]
+        for field, transcript, recovered in examples:
+            with self.subTest(field=field):
+                self.body['transcript'] = transcript
+                self.body['assistant_context'] = 'Pergunta anterior sobre a lavoura.'
+                generated = {'patches': [{'field': field, 'operation': 'set', 'value': {}, 'status': 'confirmed', 'confidence': 'high', 'evidence_excerpt': transcript}], 'warnings': []}
+                replies = iter([generated, recovered])
+                calls = []
+                def generate_content(**kwargs):
+                    calls.append(kwargs)
+                    return SimpleNamespace(text=json.dumps(next(replies)))
+                fake = SimpleNamespace(models=SimpleNamespace(generate_content=generate_content))
+                with patch.dict(os.environ, {'GOOGLE_CLOUD_PROJECT': 'test-project', 'GOOGLE_CLOUD_LOCATION': 'us-central1'}), patch('app.api.discovery.genai.Client', return_value=fake):
+                    response = self.client.post('/api/interview/extract', json=self.body)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual([item['field'] for item in response.json['patches']], [field])
+                self.assertEqual(len(calls), 2)
+                self.assertIn('Pergunta anterior', calls[0]['contents'])
+
+    def test_short_answer_retries_with_previous_question(self):
+        import json
+        self.body['transcript'] = 'Foi banana.'
+        self.body['assistant_context'] = 'O que você plantou por último nessa área?'
+        generated = {'patches': [{'field': 'last_crop', 'operation': 'set', 'value': {}, 'status': 'confirmed', 'evidence_excerpt': 'banana'}], 'warnings': []}
+        replies = iter([{'patches': [], 'warnings': []}, generated, {'crop': 'banana'}])
+        fake = SimpleNamespace(models=SimpleNamespace(generate_content=lambda **_: SimpleNamespace(text=json.dumps(next(replies)))))
+        with patch.dict(os.environ, {'GOOGLE_CLOUD_PROJECT': 'test-project', 'GOOGLE_CLOUD_LOCATION': 'us-central1'}), patch('app.api.discovery.genai.Client', return_value=fake):
+            response = self.client.post('/api/interview/extract', json=self.body)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['patches'][0]['field'], 'last_crop')
+
+    def test_explicit_unknown_answer_gets_canonical_reason(self):
+        import json
+        self.body['transcript'] = 'Não lembro.'
+        self.body['assistant_context'] = 'O que você plantou antes?'
+        generated = {'patches': [{'field': 'previous_crop', 'operation': 'set', 'value': {}, 'status': 'unknown', 'evidence_excerpt': 'Não lembro'}], 'warnings': []}
+        replies = iter([generated, {'reason': 'does_not_remember'}])
+        fake = SimpleNamespace(models=SimpleNamespace(generate_content=lambda **_: SimpleNamespace(text=json.dumps(next(replies)))))
+        with patch.dict(os.environ, {'GOOGLE_CLOUD_PROJECT': 'test-project', 'GOOGLE_CLOUD_LOCATION': 'us-central1'}), patch('app.api.discovery.genai.Client', return_value=fake):
+            response = self.client.post('/api/interview/extract', json=self.body)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['patches'][0]['status'], 'unknown')
+        self.assertEqual(response.json['patches'][0]['unknown_reason'], 'does_not_remember')
+
     def test_multiple_provider_patches_are_filtered_to_explicit_valid_facts(self):
         self.body['transcript'] = 'Plantei milho, antes soja, faltou chuva, não tenho irrigação e tenho trator pequeno.'
         patches = [

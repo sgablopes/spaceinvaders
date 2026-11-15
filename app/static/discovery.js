@@ -5,7 +5,7 @@
  const VOICES=['Zephyr','Kore','Orus','Autonoe','Umbriel','Erinome','Laomedeia','Schedar','Achird','Sadachbia','Puck','Fenrir','Aoede','Enceladus','Algieba','Algenib','Achernar','Gacrux','Zubenelgenubi','Sadaltager','Charon','Leda','Callirrhoe','Iapetus','Rasalgethi','Alnilam','Pulcherrima','Forward','Vindemiatrix','Sulafat'];
  const labels={last_crop:'Última cultura',previous_crop:'Cultura anterior',last_harvest_result:'Última colheita',main_difficulties:'Dificuldades',irrigation:'Irrigação',mechanization:'Máquinas e trabalho',primary_goal:'Objetivo da próxima safra'};
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- let property,profile,interview,ws,audioContext,micStream,micSource,processor,playAt=0,timer,closing=false,queue=Promise.resolve(),pendingInput='',pendingOutput='',inputDebounce,outputDebounce,outputNode=null,sequence=0,startedMono=0,closingMono=0;const audioSources=new Set();
+ let property,profile,interview,ws,audioContext,micStream,micSource,processor,playAt=0,timer,closing=false,queue=Promise.resolve(),pendingInput='',pendingOutput='',lastAssistantTurn='',inputDebounce,outputDebounce,outputNode=null,sequence=0,startedMono=0,closingMono=0;const audioSources=new Set();
  const mount=()=>document.getElementById('discoveryMount');
  function ensureMount(){if(!mount()){const d=document.createElement('div');d.id='discoveryMount';document.body.appendChild(d);}}
  function status(text){const node=document.getElementById('discoveryStatus');if(node)node.textContent=text;}
@@ -16,7 +16,7 @@
    for(const pending of (await R.all('pending_extractions')).filter(x=>x.property_id===property.propertyId)){
      const previous=await R.get('interviews',pending.interview_id);
      if(!previous)continue;
-     const body={interview_id:pending.interview_id,property_id:property.propertyId,turn_id:pending.turn_id,sequence:pending.sequence,speaker:'farmer',transcript:pending.transcript,profile_revision:profile.revision,profile_snapshot:{fields:Object.fromEntries(P.ESSENTIAL.map(id=>[id,{status:profile.fields[id].status,value:profile.fields[id].value}]))}};
+     const body={interview_id:pending.interview_id,property_id:property.propertyId,turn_id:pending.turn_id,sequence:pending.sequence,speaker:'farmer',transcript:pending.transcript,assistant_context:pending.assistant_context||'',profile_revision:profile.revision,profile_snapshot:{fields:Object.fromEntries(P.ESSENTIAL.map(id=>[id,{status:profile.fields[id].status,value:profile.fields[id].value}]))}};
      try{
        const response=await fetch('/api/interview/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
        if(!response.ok)break;
@@ -33,6 +33,7 @@
    }
  }
  async function open(){property=window.AgrionPropertyStore.read();if(!property?.geometry)return;ensureMount();profile=await R.getByPropertyId(property.propertyId)||P.create(property);await R.put('agricultural_profiles',profile);mount().innerHTML=`<div class="discovery-backdrop"><section class="discovery-card" role="dialog" aria-modal="true" aria-labelledby="discoveryTitle"><header><div><small>AGRION DISCOVERY</small><h2 id="discoveryTitle">Vamos conversar sobre sua lavoura</h2></div><button id="discoveryClose" type="button" aria-label="Fechar">×</button></header><p>Conte sua experiência. Suas respostas ficam neste navegador e ajudam a preparar análises futuras.</p><label for="discoveryLanguage">Idioma da conversa</label><select id="discoveryLanguage"><option value="pt-BR">Português (Brasil)</option><option value="en-US">English</option><option value="es-ES">Español</option></select><div class="discovery-modes"><button id="discoveryVoice" class="btn btn-primary" type="button">Conversar por voz</button><button id="discoveryText" class="btn btn-secondary" type="button">Conversar por texto</button></div><p id="discoveryStatus" role="status">Escolha como deseja conversar.</p><div id="discoveryTranscript" class="discovery-transcript" aria-live="polite"></div><form id="discoveryForm" hidden><label for="discoveryInput">Sua resposta</label><textarea id="discoveryInput" rows="3" maxlength="3000" placeholder="Conte sobre sua lavoura"></textarea><button class="btn btn-primary" type="submit">Enviar</button></form><h3>O que já foi registrado</h3><ul id="discoveryChecklist" class="discovery-checklist"></ul><p class="discovery-privacy"><label><input type="checkbox" id="discoveryConsent"> Guardar texto pendente para tentar extrair depois, se a conexão falhar</label></p><button id="discoveryFinish" class="btn btn-secondary" type="button" hidden>Encerrar conversa</button></section></div>`;checklist();
+ lastAssistantTurn='';pendingInput='';finishOutput();
  document.getElementById('discoveryLanguage').insertAdjacentHTML('afterend',`<label for="discoveryVoiceChoice">Voz do Agrion</label><select id="discoveryVoiceChoice"><option value="">Padrão do modelo</option>${VOICES.map(voice=>`<option value="${voice}">${voice}</option>`).join('')}</select>`);
  document.getElementById('discoveryLanguage').querySelector('option[value="es-ES"]').value='es-US';
  document.getElementById('discoveryClose').onclick=()=>finish('user_request');document.getElementById('discoveryFinish').onclick=()=>requestClose('user_request');document.getElementById('discoveryVoice').onclick=()=>start('voice');document.getElementById('discoveryText').onclick=()=>start('text');document.getElementById('discoveryForm').onsubmit=e=>{e.preventDefault();const input=document.getElementById('discoveryInput');const text=input.value.trim();if(text){input.value='';line('Você',text);sendText(text);extract(text);}};
@@ -70,7 +71,7 @@
    if(t){pendingInput+=t;clearTimeout(inputDebounce);inputDebounce=setTimeout(flushInput,1100);}
    if(inputTranscription?.finished&&pendingInput)flushInput();
    const outputTranscription=msg.outputTranscription||content?.outputTranscription;
-   if(outputTranscription?.text){pendingOutput=joinTranscript(pendingOutput,outputTranscription.text);if(!outputNode)outputNode=line('Agrion',pendingOutput);else outputNode.nodeValue=pendingOutput;clearTimeout(outputDebounce);outputDebounce=setTimeout(finishOutput,2500);}
+   if(outputTranscription?.text){pendingOutput=joinTranscript(pendingOutput,outputTranscription.text);lastAssistantTurn=pendingOutput.slice(-1000);if(!outputNode)outputNode=line('Agrion',pendingOutput);else outputNode.nodeValue=pendingOutput;clearTimeout(outputDebounce);outputDebounce=setTimeout(finishOutput,2500);}
    if(outputTranscription?.finished)finishOutput();
    if(content?.interrupted){finishOutput();for(const source of audioSources){try{source.stop();}catch(_){}}audioSources.clear();playAt=0;}
    if(content?.modelTurn?.parts)for(const part of content.modelTurn.parts){if(part.inlineData?.data)playAudio(part.inlineData.data);if(part.text&&!outputTranscription&&!pendingOutput)line('Agrion',part.text);}
@@ -79,7 +80,27 @@
  }
  function flushInput(){clearTimeout(inputDebounce);inputDebounce=null;const text=pendingInput.trim();pendingInput='';if(text){line('Você',text);extract(text);}}
  function finishOutput(){clearTimeout(outputDebounce);outputDebounce=null;pendingOutput='';outputNode=null;}
- function extract(text){const turnId=crypto.randomUUID(),seq=++sequence;queue=queue.then(async()=>{const body={interview_id:interview.interview_id,property_id:property.propertyId,turn_id:turnId,sequence:seq,speaker:'farmer',transcript:text,profile_revision:profile.revision,profile_snapshot:{fields:Object.fromEntries(P.ESSENTIAL.map(id=>[id,{status:profile.fields[id].status,value:profile.fields[id].value}]))}};try{const res=await fetch('/api/interview/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!res.ok)throw Error('extraction');const data=await res.json();const result=P.apply(profile,data,text);const revisions=result.applied.map(x=>({...x,revision_id:crypto.randomUUID(),turn_id:turnId,interview_id:interview.interview_id,created_at:new Date().toISOString()}));profile=result.profile;interview.processed_turn_ids.push(turnId);interview.updated_at=new Date().toISOString();await R.savePatch(profile,revisions,interview);checklist();if(P.ESSENTIAL.every(id=>profile.fields[id].status!=='pending'))requestClose('essential_fields_complete');}catch(err){interview.errors.push('extraction_failed');if(document.getElementById('discoveryConsent')?.checked){await R.put('pending_extractions',{turn_id:turnId,interview_id:interview.interview_id,property_id:property.propertyId,sequence:seq,transcript:text});interview.pending_extraction_turn_ids.push(turnId);}await R.put('interviews',interview);status('Não foi possível analisar esta resposta agora. Você pode continuar.');}});}
+ function extract(text){
+   const activeInterview=interview,assistantContext=lastAssistantTurn.slice(-1000);
+   if(!activeInterview)return;
+   const turnId=crypto.randomUUID(),seq=++sequence;
+   queue=queue.then(async()=>{
+     const body={interview_id:activeInterview.interview_id,property_id:property.propertyId,turn_id:turnId,sequence:seq,speaker:'farmer',transcript:text,assistant_context:assistantContext,profile_revision:profile.revision,profile_snapshot:{fields:Object.fromEntries(P.ESSENTIAL.map(id=>[id,{status:profile.fields[id].status,value:profile.fields[id].value}]))}};
+     try{
+       const res=await fetch('/api/interview/extract',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+       if(!res.ok)throw Error('extraction');
+       const data=await res.json(),result=P.apply(profile,data,text);
+       const revisions=result.applied.map(x=>({...x,revision_id:crypto.randomUUID(),turn_id:turnId,interview_id:activeInterview.interview_id,created_at:new Date().toISOString()}));
+       profile=result.profile;activeInterview.processed_turn_ids.push(turnId);activeInterview.updated_at=new Date().toISOString();
+       await R.savePatch(profile,revisions,activeInterview);checklist();
+       if(interview===activeInterview&&P.ESSENTIAL.every(id=>profile.fields[id].status!=='pending'))requestClose('essential_fields_complete');
+     }catch(err){
+       activeInterview.errors.push('extraction_failed');
+       if(document.getElementById('discoveryConsent')?.checked){await R.put('pending_extractions',{turn_id:turnId,interview_id:activeInterview.interview_id,property_id:property.propertyId,sequence:seq,transcript:text,assistant_context:assistantContext});activeInterview.pending_extraction_turn_ids.push(turnId);}
+       await R.put('interviews',activeInterview);status('Não foi possível analisar esta resposta agora. Você pode continuar.');
+     }
+   });
+ }
  function tick(){if(!interview||interview.status!=='in_progress')return;const now=performance.now();const elapsed=(now-startedMono)/1000;if(elapsed>=LIMITS.absolute||closingMono&&now-closingMono>=LIMITS.grace*1000)finish('safety_timeout');else if(elapsed>=LIMITS.normal&&!closing)requestClose('time_limit');}
  function requestClose(reason){if(closing||!interview||interview.status!=='in_progress')return;closing=true;closingMono=performance.now();interview.closing_requested_at=new Date().toISOString();interview.completion_reason=reason;R.put('interviews',interview);status('Encerrando a conversa…');sendText('CLOSE_REQUESTED. Agradeça brevemente e encerre agora, sem novas perguntas.');if(!ws||ws.readyState!==WebSocket.OPEN)finish(reason);}
  async function finish(reason='user_request',farewell=false){if(!interview){mount()?.remove();return;}if(interview.status!=='in_progress'){mount()?.remove();return;}clearInterval(timer);clearTimeout(inputDebounce);finishOutput();if(pendingInput)flushInput();await stopMicrophone();ws?.close();interview.status=reason==='user_request'?'cancelled':reason==='safety_timeout'||reason==='time_limit'?'partial':'completed';interview.finished_at=new Date().toISOString();interview.updated_at=interview.finished_at;interview.duration_seconds=startedMono?Math.round((performance.now()-startedMono)/1000):0;interview.completion_reason=reason;interview.farewell_delivered=farewell;interview.essential_field_counts=Object.fromEntries(['pending','confirmed','uncertain','unknown'].map(s=>[s,P.ESSENTIAL.filter(id=>profile.fields[id].status===s).length]));await R.put('interviews',interview);interview=null;closing=false;mount()?.remove();}
