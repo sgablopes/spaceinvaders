@@ -1,0 +1,19 @@
+.agrion-chat,.agrion-chat *{box-sizing:border-box}
+.agrion-chat{min-height:100dvh;background:#F8F8F1;color:#242C20;font-family:Inter,sans-serif;padding:24px 16px}
+.agrion-chat-shell{max-width:820px;margin:auto;display:flex;flex-direction:column;min-height:calc(100dvh - 48px)}
+.agrion-chat-header{display:flex;align-items:center;gap:12px}
+.agrion-chat-header img{height:54px;width:54px;border-radius:50%;object-fit:cover;object-position:center 24%;border:2px solid #D8E889}
+.agrion-chat-header h1{margin:0;font:800 22px/1.2 'Plus Jakarta Sans',sans-serif;color:#29452B}
+.agrion-chat-header p{margin:4px 0 0;color:#596451;font-size:13px}
+.agrion-chat-back{border:1px solid #CBD6C5;border-radius:13px;background:white;color:#385C39;width:42px;height:42px;font-size:24px;cursor:pointer}
+.agrion-chat-context{background:#EAF0DA;color:#385C39;border-radius:14px;padding:12px 15px;margin:24px 0 14px;font-weight:700;font-size:14px}
+.agrion-chat-language{font-size:12px;color:#596451;margin-bottom:12px}.agrion-chat-language select{margin-left:8px;padding:6px;border:1px solid #CBD6C5;border-radius:8px;background:white;color:#29452B}
+.agrion-chat-messages{flex:1;min-height:280px;max-height:65dvh;overflow-y:auto;background:white;border:1px solid #DFE5D7;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.agrion-chat-empty{margin:auto;text-align:center;color:#596451}
+.agrion-chat-bubble{max-width:85%;padding:12px 15px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;border-radius:16px;background:#F1F4EA;align-self:flex-start}
+.agrion-chat-bubble.is-user{align-self:flex-end;background:#385C39;color:#fff}
+.agrion-chat-form{display:flex;gap:10px;margin-top:12px;align-items:stretch}
+.agrion-chat-form textarea{flex:1;min-width:0;resize:vertical;border:1px solid #CBD6C5;border-radius:14px;padding:12px;font:inherit}
+.agrion-chat-form button{border-radius:14px;padding:0 22px}
+.agrion-chat-status,.agrion-chat-note{font-size:12px;color:#596451;margin:8px 0 0}
+.agrion-chat-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}

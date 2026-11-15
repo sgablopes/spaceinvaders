@@ -11,11 +11,13 @@
  function checklist(){const node=document.getElementById('discoveryProgress');if(!node)return;const value=view==='next'?100:progress();node.value=value;node.setAttribute('aria-valuenow',String(value));document.getElementById('discoveryProgressText').textContent=`${value}% concluído`;}
  function markup(){
    if(view==='next')return window.AgrionHome.markup(property);
+   if(view==='chat')return window.AgrionChat.markup();
    const manual=view==='manual';
    return `<main class="discovery-page"><div class="discovery-shell"><div class="discovery-greeting"><strong>Olá, ${esc(property?.personName||'')}</strong><span>${esc(property?.propertyName||'Sua propriedade')}</span></div><div class="discovery-avatar"><img src="/static/agrion-avatar.jpeg" alt="Agrion"></div><h1>Vamos conhecer você</h1><p class="discovery-intro">Conte sobre sua experiência nesta propriedade para preparar seu perfil agrícola.</p><div class="discovery-progress-wrap"><div class="discovery-progress-caption"><span>Seu progresso</span><strong id="discoveryProgressText"></strong></div><progress id="discoveryProgress" max="100" value="0" aria-label="Progresso do perfil"></progress></div>${manual?window.AgrionManual.markup(profile):`<div class="discovery-voice"><label for="discoveryLanguage">Idioma da conversa</label><select id="discoveryLanguage"><option value="pt-BR">Português (Brasil)</option><option value="en-US">English</option><option value="es-US">Español</option></select><p id="discoveryStatus" role="status">Preparando a conversa…</p><div id="discoveryTranscript" class="discovery-transcript" aria-live="polite"></div><button id="discoveryRetry" class="btn btn-secondary" type="button" hidden>Ativar voz</button><form id="discoveryForm" hidden><label for="discoveryInput">Sua resposta</label><textarea id="discoveryInput" rows="3" maxlength="3000" placeholder="Conte sobre sua lavoura"></textarea><button class="btn btn-primary" type="submit">Enviar</button></form><button id="discoveryManual" class="btn btn-secondary" type="button">Responder manualmente em vez de conversar</button></div>`}</div></main>`;
  }
  function afterRender(){
    if(view==='next'){window.AgrionHome.afterRender();return;}
+   if(view==='chat'){window.AgrionChat.afterRender();return;}
    checklist();
    if(view==='manual'){const form=document.getElementById('discoveryManualForm');form.onsubmit=saveManual;const never=form.elements.never_cultivated;const toggle=()=>{for(const id of ['last_crop','previous_crop','harvest_result'])form.elements[id].closest('.discovery-field').hidden=never.checked;};never.onchange=toggle;toggle();return;}
    document.getElementById('discoveryManual').onclick=()=>{void switchToManual();};
@@ -222,5 +224,6 @@
  async function restore(){const stored=window.AgrionPropertyStore.read();if(!stored?.geometry)return;const sessions=(await R.all('interviews')).filter(x=>x.property_id===stored.propertyId).sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''));await open();if(!completed&&sessions[0]?.mode==='manual'){clearTimeout(autoTimer);autoTimer=null;manualSession=sessions[0].status==='in_progress'?sessions[0]:null;view='manual';window.render();}}
  function editProperty(){window.AgrionHome.reset();view='none';window.AgrionProperty.editFromHome();}
  function showHome(){property=window.AgrionPropertyStore.read();window.AgrionHome.reset();view='next';window.render();}
- window.AgrionDiscovery={open:()=>open().catch(console.error),invite,restore,editProperty,showHome,view:()=>view,markup,afterRender};
+ function openChat(){window.AgrionHome.reset();window.AgrionChat.open();view='chat';window.render();}
+ window.AgrionDiscovery={open:()=>open().catch(console.error),invite,restore,editProperty,showHome,openChat,view:()=>view,markup,afterRender};
 })();

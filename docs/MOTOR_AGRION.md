@@ -14,11 +14,15 @@ result = AgrionEngine().run(
 print(result.text)
 ```
 
-O motor usa Vertex AI, Application Default Credentials da service account da VM e o SDK Google Gen AI. Configure `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_ENGINE_LOCATION` (padrão `us`) e `GEMINI_ENGINE_MODEL` (padrão `gemini-3.8-flash`). Para `us` e `eu` o endpoint é o multirregional `aiplatform.<região>.rep.googleapis.com`. A chamada tem timeout de 30 segundos; mensagens e contexto têm limites de tamanho. Não há endpoint HTTP nem interface de chat nesta etapa. Não registre contexto ou conversas em logs.
+O motor usa Vertex AI, Application Default Credentials da service account da VM e o SDK Google Gen AI. Configure `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_ENGINE_LOCATION` (padrão `us`) e `GEMINI_ENGINE_MODEL` (padrão `gemini-3.8-flash`). Para `us` e `eu` o endpoint é o multirregional `aiplatform.<região>.rep.googleapis.com`. Cada chamada ao modelo tem timeout de 30 segundos; mensagens e contexto têm limites de tamanho. Não registre contexto ou conversas em logs.
 
 ## Contexto da propriedade
 
-No navegador, `AgrionContext.load()` lê o cadastro atual e o perfil agrícola correspondente e produz um objeto JSON para o futuro consumidor enviar ao motor. `AgrionContext.build(property, profile)` também aceita os registros diretamente e rejeita perfis de outra propriedade. O contexto contém nome, propriedade, localidade, geometria, ponto central, área, dados agrícolas e estados, origem e confiança. Campos ausentes permanecem `pending`; as transcrições e trechos de evidência não são copiados para o contexto. O cadastro geográfico é a fonte atual de nomes e geometria. O transporte ao Flask e o chat serão desenvolvidos em etapa posterior.
+No navegador, `AgrionContext.load()` lê o cadastro atual e o perfil agrícola correspondente e produz o objeto JSON enviado ao motor pelo chat. `AgrionContext.build(property, profile)` também aceita os registros diretamente e rejeita perfis de outra propriedade. O contexto contém nome, propriedade, localidade, geometria, ponto central, área, dados agrícolas e estados, origem e confiança. Campos ausentes permanecem `pending`; as transcrições e trechos de evidência não são copiados para o contexto. O cadastro geográfico é a fonte atual de nomes e geometria.
+
+## Chat textual
+
+O botão Assistente Agrion abre a conversa textual. `POST /api/assistant/message` recebe `message`, `context`, `history` e `language` e encaminha ao motor; não há credenciais no navegador. O histórico fica no `localStorage`, separado por identificador de propriedade e limitado a 40 mensagens. O endpoint valida origem, tamanho e formato e aplica limite em memória por processo (`AGRION_ASSISTANT_MESSAGES_PER_HOUR`, padrão 60); não há conta nem sincronização entre dispositivos. Validação real com Vertex AI e a API de análises na VM continua necessária.
 
 O cadastro salva `centerPoint` como GeoJSON Point, em `[longitude, latitude]`, com `method` e `inside_polygon`. O método é o centroide planar por área do anel exterior em coordenadas WGS84, com longitudes ajustadas na mudança de antimeridiano; é uma aproximação e não considera anéis interiores. A geometria atual do cadastro é um único perímetro sem furos. O centroide de um polígono côncavo pode ficar fora da área, indicado por `inside_polygon: false`; não substituí-lo silenciosamente. Registros anteriores sem ponto recebem o cálculo ao serem lidos e a edição da geometria o recalcula. Um resultado de consulta nesse ponto não representa necessariamente toda a propriedade.
 

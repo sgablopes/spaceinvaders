@@ -40,6 +40,7 @@
     const panel=document.getElementById('agrionHomePanel'),content=document.getElementById('agrionHomePanelContent'),toggle=document.getElementById('agrionHomeMenuToggle');
     if(!panel||!content||!toggle)return;
     document.getElementById('agrionHomeProperty').onclick=()=>window.AgrionDiscovery.editProperty();
+    document.querySelector('.agrion-home-assistant').onclick=()=>window.AgrionDiscovery.openChat();
     const header=document.getElementById('agrionHomeHeader');
     const positionPanel=()=>{if(!header.isConnected){window.removeEventListener('resize',positionPanel);return;}panel.style.setProperty('--agrion-menu-space',`${Math.max(160,window.innerHeight-header.getBoundingClientRect().bottom)}px`);};
     positionPanel();window.addEventListener('resize',positionPanel,{passive:true});
