@@ -25,6 +25,9 @@ class EngineTest(unittest.TestCase):
         self.assertEqual(calls[0][1][0]['parts'][0]['text'], 'Olá')
         self.assertIn('milho', calls[0][1][1]['parts'][0]['text'])
         self.assertIn('pt-BR', calls[0][2])
+        self.assertIn('priorize consultar as ferramentas', calls[0][2])
+        self.assertIn('referências identificáveis', calls[0][2])
+        self.assertIn('Seja conciso', calls[0][2])
 
     def test_invalid_requests_are_rejected(self):
         service = engine.AgrionEngine(generate=lambda *args: 'ok')
