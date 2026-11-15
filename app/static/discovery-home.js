@@ -32,7 +32,7 @@
       <section id="agrionHomePanel" class="agrion-home-panel ${expanded?'is-expanded':''}" aria-label="Menu Agrion">
         <button id="agrionHomeMenuToggle" class="agrion-home-menu-toggle" type="button" aria-controls="agrionHomePanelContent" aria-expanded="${expanded}"><span class="agrion-home-menu-grip" aria-hidden="true"></span><span>${expanded?'Fechar menu':'Menu'}</span><span class="agrion-home-menu-arrow" aria-hidden="true">${expanded?'⌄':'⌃'}</span></button>
         <div id="agrionHomePanelContent" class="agrion-home-panel-content" ${expanded?'':'inert'}>
-          <div class="agrion-home-content"><div class="agrion-home-grid">${featureCards}</div></div>
+          <div class="agrion-home-content"><div class="agrion-home-grid">${featureCards}<button id="agrionDeleteData" class="agrion-home-delete" type="button">Apagar dados</button></div><p id="agrionDeleteStatus" class="agrion-home-delete-status" role="status"></p></div>
         </div>
       </section>
     </main>`;
@@ -43,12 +43,15 @@
     document.getElementById('agrionHomeProperty').onclick=()=>window.AgrionDiscovery.editProperty();
     document.querySelector('.agrion-home-assistant').onclick=()=>window.AgrionDiscovery.openChat();
     document.getElementById('agrionDashboardRetry').onclick=()=>window.AgrionDashboard.start();
+    document.getElementById('agrionDeleteData').onclick=eraseData;
     const header=document.getElementById('agrionHomeHeader');
     const positionPanel=()=>{if(!header.isConnected){window.removeEventListener('resize',positionPanel);return;}panel.style.setProperty('--agrion-menu-space',`${Math.max(160,window.innerHeight-header.getBoundingClientRect().bottom)}px`);};
     positionPanel();window.addEventListener('resize',positionPanel,{passive:true});
     toggle.onclick=()=>{expanded=!expanded;panel.classList.toggle('is-expanded',expanded);content.inert=!expanded;toggle.setAttribute('aria-expanded',String(expanded));toggle.querySelector('span:nth-child(2)').textContent=expanded?'Fechar menu':'Menu';toggle.querySelector('.agrion-home-menu-arrow').textContent=expanded?'⌄':'⌃';document.body.classList.toggle('agrion-home-menu-open',expanded);};
     window.AgrionDashboard.start();
   }
+  function clearDatabase(name){return new Promise((resolve,reject)=>{const request=indexedDB.open(name);request.onerror=()=>reject(request.error);request.onblocked=()=>reject(new Error('blocked'));request.onsuccess=()=>{const db=request.result,names=Array.from(db.objectStoreNames);if(!names.length){db.close();resolve();return;}const tx=db.transaction(names,'readwrite');for(const store of names)tx.objectStore(store).clear();tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>{db.close();reject(tx.error);};tx.onabort=()=>{db.close();reject(tx.error||new Error('aborted'));};};});}
+  async function eraseData(){if(!window.confirm('Apagar os dados do Agrion neste navegador? A propriedade, as conversas, análises e registros serão excluídos. Esta ação não pode ser desfeita. Feche outras abas do Agrion antes de continuar.'))return;const button=document.getElementById('agrionDeleteData'),status=document.getElementById('agrionDeleteStatus');button.disabled=true;status.textContent='Apagando dados…';window.AgrionDeletingData=true;window.AgrionHome.reset();try{for(const name of ['agrion-discovery','agrion-dashboard','flora-demo-registros-v1'])await clearDatabase(name);const keys=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key==='agrion-property-v1'||key==='flora-demo-v3-1'||key?.startsWith('agrion-chat-v1:'))keys.push(key);}for(const key of keys)localStorage.removeItem(key);window.location.reload();}catch(_){window.AgrionDeletingData=false;button.disabled=false;status.textContent='Não foi possível apagar todos os dados. Feche outras abas do Agrion e tente novamente.';}}
   function reset(){expanded=false;window.AgrionDashboard.reset();document.body.classList.remove('agrion-home-menu-open');}
   window.AgrionHome={markup,afterRender,reset};
 })();

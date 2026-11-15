@@ -23,6 +23,8 @@ Na entrevista por voz, o idioma fica visível antes do início automático, apó
 
 Após o Discovery, a visão inicial usa o cabeçalho com marca e propriedade. O botão **Menu** permanece na borda inferior e eleva um painel com cartões para Clima, Medições de campo, Planejamento, Mercado agrícola, Notícias e pesquisas e Minha propriedade. O Assistente Agrion fica na tela principal; os demais atalhos não conectados são apenas apresentação.
 
+Na última linha do menu, o botão largo **Apagar dados** pede confirmação antes de limpar neste navegador a propriedade, conversas, perfis, entrevistas, análises e registros do protótipo. Outras abas do Agrion devem ser fechadas antes da exclusão.
+
 ## Central de Inteligência — fase inicial
 
 Após o Discovery, a animação sobre a imagem permanece enquanto o Core prepara os destaques do perfil na primeira abertura. Em seguida, a área é substituída pela dashboard: propriedade, cultura, fase e plantio informados, destaques, análise diária e recomendações com referências. Previsão, chuva acumulada e fase estimada são carregadas em seções independentes e identificam a origem e a natureza dos dados. Resultados antigos mostram a data de salvamento. Mercado, notícias, medições e histórico aguardam integrações; falhas de análise inicial permitem nova tentativa. O botão do assistente e o menu inferior mantêm seu comportamento. Em telas pequenas os cartões ficam em uma coluna; em telas maiores os indicadores ocupam até três colunas.
@@ -30,3 +32,5 @@ Após o Discovery, a animação sobre a imagem permanece enquanto o Core prepara
 O cartão de monitoramento oferece uma simulação opcional de vento e chuva, desligada inicialmente. Alertas simulados aparecem destacados e identificados como simulação, com reconhecimento e histórico local. Nenhuma leitura é apresentada como proveniente de estação real nesta etapa. Em produção e mercado, a IA consulta os candidatos FAOSTAT e mostra o último preço histórico disponível, identificando o produto, o país, o ano e a correspondência não revisada. O histórico usa dados informados no Discovery e o acesso ao mapa reutiliza a edição da propriedade; notícias e medições continuam indisponíveis até haver fontes conectadas.
 
 O desenvolvimento da cultura destaca a cultura atual e organiza fase, justificativa e colheita em linhas com ícones. Indicadores percentuais reais, como umidade prevista do ar, recebem barras acessíveis; não é criado percentual de avanço da safra sem dados que o sustentem.
+
+O resumo da propriedade usa mapa de satélite com o perímetro cadastrado e sobreposição legível de cultura, fase declarada, plantio, colheita estimada e objetivo. Quando o mapa não estiver disponível, as informações permanecem sobre fundo verde. Produção e mercado apresenta um insight curto; fontes e dados consultados permanecem no resultado interno.
