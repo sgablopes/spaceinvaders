@@ -19,11 +19,30 @@
   function markup(property){
     const featureCards=features.map(([symbol,title,description])=>`<button class="agrion-home-feature" type="button"><span>${icon(symbol,34)}</span><strong>${title}</strong><small>${description}</small></button>`).join('');
     const navigation=nav.map(([symbol,title],index)=>`<button type="button" class="agrion-home-nav-item ${index===0?'is-current':''}" ${index===0?'aria-current="page"':''}>${icon(symbol,23)}<span>${title}</span></button>`).join('');
-    return `<main class="agrion-home"><div class="agrion-home-waiting"><header class="agrion-home-top">${brand()}<button class="agrion-home-bell" type="button" aria-label="Notificações">${icon('alert',22)}</button></header>${owner(property)}<div class="agrion-home-waiting-photo">${picture()}</div><section class="agrion-home-loading" aria-label="Preparando a visão geral"><div class="agrion-home-spinner" aria-hidden="true"></div><h1>Preparando sua visão geral</h1><p id="agrionHomeLoadingText" aria-live="polite">Organizando dados da propriedade…</p><small>As análises agrícolas estarão disponíveis em breve.</small></section></div><section id="agrionHomePanel" class="agrion-home-panel ${expanded?'is-expanded':''}" aria-label="Menu Agrion"><button id="agrionHomeMenuToggle" class="agrion-home-menu-toggle" type="button" aria-controls="agrionHomePanelContent" aria-expanded="${expanded}"><span class="agrion-home-menu-grip" aria-hidden="true"></span><span>${expanded?'Fechar menu':'Menu'}</span><span class="agrion-home-menu-arrow" aria-hidden="true">${expanded?'⌄':'⌃'}</span></button><div id="agrionHomePanelContent" class="agrion-home-panel-content" ${expanded?'':'inert'}><header class="agrion-home-top">${brand()}<button class="agrion-home-bell" type="button" aria-label="Notificações">${icon('alert',22)}</button></header>${owner(property)}<div class="agrion-home-hero">${picture()}</div><div class="agrion-home-content"><p class="agrion-home-kicker">VISÃO GERAL</p><h1>Seu campo, suas próximas decisões.</h1><p class="agrion-home-subtitle">Monitoramento, planejamento e inteligência para a sua produção.</p><div class="agrion-home-grid">${featureCards}</div><button type="button" class="agrion-home-assistant"><span aria-hidden="true">✦</span><span><strong>Assistente Agrion</strong><small>Tire dúvidas, analise dados e receba recomendações.</small></span><span aria-hidden="true">›</span></button></div><nav class="agrion-home-nav" aria-label="Navegação principal">${navigation}</nav></div></section></main>`;
+    return `<main class="agrion-home">
+      <div class="agrion-home-waiting">
+        <div id="agrionHomeHeader">
+          <header class="agrion-home-top">${brand()}<button class="agrion-home-bell" type="button" aria-label="Notificações">${icon('alert',22)}</button></header>
+          ${owner(property)}
+          <div class="agrion-home-waiting-photo">${picture()}</div>
+        </div>
+        <section class="agrion-home-loading" aria-label="Preparando a visão geral"><div class="agrion-home-spinner" aria-hidden="true"></div><h1>Preparando sua visão geral</h1><p id="agrionHomeLoadingText" aria-live="polite">Organizando dados da propriedade…</p><small>As análises agrícolas estarão disponíveis em breve.</small></section>
+      </div>
+      <section id="agrionHomePanel" class="agrion-home-panel ${expanded?'is-expanded':''}" aria-label="Menu Agrion">
+        <button id="agrionHomeMenuToggle" class="agrion-home-menu-toggle" type="button" aria-controls="agrionHomePanelContent" aria-expanded="${expanded}"><span class="agrion-home-menu-grip" aria-hidden="true"></span><span>${expanded?'Fechar menu':'Menu'}</span><span class="agrion-home-menu-arrow" aria-hidden="true">${expanded?'⌄':'⌃'}</span></button>
+        <div id="agrionHomePanelContent" class="agrion-home-panel-content" ${expanded?'':'inert'}>
+          <div class="agrion-home-content"><p class="agrion-home-kicker">VISÃO GERAL</p><h1>Seu campo, suas próximas decisões.</h1><p class="agrion-home-subtitle">Monitoramento, planejamento e inteligência para a sua produção.</p><div class="agrion-home-grid">${featureCards}</div><button type="button" class="agrion-home-assistant"><span aria-hidden="true">✦</span><span><strong>Assistente Agrion</strong><small>Tire dúvidas, analise dados e receba recomendações.</small></span><span aria-hidden="true">›</span></button></div>
+          <nav class="agrion-home-nav" aria-label="Navegação principal">${navigation}</nav>
+        </div>
+      </section>
+    </main>`;
   }
   function afterRender(){
     const panel=document.getElementById('agrionHomePanel'),content=document.getElementById('agrionHomePanelContent'),toggle=document.getElementById('agrionHomeMenuToggle');
     if(!panel||!content||!toggle)return;
+    const header=document.getElementById('agrionHomeHeader');
+    const positionPanel=()=>{if(!header.isConnected){window.removeEventListener('resize',positionPanel);return;}panel.style.top=`${Math.min(header.getBoundingClientRect().bottom,window.innerHeight-160)}px`;};
+    positionPanel();window.addEventListener('resize',positionPanel,{passive:true});
     toggle.onclick=()=>{expanded=!expanded;panel.classList.toggle('is-expanded',expanded);content.inert=!expanded;toggle.setAttribute('aria-expanded',String(expanded));toggle.querySelector('span:nth-child(2)').textContent=expanded?'Fechar menu':'Menu';toggle.querySelector('.agrion-home-menu-arrow').textContent=expanded?'⌄':'⌃';document.body.classList.toggle('agrion-home-menu-open',expanded);};
     clearInterval(loadingTimer);
     const phrases=['Organizando dados da propriedade…','Levantando informações do campo…','Preparando a área de mercado…'];let index=0;
