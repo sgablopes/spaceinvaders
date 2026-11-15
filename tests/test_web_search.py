@@ -17,4 +17,4 @@ class SearchTest(unittest.TestCase):
         self.assertEqual(result['sources'][0]['url'],'https://example.org/a')
         self.assertIn('Google',result['search_entry_point'])
         response.candidates[0].grounding_metadata.search_entry_point=None
-        self.assertEqual(search.search(client,'model','pesquisa agrícola',types)['error'],'search_unavailable')
+        self.assertIsNone(search.search(client,'model','pesquisa agrícola',types)['search_entry_point'])

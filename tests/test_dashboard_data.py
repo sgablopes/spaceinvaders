@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import sys
 from types import ModuleType, SimpleNamespace
@@ -29,6 +30,21 @@ class DashboardDataTest(unittest.TestCase):
         result=dashboard.market_section(self.context,Engine())
         self.assertEqual(result['status'],'ready')
         self.assertIsNone(result['price'])
+        self.assertIsNone(result['estimate'])
+
+    def test_market_estimate_requires_verified_historical_price(self):
+        class Engine:
+            def run(self,**kwargs):
+                return SimpleNamespace(text=json.dumps({'summary':'Preço de mercado da safra pode ficar próximo da referência histórica.','item_code':'56','estimated_price':150,'currency':'USD','unit':'t','confidence':62,'confidence_reason':'Histórico e pesquisa recente','source_urls':['https://example.org/market']}),tool_evidence=({'tool':'faostat_candidatos','result':{'data':{'candidates':[{'item_code':'56'}]}}},{'tool':'faostat_ultimo_preco','arguments':{'item_code':'56'},'result':{'data':{'selection_status':'found','items':[{'item_code':'56','value':142.2,'value_kind':'usd_per_tonne','unit':'USD','year':2024,'area':'Brazil','item':'Maize'}]}}},{'tool':'pesquisar_internet','result':{'text':'Mercado de milho','sources':[{'url':'https://example.org/market'}]}}))
+        result=dashboard.market_section(self.context,Engine())
+        self.assertEqual(result['estimate']['value'],150)
+        self.assertEqual(result['estimate']['unit'],'USD/t')
+        self.assertEqual(result['estimate']['confidence']['value'],62)
+
+    def test_market_rejects_estimate_without_historical_price(self):
+        class Engine:
+            def run(self,**kwargs):return SimpleNamespace(text=json.dumps({'summary':'Mercado de milho.','item_code':'56','estimated_price':150,'confidence':62,'confidence_reason':'Pesquisa recente','source_urls':[]}),tool_evidence=())
+        self.assertIsNone(dashboard.market_section(self.context,Engine())['estimate'])
     def setUp(self):
         self.context={'property':{'center_point':{'coordinates':[-49.3,-16.5]}},'agricultural_profile':{'fields':{'current_crop':{'status':'confirmed','value':{'crop':'milho'}},'planting_date':{'status':'confirmed','value':{'date':'2025-01-01'}}}}}
 
@@ -83,6 +99,13 @@ class DashboardDataTest(unittest.TestCase):
         result=dashboard.news_section(self.context,Engine())
         self.assertEqual(result['status'],'ready')
         self.assertEqual(result['items'][0]['date'],'2026-11-01')
+
+    def test_news_keeps_source_without_verified_date(self):
+        class Engine:
+            def run(self,**kwargs):return SimpleNamespace(text='{"items":[{"title":"Notícia","summary":"Resumo","date":"2026-11-01","url":"https://example.org/a"}]}',tool_evidence=({'tool':'pesquisar_internet','result':{'text':'Publicação sobre a safra','sources':[{'url':'https://example.org/a'}]}},))
+        result=dashboard.news_section(self.context,Engine())
+        self.assertEqual(result['status'],'ready')
+        self.assertIsNone(result['items'][0]['date'])
 
     def test_gdd_requires_reference_from_another_tool_and_correct_location(self):
         reference='https://example.org/base'

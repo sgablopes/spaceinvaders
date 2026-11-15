@@ -1,11 +1,14 @@
 """Converte respostas de fontes reais em seções da dashboard."""
 import json
+import logging
 import math
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 
 from .climate_tools import ClimateTools
 from .engine import AgrionEngine, EngineError
+
+logger=logging.getLogger(__name__)
 
 
 def search_entries(evidence):
@@ -120,8 +123,9 @@ def stage_section(context, engine=None):
             if type(amount) is not int or not 0<=amount<=100 or not isinstance(why,str) or not 1<=len(why.split())<=5 or len(why)>100:return None
             return {'value':amount,'reason':why.strip()}
         return {'status':'ready','phase':phase.strip() if phase else None,'reason':reason.strip(),'harvest_window':window,'phase_confidence':confidence('phase') if phase else None,'harvest_confidence':confidence('harvest') if window else None,'source_urls':urls,'search_entry_points':search_entries(result.tool_evidence),'gdd':gdd,'value_kind':'estimate','generated_at':datetime.now(timezone.utc).isoformat()}
-    except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError):
-        return {'status':'unavailable','gdd':gdd,'note':'Ainda não há evidência suficiente para estimar a fase com segurança.'}
+    except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError) as exc:
+        logger.warning('Dashboard stage unavailable (%s)',type(exc).__name__)
+        return {'status':'unavailable','gdd':gdd,'note':'Não foi possível concluir a estimativa de fase e colheita nesta consulta.','reason_code':'engine_unavailable' if isinstance(exc,EngineError) else 'invalid_result'}
 
 
 def news_section(context,engine=None):
@@ -141,16 +145,19 @@ def news_section(context,engine=None):
         for item in data['items']:
             if not isinstance(item,dict) or set(item)!={'title','summary','date','url'}:continue
             title,summary,day,url=(item[k] for k in ('title','summary','date','url'))
-            if not isinstance(title,str) or not 1<=len(title)<=180 or not isinstance(summary,str) or not 1<=len(summary)<=300 or not isinstance(day,str) or len(day)!=10 or not isinstance(url,str) or url not in urls:continue
-            try:parsed_day=datetime.strptime(day,'%Y-%m-%d')
-            except ValueError:continue
-            if not any(day in text or parsed_day.strftime('%d/%m/%Y') in text for text in search_text):continue
+            if not isinstance(title,str) or not 1<=len(title)<=180 or not isinstance(summary,str) or not 1<=len(summary)<=300 or not isinstance(url,str) or url not in urls:continue
+            if day is not None:
+                if not isinstance(day,str) or len(day)!=10:continue
+                try:parsed_day=datetime.strptime(day,'%Y-%m-%d')
+                except ValueError:continue
+                if not any(day in text or parsed_day.strftime('%d/%m/%Y') in text for text in search_text):day=None
             items.append({'title':title,'summary':summary,'date':day,'url':url})
         entries=search_entries(result.tool_evidence)
-        if not items or not entries:raise ValueError()
+        if not items:raise ValueError()
         return {'status':'ready','items':items,'search_entry_points':entries,'generated_at':datetime.now(timezone.utc).isoformat()}
-    except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError):
-        return {'status':'unavailable','note':'Nenhuma notícia disponível no momento.'}
+    except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError) as exc:
+        logger.warning('Dashboard news unavailable (%s)',type(exc).__name__)
+        return {'status':'unavailable','note':'Não foi possível obter notícias verificáveis nesta consulta.','reason_code':'engine_unavailable' if isinstance(exc,EngineError) else 'invalid_result'}
 
 
 def daily_section(context, engine=None):
@@ -176,9 +183,10 @@ def daily_section(context, engine=None):
         observations=[value for item in data['observations'] if (value:=validate(item,True))]
         recommendations=[value for item in data['recommendations'] if (value:=validate(item,True))]
         if not summary and not observations and not recommendations:raise ValueError()
-        return {'status':'ready','generated_at':datetime.now(timezone.utc).isoformat(),'summary':summary,'observations':observations,'recommendations':recommendations}
-    except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError):
-        return {'status':'unavailable','note':'Não há fontes suficientes para a análise diária neste momento.'}
+        return {'status':'ready','generated_at':datetime.now(timezone.utc).isoformat(),'summary':summary,'observations':observations,'recommendations':recommendations,'search_entry_points':search_entries(result.tool_evidence)}
+    except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError) as exc:
+        logger.warning('Dashboard daily unavailable (%s)',type(exc).__name__)
+        return {'status':'unavailable','note':'Não foi possível concluir a análise diária nesta consulta.','reason_code':'engine_unavailable' if isinstance(exc,EngineError) else 'invalid_result'}
 
 
 def market_section(context, engine=None):
@@ -188,7 +196,8 @@ def market_section(context, engine=None):
         text=result.text.strip()
         if text.startswith('```') and text.endswith('```'):text=text.split('\n',1)[1].rsplit('```',1)[0]
         data=json.loads(text)
-        if not isinstance(data,dict) or set(data)!={'summary','item_code'}:raise ValueError()
+        optional={'estimated_price','currency','unit','confidence','confidence_reason','source_urls'}
+        if not isinstance(data,dict) or not {'summary','item_code'}<=set(data) or set(data)-{'summary','item_code'}-optional:raise ValueError()
         summary=data['summary'];code=data['item_code']
         if not isinstance(summary,str) or not summary.strip() or len(summary)>500 or (code is not None and (not isinstance(code,str) or not code.isascii() or not code.isdigit())):raise ValueError()
         price=None
@@ -208,6 +217,16 @@ def market_section(context, engine=None):
             item=items[0];number=item.get('value')
             if item.get('item_code')!=code or item.get('value_kind') not in {'usd_per_tonne','local_currency_per_tonne','standard_local_currency_per_tonne'} or isinstance(number,bool) or not isinstance(number,(int,float)) or not math.isfinite(number):continue
             price={'value':number,'unit':item.get('unit'),'value_kind':item.get('value_kind'),'year':item.get('year'),'country':item.get('area'),'product':item.get('item'),'flag':item.get('flag'),'frequency':response.get('frequency'),'source_url':'https://www.fao.org/faostat/en/#data/PP'}
-        return {'status':'ready','summary':summary.strip(),'price':price,'generated_at':datetime.now(timezone.utc).isoformat()}
-    except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError):
-        return {'status':'unavailable','note':'Não foi possível preparar a análise de produção e mercado.'}
+        estimate=None
+        amount=data.get('estimated_price');score=data.get('confidence');why=data.get('confidence_reason')
+        if (price is not None and isinstance(amount,(int,float)) and not isinstance(amount,bool) and math.isfinite(amount) and amount>0
+                and type(score) is int and 0<=score<=100 and isinstance(why,str) and 1<=len(why.split())<=5):
+            evidence=json.dumps(result.tool_evidence,ensure_ascii=False)
+            urls=data.get('source_urls') or []
+            if isinstance(urls,list) and len(urls)<=5 and all(isinstance(url,str) and urlsplit(url).scheme in {'http','https'} and urlsplit(url).hostname and url in evidence for url in urls):
+                unit=price.get('unit')
+                estimate={'value':amount,'unit':unit if isinstance(unit,str) and unit.endswith('/t') else f'{unit}/t' if unit else None,'confidence':{'value':score,'reason':why.strip()},'source_urls':urls,'basis_year':price['year'],'value_kind':'estimate'}
+        return {'status':'ready','summary':summary.strip(),'price':price,'estimate':estimate,'search_entry_points':search_entries(result.tool_evidence),'generated_at':datetime.now(timezone.utc).isoformat()}
+    except (EngineError,ValueError,TypeError,KeyError,json.JSONDecodeError) as exc:
+        logger.warning('Dashboard market unavailable (%s)',type(exc).__name__)
+        return {'status':'unavailable','note':'Não foi possível preparar a análise de produção e mercado.','reason_code':'engine_unavailable' if isinstance(exc,EngineError) else 'invalid_result'}

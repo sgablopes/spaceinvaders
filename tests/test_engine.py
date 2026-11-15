@@ -13,6 +13,11 @@ spec.loader.exec_module(engine)
 
 
 class EngineTest(unittest.TestCase):
+    def test_dashboard_research_query_uses_confirmed_crop_context(self):
+        contents=[{'role':'user','parts':[{'text':'{"context":{"property":{"location_label":"Porto Alegre"},"agricultural_profile":{"fields":{"current_crop":{"status":"confirmed","value":{"crop":"cebola"}}}}}}'}]}]
+        self.assertIn('cebola Porto Alegre',engine._research_query(contents,'dashboard_news'))
+        self.assertIsNone(engine._research_query(contents,'chat'))
+
     def test_context_history_and_language_reach_provider(self):
         calls = []
         def generate(model, contents, instruction):

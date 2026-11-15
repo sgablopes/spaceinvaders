@@ -10,7 +10,7 @@ def search(client, model, query, types):
         candidate=response.candidates[0] if response.candidates else None
         metadata=getattr(candidate,'grounding_metadata',None)
         entry=getattr(getattr(metadata,'search_entry_point',None),'rendered_content',None)
-        if not isinstance(entry,str) or not entry or len(entry)>50000:return {'error':'search_unavailable'}
+        if not isinstance(entry,str) or len(entry)>50000:entry=None
         sources=[]
         for chunk in getattr(metadata,'grounding_chunks',None) or []:
             web=getattr(chunk,'web',None);url=getattr(web,'uri',None);title=getattr(web,'title',None)

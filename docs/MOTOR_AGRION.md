@@ -79,3 +79,11 @@ O motor mantém o conteúdo completo retornado pelo modelo para preservar assina
 Na VM, inicie primeiro `docker compose -f analisys/compose.yaml up -d --build` para criar a rede externa `agrion-analisys-data`; em seguida inicie ou recrie o Compose principal. O container do Agrion participa das redes padrão e de análises e usa `AGRION_ANALYSIS_URL=http://agrion-data:8000`. A rede é obrigatória para subir o Compose principal; não expõe a API de análises publicamente. O acesso ao Vertex AI e à API real ainda precisa ser validado no ambiente da VM.
 
 Teste isolado: `python -B -m unittest discover -s tests -p test_engine.py -v`.
+
+## Revisão das seções da dashboard
+
+Os modos `dashboard_daily` e `dashboard_market` agora podem usar `pesquisar_internet` além das ferramentas do Analysis. O limite de chamadas desses modos foi ampliado para comportar consulta de catálogos, preço histórico e pesquisa. A análise diária aceita o contexto confirmado mesmo quando uma fonte externa falha, mas não cria fatos externos sem referência.
+
+O preço exibido em Produção e mercado é uma estimativa da IA para a safra, baseada em uma observação histórica FAOSTAT validada pelo servidor e, quando houver, em pesquisa complementar. Mantém a unidade e moeda do histórico, exibe confiança subjetiva e não representa cotação atual. O texto curto descreve a expectativa de mercado; não compara a produção declarada pelo agricultor com o mercado.
+
+A estimativa de colheita pode usar referências de ciclo pesquisadas mesmo sem graus-dia calculáveis. Notícias exigem URL recuperada; quando a data não está confirmada no resultado da pesquisa, o cartão omite a data. Falhas nas seções retornam `reason_code` (`engine_unavailable` ou `invalid_result`) e registram somente o tipo do erro nos logs, sem dados do agricultor. Os caches das seções alteradas foram versionados para evitar reutilizar respostas antigas. A validação real das consultas Vertex AI na VM continua necessária.
