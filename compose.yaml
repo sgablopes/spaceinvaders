@@ -11,6 +11,9 @@ services:
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
       GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-}
       GOOGLE_CLOUD_EXTRACTION_LOCATION: ${GOOGLE_CLOUD_EXTRACTION_LOCATION:-us}
+      GOOGLE_CLOUD_ENGINE_LOCATION: ${GOOGLE_CLOUD_ENGINE_LOCATION:-us}
+      GEMINI_ENGINE_MODEL: ${GEMINI_ENGINE_MODEL:-gemini-3.8-flash}
+      AGRION_ANALYSIS_URL: ${AGRION_ANALYSIS_URL:-http://agrion-data:8000}
       GEMINI_LIVE_MODEL: ${GEMINI_LIVE_MODEL:-gemini-3.8-live}
       GEMINI_EXTRACTION_MODEL: ${GEMINI_EXTRACTION_MODEL:-gemini-3.5-flash-lite}
       AGRION_INTERVIEW_NORMAL_SECONDS: ${AGRION_INTERVIEW_NORMAL_SECONDS:-180}
@@ -29,3 +32,10 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    networks:
+      - default
+      - agrion-analysis
+networks:
+  agrion-analysis:
+    external: true
+    name: agrion-analisys-data
