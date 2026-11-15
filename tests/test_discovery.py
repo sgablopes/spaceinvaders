@@ -4,7 +4,7 @@ from unittest.mock import patch
 from types import SimpleNamespace
 
 from app import create_app
-from app.api.discovery import Patch, _origin_ok, _validate_value
+from app.api.discovery import Patch, _live_text_frame, _origin_ok, _validate_value
 
 
 class DiscoveryTests(unittest.TestCase):
@@ -22,6 +22,10 @@ class DiscoveryTests(unittest.TestCase):
                 self.assertTrue(_origin_ok())
             with self.client.application.test_request_context('/api/interview/live-session', base_url='http://agrion.earth', headers={'Origin': 'https://other.example'}):
                 self.assertFalse(_origin_ok())
+
+    def test_vertex_binary_json_is_forwarded_as_text(self):
+        self.assertEqual(_live_text_frame(b'{"setupComplete":{}}'), '{"setupComplete":{}}')
+        self.assertEqual(_live_text_frame('{"setupComplete":{}}'), '{"setupComplete":{}}')
 
     def test_missing_vertex_configuration_is_explicit(self):
         with patch.dict(os.environ, {"GOOGLE_CLOUD_PROJECT": "", "GOOGLE_CLOUD_LOCATION": ""}):

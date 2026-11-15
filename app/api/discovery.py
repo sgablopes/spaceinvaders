@@ -28,6 +28,11 @@ GOALS = {"maximize_profit", "increase_yield", "restore_soil", "reduce_risk", "re
 LANGUAGES = {"pt-BR", "en-US", "es-ES"}
 
 
+def _live_text_frame(message):
+    """The Vertex socket may return UTF-8 JSON in a binary WebSocket frame."""
+    return message.decode("utf-8") if isinstance(message, bytes) else message
+
+
 class ConfigurationError(RuntimeError):
     pass
 
@@ -221,6 +226,7 @@ def register_socket(app):
                 for message in upstream:
                     if stop.is_set():
                         break
+                    message = _live_text_frame(message)
                     if phase == "vertex_setup" and "setupComplete" in json.loads(message):
                         phase = "relay"
                     ws.send(message)

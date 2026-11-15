@@ -45,9 +45,12 @@
      ws.onopen=()=>ws.send(JSON.stringify({interview_id:interview.interview_id,property_id:property.propertyId,person_name:property.personName,property_name:property.propertyName,language:interview.language}));
      ws.onerror=()=>{if(!ready)fail('websocket_handshake_failed');};
      ws.onclose=event=>{if(!ready)fail(`websocket_closed_${event.code}`);else if(interview?.status==='in_progress')status('Conexão por voz interrompida. Você pode continuar por texto.');};
-     ws.onmessage=event=>{
+     ws.onmessage=async event=>{
        let message;
-       try{message=JSON.parse(event.data);}catch(_){fail('invalid_live_message');return;}
+       try{
+         const raw=typeof event.data==='string' ? event.data : event.data instanceof Blob ? await event.data.text() : new TextDecoder().decode(event.data);
+         message=JSON.parse(raw);
+       }catch(_){fail('invalid_live_message');return;}
        if(message.setupComplete){ready=true;if(!settled){settled=true;clearTimeout(timeout);resolve();}}
        else if(message.error&&!ready)fail(`${message.error}${message.stage?`:${message.stage}`:''}`);
        else handleLive(message);
