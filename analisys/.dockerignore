@@ -1,0 +1,11 @@
+.runtime
+.venv
+**/__pycache__
+tests
+tools
+docs
+outputs
+data
+.git
+.env*
+*.md
