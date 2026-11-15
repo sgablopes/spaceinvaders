@@ -66,7 +66,7 @@
      }catch(_){break;}
    }
  }
- async function open(){property=window.AgrionPropertyStore.read();if(!property?.geometry)return;profile=await R.getByPropertyId(property.propertyId)||P.create(property);await R.put('agricultural_profiles',profile);const sessions=await R.all('interviews');completed=sessions.some(x=>x.property_id===property.propertyId&&x.status==='completed');manualSession=null;clearTimeout(autoTimer);window.AgrionHome.reset();view='voice';window.render();
+ async function open(){property=window.AgrionPropertyStore.read();if(!property?.geometry)return;profile=await R.getByPropertyId(property.propertyId)||P.create(property);await R.put('agricultural_profiles',profile);const sessions=await R.all('interviews');completed=sessions.some(x=>x.property_id===property.propertyId&&x.status==='completed');manualSession=null;clearTimeout(autoTimer);window.AgrionHome.reset();view=completed?'next':'voice';window.render();if(completed)return;
  lastAssistantTurn='';pendingInput='';lastStateKey='';closing=false;finalizing=false;farewellStarted=false;closingSignalSent=false;closePromptPending=false;modelTurnActive=false;lastModelFrameMono=0;lastModelTurnMono=0;clarificationPending=false;confirmationState='none';confirmationNeededMono=0;confirmationResponseSeen=false;confirmationPromptCount=0;sequence=0;introStage=0;inputTurn=null;outputTurn=null;inputQuestion='';recoveryPrompts=0;turnHistory.length=0;reviewedKeys.clear();finishOutput();
  if(!completed)autoTimer=setTimeout(()=>{autoTimer=null;if(view==='voice'&&!interview)void start('voice');},1500);else{status('Perfil concluído. Para conversar novamente, use Ativar voz.');document.getElementById('discoveryRetry').hidden=false;}
  retryPending().catch(()=>status('Algumas respostas aguardam análise. Os dados já registrados permanecem salvos.'));
@@ -219,5 +219,8 @@
  function playAudio(base64){if(!audioContext)return;const binary=atob(base64),count=binary.length/2,buffer=audioContext.createBuffer(1,count,24000),samples=buffer.getChannelData(0);for(let i=0;i<count;i++){let v=binary.charCodeAt(i*2)|(binary.charCodeAt(i*2+1)<<8);if(v>32767)v-=65536;samples[i]=v/32768;}const source=audioContext.createBufferSource();source.buffer=buffer;source.connect(audioContext.destination);source.onended=()=>audioSources.delete(source);audioSources.add(source);playAt=Math.max(playAt,audioContext.currentTime);source.start(playAt);playAt+=buffer.duration;}
  async function stopMicrophone(){processor?.disconnect();micSource?.disconnect();micStream?.getTracks().forEach(t=>t.stop());for(const source of audioSources){try{source.stop();}catch(_){}}audioSources.clear();if(audioContext){await audioContext.close();audioContext=null;}playAt=0;}
  function invite(){return open().catch(console.error);}
- window.AgrionDiscovery={open:()=>open().catch(console.error),invite,view:()=>view,markup,afterRender};
+ async function restore(){const stored=window.AgrionPropertyStore.read();if(!stored?.geometry)return;const sessions=(await R.all('interviews')).filter(x=>x.property_id===stored.propertyId).sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''));await open();if(!completed&&sessions[0]?.mode==='manual'){clearTimeout(autoTimer);autoTimer=null;manualSession=sessions[0].status==='in_progress'?sessions[0]:null;view='manual';window.render();}}
+ function editProperty(){window.AgrionHome.reset();view='none';window.AgrionProperty.editFromHome();}
+ function showHome(){property=window.AgrionPropertyStore.read();window.AgrionHome.reset();view='next';window.render();}
+ window.AgrionDiscovery={open:()=>open().catch(console.error),invite,restore,editProperty,showHome,view:()=>view,markup,afterRender};
 })();

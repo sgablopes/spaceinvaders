@@ -16,7 +16,7 @@
     ['map','Minha propriedade','Mapa, talhões e dados']
   ];
   function markup(property){
-    const featureCards=features.map(([symbol,title,description])=>`<button class="agrion-home-feature" type="button"><span>${icon(symbol,34)}</span><strong>${title}</strong><small>${description}</small></button>`).join('');
+    const featureCards=features.map(([symbol,title,description])=>`<button class="agrion-home-feature" type="button" ${title==='Minha propriedade'?'id="agrionHomeProperty"':''}><span>${icon(symbol,34)}</span><strong>${title}</strong><small>${description}</small></button>`).join('');
     return `<main class="agrion-home">
       <div class="agrion-home-waiting">
         <div id="agrionHomeHeader">
@@ -39,6 +39,7 @@
   function afterRender(){
     const panel=document.getElementById('agrionHomePanel'),content=document.getElementById('agrionHomePanelContent'),toggle=document.getElementById('agrionHomeMenuToggle');
     if(!panel||!content||!toggle)return;
+    document.getElementById('agrionHomeProperty').onclick=()=>window.AgrionDiscovery.editProperty();
     const header=document.getElementById('agrionHomeHeader');
     const positionPanel=()=>{if(!header.isConnected){window.removeEventListener('resize',positionPanel);return;}panel.style.setProperty('--agrion-menu-space',`${Math.max(160,window.innerHeight-header.getBoundingClientRect().bottom)}px`);};
     positionPanel();window.addEventListener('resize',positionPanel,{passive:true});

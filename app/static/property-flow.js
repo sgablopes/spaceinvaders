@@ -15,6 +15,7 @@
   let locationLabel = saved?.locationLabel || '';
   let mapLoading = null;
   let generation = 0;
+  let editingFromHome = false;
 
   const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const hectares = area => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(area / 10000);
@@ -71,7 +72,7 @@
     return `<main class="property-screen"><header class="property-header">
       <div class="property-header-brand"><span class="welcome-brand-icon">${icon('leaf',21)}</span><strong>Agrion</strong></div>
       <div><p class="eyebrow">${confirmed ? `Olá, ${escape(saved.personName)}` : `Vamos localizar seu terreno, ${escape(saved?.personName || '')}`}</p><h1>Minha propriedade</h1><p>${escape(name)}<span id="propertyLocationLabel">${locationLabel ? ` · ${escape(locationLabel)}` : ''}</span></p></div>
-    </header><div class="property-map-layout"><div class="property-map-wrap">
+    ${editingFromHome ? '<button type="button" class="property-back" data-action="propertyReturnHome">Voltar</button>' : ''}</header><div class="property-map-layout"><div class="property-map-wrap">
       <div id="propertyMap" class="property-map" role="application" aria-label="Mapa de satélite para localizar e desenhar a propriedade"></div>
       <div id="propertyMapMessage" class="property-map-message" role="status">${key ? 'Carregando mapa de satélite…' : 'Chave do MapTiler não configurada. Configure MAPTILER_API_KEY para usar o mapa.'}</div>
     </div><section class="property-panel" aria-label="Informações do terreno">
@@ -200,13 +201,16 @@
         try {
           saved = store.save({ ...saved, locationLabel, geometry: polygon.toGeoJSON().geometry, registeredAt: saved?.registeredAt || new Date().toISOString() });
           setView('saved');
-          window.AgrionDiscovery?.invite();
+          if(editingFromHome){editingFromHome=false;window.AgrionDiscovery?.showHome();}
+          else window.AgrionDiscovery?.invite();
         } catch (problem) { notify(problem.message); }
         break;
       case 'propertyEdit': setView('map'); break;
       case 'propertyNext': window.AgrionDiscovery?.open(); break;
+      case 'propertyReturnHome': editingFromHome=false;tearDownMap();view='saved';window.AgrionDiscovery?.showHome();break;
     }
   }
 
-  window.AgrionProperty = { view: () => view, markup, afterRender, action };
+  function editFromHome(){saved=store.read();locationLabel=saved?.locationLabel||'';editingFromHome=true;setView('map');}
+  window.AgrionProperty = { view: () => view, markup, afterRender, action, editFromHome };
 })();
