@@ -63,6 +63,30 @@ class PlanningTest(unittest.TestCase):
         self.assertTrue(result['missing_inputs'])
         self.assertEqual(analyze({}, self.engine([]))['status'], 'unavailable')
 
+    def test_invalid_metadata_preserves_valid_options_as_partial(self):
+        for change in ({'headline': None}, {'headline': 'x' * 501},
+                       {'extra_field': True}, {'assumptions': ['Confirmar solo', None]},
+                       {'missing_inputs': 'Confirmar água'}):
+            with self.subTest(change=change):
+                result = analyze({}, self.engine({**sample(), **change}))
+                self.assertEqual(result['status'], 'partial')
+                self.assertEqual(len(result['crops']), 2)
+                self.assertEqual(len(result['strategies']), 1)
+                self.assertTrue(result['headline'])
+                self.assertTrue(result['missing_inputs'])
+
+    def test_metadata_recovery_does_not_invent_options_or_accept_sources(self):
+        self.assertEqual(analyze({}, self.engine({'headline': None}))['status'], 'unavailable')
+        data = sample()
+        data.pop('headline')
+        data['crops'].append({'id': 'invalid'})
+        result = analyze({'ui_language': 'en-US'}, self.engine(data, False))
+        self.assertEqual(result['status'], 'partial')
+        self.assertEqual(len(result['crops']), 2)
+        self.assertEqual(result['crops'][0]['source_urls'], [])
+        self.assertEqual(result['crops'][0]['confidence'], 'baixa')
+        self.assertIn('Preliminary', result['headline'])
+
     def test_planning_prompt_has_recovery_and_no_chat_length_limit(self):
         prompts = []
         engine = AgrionEngine(generate=lambda model, contents, instruction: prompts.append(instruction) or '{}')

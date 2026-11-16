@@ -115,6 +115,27 @@ def _clean(value):
     return public_text(value) if isinstance(value, str) else value
 
 
+def _recover_metadata(data, language):
+    """Recover presentation fields only; never create agricultural options."""
+    english = language == 'en-US'
+    headline = data.get('headline')
+    if not isinstance(headline, str) or not headline.strip() or len(headline) > 500:
+        headline = 'Preliminary planning for your property' if english else 'Planejamento preliminar para sua propriedade'
+    metadata = {'headline': headline}
+    for key in ('assumptions', 'missing_inputs'):
+        entries = data.get(key, [])
+        if isinstance(entries, str):
+            entries = [entries]
+        if not isinstance(entries, list):
+            entries = []
+        # Keep complete valid statements rather than cutting off qualifications.
+        metadata[key] = [text for text in entries if isinstance(text, str) and text.strip() and len(text) <= 500][:8]
+    warning = ('Preliminary analysis: some general information could not be recovered. Confirm assumptions and local conditions before adopting these options.'
+               if english else 'Análise preliminar: parte das informações gerais não pôde ser recuperada. Confirme premissas e condições locais antes de adotar estas alternativas.')
+    metadata['missing_inputs'] = metadata['missing_inputs'][:7] + [warning]
+    return Analysis.model_validate(metadata).model_dump()
+
+
 def analyze(context, engine=None):
     signature = hashlib.sha256(json.dumps(context, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
     base = {'schema_version': '1.0', 'context_signature': signature,
@@ -156,7 +177,13 @@ def analyze(context, engine=None):
                     output.append(parsed)
                 except (ValidationError, ValueError, TypeError):
                     partial = True
-        metadata = Analysis.model_validate({**data, 'crops': [], 'strategies': []}).model_dump()
+        try:
+            metadata = Analysis.model_validate({**data, 'crops': [], 'strategies': []}).model_dump()
+        except ValidationError:
+            if not crops:
+                raise  # An invalid response without valid options is still unavailable.
+            metadata = _recover_metadata(data, context.get('ui_language'))
+            partial = True
         base.update(_clean(metadata), crops=crops, strategies=strategies,
                     search_entry_points=search_entries(result.tool_evidence))
         base['status'] = 'partial' if partial or not crops or not strategies else 'ready'

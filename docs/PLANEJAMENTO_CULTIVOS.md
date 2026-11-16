@@ -26,6 +26,8 @@ Baixa confiança não bloqueia sugestões. Dados químicos do terreno, doses de 
 
 ## Persistência e indisponibilidade
 
+Erros nos campos gerais da resposta (título, premissas, lacunas ou campos extras) não descartam culturas já validadas. Quando existem culturas válidas, o servidor recupera os textos gerais aproveitáveis e entrega `partial`, com aviso para confirmar premissas e condições locais. Culturas, estratégias, vínculos dos ciclos e fontes continuam sujeitos às mesmas validações. JSON ilegível, falha do modelo ou metadados inválidos sem culturas válidas continuam indisponíveis; a recuperação não inventa alternativas nem faz novas chamadas externas.
+
 Análise, complementos, seleção e plano usam um registro versionado por propriedade no IndexedDB `agrion-dashboard`, chave `<property_id>:planning-v1`, separado dos dados demonstrativos. O cache é considerado anterior após 24 horas ou mudança de contexto/complementos. Atualização é explícita quando existe resultado anterior. O plano escolhido preserva ciclos, estratégia, premissas e assinatura para indicar revisão após mudança de contexto. Andamento, janelas definidas pelo usuário e checklist são locais, sem sincronização ou execução automática de operações.
 
 A tela abre antes da IA. Falhas mantêm resultado anterior ou uma tela útil com contexto e opção de nova tentativa. Esperas de contexto/cache e gravação local são limitadas. Sair cancela a requisição HTTP e invalida callbacks antigos.
