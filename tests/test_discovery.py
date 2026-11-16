@@ -43,6 +43,10 @@ class DiscoveryTests(unittest.TestCase):
         self.assertIn('reformule-a uma vez', text)
         self.assertIn('despeça-se agora', _live_state_instruction('Agrion.', {'fields': fields, 'closing': True}))
         self.assertIsNone(_live_state_instruction('Agrion.', {'fields': {**fields, 'last_crop': 'malicious'}}))
+        english = _live_state_instruction('Agrion.', {'fields': fields, 'intro_stage': 2, 'clarify': True}, 'en-US')
+        self.assertIn('Rephrase the unanswered question', english)
+        self.assertNotIn('reformule-a', english)
+        self.assertIn('say goodbye', _live_state_instruction('Agrion.', {'fields': fields, 'closing': True}, 'en-US'))
 
     def test_history_patch_requires_evidence_in_named_farmer_turn(self):
         import json

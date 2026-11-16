@@ -3,6 +3,14 @@
  const P=window.AgrionProfile,R=window.AgrionRepository,I=window.AgrionInterviewLanguage;
  const LIMITS=window.AGRION_CONFIG.interviewLimits;
  const OPENING_PROMPTS={'pt-BR':'Cumprimente brevemente: diga que é o Agrion e pergunte se está tudo bem. Aguarde a resposta antes de explicar a entrevista.','en-US':'Briefly say you are Agrion and ask how the person is. Wait for their reply before explaining the interview.'};
+ const LIVE_PROMPTS={
+  confirm:{'pt-BR':'Há uma informação incerta. Faça uma pergunta breve para confirmá-la e aguarde a resposta da pessoa antes de encerrar.','en-US':'One fact is uncertain. Ask a brief question to confirm it and wait for the farmer’s answer before finishing.'},
+  pendingFarewell:{'pt-BR':'A entrevista ainda tem dados pendentes. Faça uma pergunta curta sobre uma pendência antes de se despedir.','en-US':'Some facts are pending. Ask one brief question about a missing fact before saying goodbye.'},
+  invite:{'pt-BR':'Explique brevemente o que faremos e convide um relato livre sobre a lavoura.','en-US':'Briefly explain what we will do and invite the farmer to talk freely about their crops.'},
+  resume:{'pt-BR':'Ainda há dados pendentes. Retome a conversa com uma pergunta breve sobre uma pendência.','en-US':'Some facts are pending. Resume with one brief question about a missing fact.'},
+  close:{'pt-BR':'CLOSE_REQUESTED. Agradeça brevemente e encerre agora, sem novas perguntas.','en-US':'CLOSE_REQUESTED. Thank the farmer briefly and end now without further questions.'}
+ };
+ const livePrompt=key=>LIVE_PROMPTS[key][interview?.language]||LIVE_PROMPTS[key]['pt-BR'];
  const labels={last_crop:'Cultura anterior',last_harvest_result:'Última colheita',main_difficulties:'Dificuldades',irrigation:'Irrigação',mechanization:'Máquinas e trabalho',primary_goal:'Objetivo da próxima safra',next_crop_preference:'Preferência de plantio',current_season_stage:'Fase da safra atual'};
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  let property,profile,interview,ws,audioContext,micStream,micSource,processor,playAt=0,timer,closing=false,finalizing=false,farewellStarted=false,closingSignalSent=false,closePromptPending=false,modelTurnActive=false,lastModelFrameMono=0,lastModelTurnMono=0,clarificationPending=false,queue=Promise.resolve(),pendingInput='',pendingOutput='',lastAssistantTurn='',lastStateKey='',inputDebounce,outputDebounce,outputNode=null,inputTurn=null,outputTurn=null,inputQuestion='',sequence=0,introStage=0,startedMono=0,closingMono=0,confirmationState='none',confirmationNeededMono=0,confirmationResponseSeen=false,confirmationPromptCount=0,lastFarmerMono=0,recoveryPrompts=0,view='none',autoTimer=null,manualSession=null,completed=false,languageLocked=false,languageChanging=false,manualBaseline=new Map();const audioSources=new Set(),turnHistory=[],reviewedKeys=new Set();
@@ -33,7 +41,7 @@
    document.getElementById('discoveryForm').onsubmit=e=>{e.preventDefault();const input=document.getElementById('discoveryInput');const text=input.value.trim();if(text){input.value='';const turn=beginTurn('farmer',text);lastFarmerMono=performance.now();recoveryPrompts=0;sendText(text);extract(text,turn.turn_id,lastAssistantTurn);}};
  }
  function syncLanguageControl(){const select=document.getElementById('discoveryLanguage');if(select){select.disabled=languageLocked||languageChanging;select.value=I.get();}const hint=document.getElementById('discoveryLanguageHint');if(hint)hint.textContent=languageLocked?I.t('Idioma definido após a primeira resposta.'):'';}
- function lockLanguage(){languageLocked=true;if(profile)profile.interview_language=I.get();syncLanguageControl();}
+ function lockLanguage(){if(languageLocked)return;languageLocked=true;if(profile){profile.interview_language=I.get();void R.put('agricultural_profiles',profile).catch(()=>{});}if(interview){interview.has_farmer_response=true;void R.put('interviews',interview).catch(()=>{});}syncLanguageControl();}
  async function changeLanguage(language){
    if(languageLocked||languageChanging||!I.valid(language)){syncLanguageControl();return;}
    languageChanging=true;syncLanguageControl();clearTimeout(autoTimer);autoTimer=null;
@@ -63,7 +71,7 @@
    if(closing||modelTurnActive||!audioDrained()||ws?.readyState!==WebSocket.OPEN)return;
    confirmationState='asking';confirmationResponseSeen=false;confirmationPromptCount++;
    confirmationNeededMono=performance.now();
-   sendText('Há uma informação incerta. Faça uma pergunta breve para confirmá-la e aguarde a resposta da pessoa antes de encerrar.');
+   sendText(livePrompt('confirm'));
  }
  function completeConfirmationQuestion(){
    if(confirmationState!=='needed'&&confirmationState!=='asking')return;
@@ -91,7 +99,7 @@
      }catch(_){break;}
    }
  }
- async function open(){property=window.AgrionPropertyStore.read();if(!property?.geometry)return;profile=P.ensureFields(await R.getByPropertyId(property.propertyId)||P.create(property));await R.put('agricultural_profiles',profile);const sessions=await R.all('interviews');completed=sessions.some(x=>x.property_id===property.propertyId&&x.status==='completed');manualSession=null;languageLocked=P.ESSENTIAL.some(id=>profile.fields[id].status!=='pending');const previousSession=sessions.filter(x=>x.property_id===property.propertyId).sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''))[0];if(languageLocked&&I.valid(profile.interview_language||previousSession?.language))I.set(profile.interview_language||previousSession.language,false);clearTimeout(autoTimer);window.AgrionHome.reset();view=completed?'next':'voice';window.render();if(completed)return;
+ async function open(){property=window.AgrionPropertyStore.read();if(!property?.geometry)return;profile=P.ensureFields(await R.getByPropertyId(property.propertyId)||P.create(property));await R.put('agricultural_profiles',profile);const sessions=await R.all('interviews');completed=sessions.some(x=>x.property_id===property.propertyId&&x.status==='completed');manualSession=null;languageLocked=P.ESSENTIAL.some(id=>profile.fields[id].status!=='pending')||sessions.some(x=>x.property_id===property.propertyId&&x.has_farmer_response===true);const previousSession=sessions.filter(x=>x.property_id===property.propertyId).sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''))[0];if(languageLocked&&I.valid(profile.interview_language||previousSession?.language))I.set(profile.interview_language||previousSession.language,false);clearTimeout(autoTimer);window.AgrionHome.reset();view=completed?'next':'voice';window.render();if(completed)return;
  lastAssistantTurn='';pendingInput='';lastStateKey='';closing=false;finalizing=false;farewellStarted=false;closingSignalSent=false;closePromptPending=false;modelTurnActive=false;lastModelFrameMono=0;lastModelTurnMono=0;clarificationPending=false;confirmationState='none';confirmationNeededMono=0;confirmationResponseSeen=false;confirmationPromptCount=0;sequence=0;introStage=0;inputTurn=null;outputTurn=null;inputQuestion='';recoveryPrompts=0;turnHistory.length=0;reviewedKeys.clear();finishOutput();
  if(!completed)autoTimer=setTimeout(()=>{autoTimer=null;if(view==='voice'&&!interview)void start('voice');},1500);else{status('Perfil concluído. Para conversar novamente, use Ativar voz.');document.getElementById('discoveryRetry').hidden=false;}
  retryPending().catch(()=>status('Algumas respostas aguardam análise. Os dados já registrados permanecem salvos.'));
@@ -133,7 +141,7 @@
    if(outputTranscription?.finished)finishOutput();
    if(content?.interrupted){finishOutput();for(const source of audioSources){try{source.stop();}catch(_){}}audioSources.clear();playAt=0;}
    if(content?.modelTurn?.parts)for(const part of content.modelTurn.parts){modelTurnActive=true;lastModelFrameMono=performance.now();if(confirmationState==='needed'||confirmationState==='asking')confirmationResponseSeen=true;if(part.inlineData?.data){if(closing&&closingSignalSent)farewellStarted=true;playAudio(part.inlineData.data);}if(part.text&&!outputTranscription&&!pendingOutput){if(closing&&closingSignalSent)farewellStarted=true;beginTurn('agrion',part.text);lastAssistantTurn=part.text.slice(-1000);}}
-   if(content?.turnComplete){modelTurnActive=false;lastModelTurnMono=performance.now();finishOutput();if(closing&&closePromptPending&&!closingSignalSent)sendClosePrompt();else if(closing&&closingSignalSent&&farewellStarted){const delay=audioContext?Math.max(0,(playAt-audioContext.currentTime)*1000):0;setTimeout(()=>{if(interview?.status==='in_progress')finish(interview.completion_reason||'time_limit',true);},delay+50);}else if(!closing&&introStage>=2&&!missingFields().length){if(canCloseByCompleteness())requestClose('essential_fields_complete');else{needConfirmation();completeConfirmationQuestion();}}else if(!closing&&introStage>=2&&missingFields().length&&/(encerr|finaliz|termin|obrigad|até logo|goodbye|finish|gracias|adiós)/i.test(lastAssistantTurn))setTimeout(()=>{void (async()=>{if(interview?.status!=='in_progress'||modelTurnActive||performance.now()-lastFarmerMono<=2500)return;await reanalyzePending();if(interview?.status!=='in_progress'||closing)return;if(!missingFields().length){if(canCloseByCompleteness())requestClose('essential_fields_complete');else{needConfirmation();promptConfirmation();}return;}if(recoveryPrompts++<2)sendText('A entrevista ainda tem dados pendentes. Faça uma pergunta curta sobre uma pendência antes de se despedir.');else finish('model_stalled');})();},3000);}
+   if(content?.turnComplete){modelTurnActive=false;lastModelTurnMono=performance.now();finishOutput();if(closing&&closePromptPending&&!closingSignalSent)sendClosePrompt();else if(closing&&closingSignalSent&&farewellStarted){const delay=audioContext?Math.max(0,(playAt-audioContext.currentTime)*1000):0;setTimeout(()=>{if(interview?.status==='in_progress')finish(interview.completion_reason||'time_limit',true);},delay+50);}else if(!closing&&introStage>=2&&!missingFields().length){if(canCloseByCompleteness())requestClose('essential_fields_complete');else{needConfirmation();completeConfirmationQuestion();}}else if(!closing&&introStage>=2&&missingFields().length&&/(encerr|finaliz|termin|obrigad|até logo|goodbye|finish|gracias|adiós)/i.test(lastAssistantTurn))setTimeout(()=>{void (async()=>{if(interview?.status!=='in_progress'||modelTurnActive||performance.now()-lastFarmerMono<=2500)return;await reanalyzePending();if(interview?.status!=='in_progress'||closing)return;if(!missingFields().length){if(canCloseByCompleteness())requestClose('essential_fields_complete');else{needConfirmation();promptConfirmation();}return;}if(recoveryPrompts++<2)sendText(livePrompt('pendingFarewell'));else finish('model_stalled');})();},3000);}
    if(msg.toolCall?.functionCalls)void handleToolCalls(msg.toolCall.functionCalls);
  }
  async function handleToolCalls(calls){
@@ -183,7 +191,7 @@
        await R.savePatch(profile,revisions,activeInterview);checklist();
        if(interview===activeInterview){
          if(answeredConfirmation){confirmationState='answered';activeInterview.confirmation_attempted=true;await R.put('interviews',activeInterview);}
-         if(!review&&introStage<2){introStage++;if(introStage===1&&!modelTurnActive)setTimeout(()=>{if(interview===activeInterview&&!modelTurnActive)sendText('Explique brevemente o que faremos e convide um relato livre sobre a lavoura.');},1000);}
+         if(!review&&introStage<2){introStage++;if(introStage===1&&!modelTurnActive)setTimeout(()=>{if(interview===activeInterview&&!modelTurnActive)sendText(livePrompt('invite'));},1000);}
          const pending=missingFields(),uncertain=uncertainFields();
          if(!pending.length&&uncertain.length)needConfirmation();
          const clarify=!review&&!result.applied.length&&seq>1&&!!assistantContext&&!clarificationPending;
@@ -205,7 +213,7 @@
    await reanalyzePending();
    if(interview?.status!=='in_progress'||closing||modelTurnActive)return;
    if(!missingFields().length){if(canCloseByCompleteness())requestClose('essential_fields_complete');else{needConfirmation();promptConfirmation();}return;}
-   if(recoveryPrompts++<2)sendText('Ainda há dados pendentes. Retome a conversa com uma pergunta breve sobre uma pendência.');
+   if(recoveryPrompts++<2)sendText(livePrompt('resume'));
  }
  function tick(){
    if(!interview||interview.status!=='in_progress')return;
@@ -232,7 +240,7 @@
    if(introStage>=2&&missingFields().length&&lastModelTurnMono&&now-lastModelTurnMono>=20000
       &&now-lastFarmerMono>=20000&&!inputTurn&&!modelTurnActive&&recoveryPrompts<2)void recoverStalledConversation();
  }
- function sendClosePrompt(){if(!closePromptPending||closingSignalSent||modelTurnActive||!audioDrained()||ws?.readyState!==WebSocket.OPEN)return;closePromptPending=false;closingSignalSent=true;sendText('CLOSE_REQUESTED. Agradeça brevemente e encerre agora, sem novas perguntas.');}
+ function sendClosePrompt(){if(!closePromptPending||closingSignalSent||modelTurnActive||!audioDrained()||ws?.readyState!==WebSocket.OPEN)return;closePromptPending=false;closingSignalSent=true;sendText(livePrompt('close'));}
  function requestClose(reason,signal=true){if(closing||!interview||interview.status!=='in_progress')return;closing=true;farewellStarted=false;closingSignalSent=!signal;closePromptPending=signal;closingMono=performance.now();interview.closing_requested_at=new Date().toISOString();interview.completion_reason=reason;R.put('interviews',interview);status('Encerrando a conversa…');sendState();if(signal)sendClosePrompt();if(!ws||ws.readyState!==WebSocket.OPEN)finish(reason);}
  async function finish(reason='user_request',farewell=false,destination=null){if(!interview){if(destination){view=destination;window.render();}return;}if(interview.status!=='in_progress'||finalizing)return;finalizing=true;clearInterval(timer);clearTimeout(inputDebounce);finishOutput();if(pendingInput)flushInput();await stopMicrophone();ws?.close();ws=null;await Promise.race([queue,new Promise(resolve=>setTimeout(resolve,4000))]);interview.status=reason==='user_request'?'cancelled':reason==='essential_fields_complete'?'completed':'partial';interview.finished_at=new Date().toISOString();interview.updated_at=interview.finished_at;interview.duration_seconds=startedMono?Math.round((performance.now()-startedMono)/1000):0;interview.completion_reason=reason;interview.farewell_delivered=farewell;interview.essential_field_counts=Object.fromEntries(['pending','confirmed','uncertain','unknown'].map(s=>[s,P.ESSENTIAL.filter(id=>profile.fields[id].status===s).length]));await R.put('interviews',interview);completed=completed||interview.status==='completed';interview=null;closing=false;finalizing=false;view=destination||(reason==='essential_fields_complete'?'next':'manual');if(view==='next')window.AgrionHome.reset();window.render();}
  async function switchToManual(){clearTimeout(autoTimer);autoTimer=null;const button=document.getElementById('discoveryManual');if(button)button.disabled=true;if(interview)await finish('user_request',false,'manual');else{await stopMicrophone();ws?.close();ws=null;view='manual';window.render();}}

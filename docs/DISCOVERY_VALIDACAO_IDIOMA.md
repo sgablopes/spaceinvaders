@@ -20,6 +20,8 @@ O formulário compara as respostas com a representação inicial. Campos não ed
 
 O seletor oferece português e inglês na entrevista de voz e no formulário. Fica bloqueado na primeira transcrição/resposta ou alteração de campo manual, incluindo antes de salvar. É uma escolha de idioma da entrevista; não traduz a dashboard inteira. Traduções não alteram IDs, categorias, unidades ou valores digitados. Valores financeiros do formulário continuam explicitamente em BRL.
 
+A primeira resposta de voz também marca a sessão como respondida no IndexedDB. Ao recarregar, esse registro mantém o idioma bloqueado mesmo quando a extração não identificou nenhum fato agrícola. As instruções de abertura, atualização de estado, retomada, confirmação e despedida enviadas ao modelo acompanham o idioma da sessão.
+
 Antes da primeira resposta, a troca encerra a sessão anterior como parcial (`language_changed`), interrompe microfone e áudio, limpa o estado transitório e cria nova sessão. Callbacks capturam a identidade da conexão e da entrevista para ignorar eventos atrasados. A captura de microfone também verifica se a sessão ainda é atual após conceder permissão. O seletor fica temporariamente desabilitado durante a troca.
 
 O modelo Live configurado em `GEMINI_LIVE_MODEL` permanece o mesmo. O backend define a voz: português usa Orus; inglês omite `voiceConfig`, usando a voz padrão do provedor. O cliente não pode escolher outro modelo ou voz. Espanhol não é oferecido nem aceito para novas conexões.

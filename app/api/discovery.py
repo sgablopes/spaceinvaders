@@ -42,7 +42,7 @@ def _speech_config(language):
     return config
 
 
-def _live_state_instruction(base, state):
+def _live_state_instruction(base, state, language="pt-BR"):
     """Build a bounded system update from canonical browser profile statuses."""
     if not isinstance(state, dict) or not isinstance(state.get("fields"), dict):
         return None
@@ -71,6 +71,18 @@ def _live_state_instruction(base, state):
         guidance = "Não houve cultivo anterior nesta área. Não pergunte sobre uma colheita passada. Confirme a cultura atual e a fase somente se ainda faltarem; o primeiro cultivo pode já estar plantado. Pergunte sobre recursos e objetivos conforme as lacunas."
     else:
         guidance = "Pergunte sobre um pendente por vez. Não repita campo unknown. Nunca anuncie conclusão antes da autorização da ferramenta."
+    if language == "en-US":
+        guidance = {
+            "closing": "Completion requested. Thank the farmer, say the information was saved, and say goodbye without another question.",
+            "intro0": "Briefly introduce yourself as Agrion and ask how the farmer is. Wait for the answer.",
+            "intro1": "Briefly explain the purpose, invite a free account of crops, harvest and difficulties, then ask only about missing facts.",
+            "clarify": "Rephrase the unanswered question once, simply; then move on. Do not repeat unknown fields or announce completion before tool approval.",
+            "uncertain": "Briefly confirm one uncertain fact before finishing; do not repeat the confirmation.",
+            "first": "There was no previous crop here. Do not ask about a past harvest. Ask about the current crop, stage, resources and goals only as needed.",
+            "pending": "Ask about one missing field at a time. Do not repeat unknown fields or announce completion before tool approval.",
+        }["closing" if closing else "intro0" if intro_stage == 0 else "intro1" if intro_stage == 1 else "clarify" if clarify else "uncertain" if uncertain and not pending and not confirmation_attempted else "first" if first_cultivation and pending else "pending"]
+        return (base + "\nCurrent application state: "
+            f"resolved={','.join(resolved) or 'none'}; pending={','.join(pending) or 'none'}; uncertain={','.join(uncertain) or 'none'}. " + guidance)
     return (base + "\nEstado atual do aplicativo: "
         f"resolvidos={','.join(resolved) or 'nenhum'}; pendentes={','.join(pending) or 'nenhum'}; incertos={','.join(uncertain) or 'nenhum'}. "
         + guidance)
@@ -493,6 +505,16 @@ def register_socket(app):
                     "Se receber CLOSE_REQUESTED, agradeça e despeça-se sem nova pergunta. Nunca cite JSON, ferramentas ou estados internos. "
                     "Após uma resposta de ferramenta recusada, faça uma pergunta ao agricultor antes de chamar outra ferramenta. "
                     "Não faça mais de duas chamadas consecutivas de ferramentas sem falar com o agricultor.")
+                if language == 'en-US':
+                    instruction = (f"You are Agrion. Speak English in simple, welcoming language, one question at a time. Farmer: {name}. Property: {property_name}. "
+                        "Introduce yourself briefly and ask how the farmer is. Wait for the reply, then explain the purpose and invite a free account of crops, harvest and difficulties. "
+                        "Discuss only the current crop and the immediately preceding crop, the previous harvest, difficulties, irrigation, mechanization, goals, next crop preference and current crop stage. "
+                        "Ask when the current crop was planted only if one is planted. If this is the first crop, do not invent an earlier harvest. "
+                        "Harvest quantity and monetary value are optional; a qualitative outcome is enough. Accept unknown or declined answers and move on. "
+                        "Use the application state to ask about missing facts, one at a time. Rephrase an unanswered question once without insisting. Do not repeat unknown fields. "
+                        "Do not invent facts or recommendations. Before announcing completion, call complete_initial_interview and wait for approval. If refused, ask about a missing field. "
+                        "On CLOSE_REQUESTED, thank the farmer and say goodbye without another question. Never mention JSON, tools or internal state. "
+                        "After a refused tool response, speak to the farmer before calling another tool. Never make more than two consecutive tool calls without speaking.")
                 speech_config = _speech_config(language)
                 upstream.send(json.dumps({"setup": {"model": f"projects/{project}/locations/{location}/publishers/google/models/{os.getenv('GEMINI_LIVE_MODEL', 'gemini-3.8-live')}", "generationConfig": {"responseModalities": ["AUDIO"], "speechConfig": speech_config}, "systemInstruction": {"parts": [{"text": instruction}]}, "inputAudioTranscription": {}, "outputAudioTranscription": {}, "tools": [{"functionDeclarations": [{"name": "complete_initial_interview", "description": "Request interview completion when essential facts are resolved or farmer asks to stop", "parameters": {"type": "OBJECT", "properties": {"reason": {"type": "STRING"}}}}, {"name": "get_interview_state", "description": "Read the current validated agricultural checklist before choosing the next question", "parameters": {"type": "OBJECT", "properties": {}}}]}]}}))
                 stop = threading.Event()
@@ -505,7 +527,7 @@ def register_socket(app):
                                 break
                             obj = json.loads(message)
                             if set(obj) == {"interviewState"} and len(message) <= 4096 and os.getenv('GEMINI_LIVE_MODEL', 'gemini-3.8-live') == 'gemini-3.8-live':
-                                updated = _live_state_instruction(instruction, obj["interviewState"])
+                                updated = _live_state_instruction(instruction, obj["interviewState"], language)
                                 if updated:
                                     upstream.send(json.dumps({"contextUpdate": {"systemInstruction": {"parts": [{"text": updated}]}}}))
                             elif set(obj) <= {"realtimeInput", "clientContent", "toolResponse"} and len(message) <= 100000:
