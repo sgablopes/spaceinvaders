@@ -2,7 +2,7 @@
   'use strict';
   const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const field=(id,label,control,hint='')=>`<div class="discovery-field"><label for="manual-${id}">${label}</label>${hint?`<small>${hint}</small>`:''}${control}</div>`;
-  const input=(id,value='',placeholder='')=>`<input id="manual-${id}" name="${id}" type="text" maxlength="180" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}">`;
+  const input=(id,value='',placeholder='')=>`<input id="manual-${id}" name="${id}" type="text" maxlength="180" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}"${['equipment','goal_description'].includes(id)?` aria-label="${escapeHtml(placeholder)}"`:''}>`;
   const select=(id,options,value='')=>`<select id="manual-${id}" name="${id}"><option value="">Selecione</option>${options.map(([key,label])=>`<option value="${key}" ${value===key?'selected':''}>${label}</option>`).join('')}</select>`;
   const unknown=(id,checked=false)=>`<label class="discovery-inline"><input type="checkbox" name="${id}_unknown" ${checked?'checked':''}> Não sei informar</label>`;
   function markup(profile){

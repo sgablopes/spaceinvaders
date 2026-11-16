@@ -50,6 +50,8 @@ python -m unittest discover -s tests -v
 
 Execute após instalar as dependências.
 
+Para revisar a interface em português e inglês no Chrome instalado localmente, execute `python tests/full_locale_e2e.py`. O roteiro usa respostas externas simuladas e cobre as telas ativas em uma largura móvel. Consulte [idioma da interface e limites da revisão](docs/IDIOMA_INTERFACE.md).
+
 ## Deploy na VM
 
 No Debian 13, em `/home/sgablopes/projects/agrion`, sincronize a versão pelo GitHub com `git pull --ff-only`, execute `docker compose up -d --build` e confirme `curl -f http://127.0.0.1:8000/api/health`. Antes de mudar Nginx, inspecione `sudo nginx -T`, identifique domínio e virtual host, faça backup do arquivo específico e adicione o proxy para `http://127.0.0.1:8000`. Valide com `sudo nginx -t` antes de `sudo systemctl reload nginx`. Preserve a configuração HTTPS existente. Não há configuração de domínio ou certificado fornecida nesta versão.

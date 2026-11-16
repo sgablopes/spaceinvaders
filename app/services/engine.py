@@ -124,6 +124,8 @@ class AgrionEngine:
         self.model = model or os.getenv('GEMINI_ENGINE_MODEL', 'gemini-3.8-flash')
 
     def run(self, task: str, context: dict[str, Any] | None = None, history: list[dict] | None = None, language: str = 'pt-BR', mode: str = 'chat') -> EngineResult:
+        if (mode.startswith('dashboard') or mode == 'planning') and language == 'pt-BR' and isinstance(context, dict) and context.get('ui_language') == 'en-US':
+            language = 'en-US'
         if not isinstance(task, str) or not task.strip() or len(task) > 8000:
             raise ValueError('A tarefa deve conter entre 1 e 8000 caracteres.')
         if language not in {'pt-BR', 'en-US', 'es-US'}:

@@ -52,6 +52,8 @@ class EngineTest(unittest.TestCase):
         self.assertEqual(result.text,'{"highlight_fields":[]}')
         self.assertIn('highlight_fields',instructions[0])
         self.assertNotIn('até três frases curtas',instructions[0])
+        service.run('Prepare dashboard',context={'property':{'id':'p'},'ui_language':'en-US'},mode='dashboard')
+        self.assertIn('Responda no idioma en-US',instructions[-1])
         with self.assertRaises(ValueError):service.run('teste',mode='invalid')
 
     def test_dashboard_stage_carries_tool_evidence(self):

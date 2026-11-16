@@ -7,7 +7,7 @@
     if(!root)return;const seen=new Set();
     for(const html of entries||[]){
       if(typeof html!=='string'||!html||html.length>50000||options.compact&&seen.has(html))continue;seen.add(html);
-      const frame=document.createElement('iframe');frame.className='agrion-search-suggestions';frame.title='Sugestões do Google Search';
+      const frame=document.createElement('iframe');frame.className='agrion-search-suggestions';frame.title=(window.AgrionDashboardLanguage?.t('Sugestões do Google Search')||'Sugestões do Google Search');
       // Scripts remain disabled. Same-origin permits measuring the static provider HTML.
       frame.setAttribute('sandbox',`allow-popups allow-popups-to-escape-sandbox${options.compact?' allow-same-origin':''}`);
       frame.referrerPolicy='no-referrer';

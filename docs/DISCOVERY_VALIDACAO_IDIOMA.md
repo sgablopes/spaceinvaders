@@ -16,9 +16,11 @@ O formulário compara as respostas com a representação inicial. Campos não ed
 
 ## Idioma
 
-`discovery-language.js` prioriza a preferência salva em `agrion-interview-language-v1`, depois os idiomas suportados de `navigator.languages` / `navigator.language`; português usa `pt-BR`, inglês usa `en-US`, demais idiomas usam inglês. Um perfil com respostas preserva o idioma registrado no perfil ou na sessão anterior quando suportado.
+Uma entrevista nova começa no idioma global de `agrion-ui-language-v1`. Sem preferência explícita, somente `navigator.language === 'pt-BR'` seleciona português; qualquer outro idioma usa inglês. Um perfil com respostas preserva o idioma da entrevista registrado no perfil ou na sessão anterior. A chave antiga `agrion-interview-language-v1` continua sendo gravada por compatibilidade, mas não define o idioma inicial de propriedades novas.
 
 O seletor oferece português e inglês na entrevista de voz e no formulário. Fica bloqueado na primeira transcrição/resposta ou alteração de campo manual, incluindo antes de salvar. É uma escolha de idioma da entrevista; não traduz a dashboard inteira. Traduções não alteram IDs, categorias, unidades ou valores digitados. Valores financeiros do formulário continuam explicitamente em BRL.
+
+Antes da primeira resposta, mudar o idioma global ou o seletor da entrevista reinicia a sessão de voz no idioma escolhido. Depois da primeira resposta, mudar o idioma global traduz a interface e o progresso sem trocar a voz; o seletor da conversa permanece bloqueado e informa qual idioma foi mantido. O formulário conserva os valores digitados durante a troca visual.
 
 A primeira resposta de voz também marca a sessão como respondida no IndexedDB. Ao recarregar, esse registro mantém o idioma bloqueado mesmo quando a extração não identificou nenhum fato agrícola. As instruções de abertura, atualização de estado, retomada, confirmação e despedida enviadas ao modelo acompanham o idioma da sessão.
 

@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en-US">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <meta name="theme-color" content="#385C39"/>
-  <meta name="description" content="Agrion V3.1 Tailwind: protótipo interativo e mobile first de planejamento agrícola, mapa, registros de campo, inteligência e acompanhamento."/>
-  <title>Agrion V3.1 · Tailwind CSS</title>
+  <meta name="description" content="Agrion helps farmers explore crops, plan rotations, monitor weather and understand their property."/>
+  <title>Agrion | Agricultural planning</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
@@ -1203,6 +1203,9 @@
     }
   }
 }
+  .agrion-global-language{position:fixed;top:12px;right:12px;z-index:10000;display:flex;align-items:center;gap:6px;padding:5px 7px;border:1px solid #dfe5d7;border-radius:10px;background:#fff;box-shadow:0 2px 12px #1d3c2119;font:12px/1.3 Inter,system-ui,sans-serif;color:#242c20}
+  .agrion-global-language select{max-width:150px;border:0;background:#fff;color:#242c20;font:inherit}
+  @media(max-width:480px){.agrion-global-language{top:8px;right:8px}.agrion-global-language label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}}
 </style>
 <style id="agrion-welcome-styles">
   .welcome-page { min-height: 100vh; background: #F8F8F1; color: #242C20; }
@@ -1240,20 +1243,24 @@
 </style>
 </head>
 <body>
+  <div class="agrion-global-language"><label for="agrionGlobalLanguage">Idioma / Language</label><select id="agrionGlobalLanguage" aria-label="Idioma da interface / Interface language"><option value="pt-BR">Português (Brasil)</option><option value="en-US">English</option></select></div>
   <div id="app" aria-live="polite"></div>
   <script>window.AGRION_CONFIG = { maptilerKey: {{ maptiler_api_key|tojson }}, interviewLimits: {{ interview_limits|tojson }} };</script>
+  <script src="{{ url_for('static', filename='agrion-locale.js') }}"></script>
   <script src="{{ url_for('static', filename='property-store.js') }}"></script>
   <script src="{{ url_for('static', filename='property-flow.js') }}"></script>
   <script src="{{ url_for('static', filename='discovery-profile.js') }}"></script>
   <script src="{{ url_for('static', filename='discovery-language.js') }}"></script>
   <script src="{{ url_for('static', filename='discovery-repository.js') }}"></script>
   <script src="{{ url_for('static', filename='agrion-context.js') }}"></script>
+  <script src="{{ url_for('static', filename='agrion-dashboard-language.js') }}"></script>
   <script src="{{ url_for('static', filename='agrion-dashboard-cache.js') }}"></script>
   <script src="{{ url_for('static', filename='agrion-search-suggestions.js') }}"></script>
   <script src="{{ url_for('static', filename='agrion-market.js') }}"></script>
   <script src="{{ url_for('static', filename='agrion-property-overview.js') }}"></script>
   <script src="{{ url_for('static', filename='agrion-dashboard.js') }}"></script>
   <script src="{{ url_for('static', filename='agrion-indicators.js') }}"></script>
+  <script src="{{ url_for('static', filename='agrion-tools-language.js') }}"></script>
   <script src="{{ url_for('static', filename='agrion-station.js') }}"></script>
   <script src="{{ url_for('static', filename='agrion-planning.js') }}"></script>
   <script src="{{ url_for('static', filename='discovery-manual.js') }}"></script>
@@ -1493,15 +1500,17 @@
   const meta={home:'Início',onboarding:'Cadastro',discover:'Descobrir culturas',plan:'Planejamento',map:'Minha propriedade',record:'Novo registro',recordDetail:'Detalhe do registro',safra:'Minha Safra',intelligence:'Inteligência',article:'Detalhe da informação',assistant:'Assistente'};
   function mainPage(){return ({home, onboarding, discover, plan, map:mapPage, record:recordPage,recordDetail,safra,intelligence,article:articlePage,assistant})[state.page]?.()||home()}
   function welcome(){
+    const copy={hero:['O futuro da sua lavoura começa com uma conversa.','The future of your farm starts with a conversation.'],subtitle:['Dados da NASA, conhecimento agrícola e inteligência artificial trabalhando juntos para ajudar você a tomar decisões melhores.','NASA data, agricultural knowledge and artificial intelligence working together to help you make better decisions.'],talk:['Conte sobre sua lavoura','Tell us about your farm'],talkDetail:['O que você plantou, como foi a colheita e quais são seus objetivos.','What you planted, how the harvest went and what you hope to achieve.'],discover:['Descubra o que plantar','Discover what to plant'],discoverDetail:['Explore culturas e rotações considerando clima, solo e histórico da sua região.','Explore crops and rotations with your region’s climate, soil and history in mind.'],decide:['Decida com mais confiança','Make decisions with more confidence'],decideDetail:['Compare riscos, oportunidades e potencial de retorno para sua próxima safra.','Compare risks, opportunities and potential returns for your next season.'],enter:['Entrar','Get started'],photo:['Lavoura ao nascer do sol','Field at sunrise']};
+    const w=id=>copy[id][AgrionLocale.get()==='en-US'?1:0];
     return `<main class="welcome-page"><div class="welcome-layout">
-      <div class="welcome-visual"><picture><source media="(min-width: 768px)" srcset="{{ url_for('static', filename='agrion-hero-desktop.jpg') }}"><img src="{{ url_for('static', filename='agrion-hero-mobile.jpg') }}" alt="Lavoura ao nascer do sol" fetchpriority="high"></picture></div>
+      <div class="welcome-visual"><picture><source media="(min-width: 768px)" srcset="{{ url_for('static', filename='agrion-hero-desktop.jpg') }}"><img src="{{ url_for('static', filename='agrion-hero-mobile.jpg') }}" alt="${w('photo')}" fetchpriority="high"></picture></div>
       <div class="welcome-brand"><span class="welcome-brand-icon">${icon('leaf',23)}</span><span>Agrion</span></div>
-      <div class="welcome-copy"><h1>O futuro da sua lavoura começa com uma conversa.</h1><p class="welcome-subtitle">Dados da NASA, conhecimento agrícola e inteligência artificial trabalhando juntos para ajudar você a tomar decisões melhores.</p>
+      <div class="welcome-copy"><h1>${w('hero')}</h1><p class="welcome-subtitle">${w('subtitle')}</p>
         <div class="welcome-benefits">
-          <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('chat',27)}</span><div><h2>Conte sobre sua lavoura</h2><p>O que você plantou, como foi a colheita e quais são seus objetivos.</p></div></div>
-          <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('sprout',28)}</span><div><h2>Descubra o que plantar</h2><p>Explore culturas e rotações considerando clima, solo e histórico da sua região.</p></div></div>
-          <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('chart',27)}</span><div><h2>Decida com mais confiança</h2><p>Compare riscos, oportunidades e potencial de retorno para sua próxima safra.</p></div></div>
-        </div><div class="welcome-actions"><button type="button" class="btn btn-primary" data-action="propertyEnter">Entrar ${icon('arrow',18)}</button></div>
+          <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('chat',27)}</span><div><h2>${w('talk')}</h2><p>${w('talkDetail')}</p></div></div>
+          <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('sprout',28)}</span><div><h2>${w('discover')}</h2><p>${w('discoverDetail')}</p></div></div>
+          <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('chart',27)}</span><div><h2>${w('decide')}</h2><p>${w('decideDetail')}</p></div></div>
+        </div><div class="welcome-actions"><button type="button" class="btn btn-primary" data-action="propertyEnter">${w('enter')} ${icon('arrow',18)}</button></div>
       </div></div></main><div id="toastMount" aria-live="polite"></div>`;
   }
   function render(){const navs=[['home','Início','home'],['plan','Planejar','compare'],['map','Mapa','map'],['safra','Safra','journal']];
@@ -1611,6 +1620,7 @@
     if(e.target.dataset.bind){state[e.target.dataset.bind]=e.target.value;persist();if(['compareA','compareB','irrigation','market','recordField'].includes(e.target.dataset.bind))render();}
   });
   (async function init(){render();try{await AgrionDiscovery.restore();}catch(error){console.error('Não foi possível restaurar o Discovery',error)}db=await openDb();idbUnavailable=!db;records=await readAll();if(state.page!=='home')render()})();
+  window.addEventListener('agrion:language',()=>{if(AgrionDiscovery.view()==='none'&&AgrionProperty.view()==='welcome'&&state.page==='home')render();});
   </script>
 </body>
 </html>

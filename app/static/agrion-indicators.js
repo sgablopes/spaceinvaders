@@ -1,7 +1,8 @@
 (function(){
   'use strict';
-  const node=(tag,cls,text)=>{const n=document.createElement(tag);n.className=cls||'';if(text!==undefined)n.textContent=text;return n;};
-  const number=value=>new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1}).format(value);
+  const T=text=>window.AgrionDashboardLanguage?.t(text)||text;
+  const node=(tag,cls,text)=>{const n=document.createElement(tag);n.className=cls||'';if(text!==undefined)n.textContent=T(text);return n;};
+  const number=value=>new Intl.NumberFormat(window.AgrionLocale?.get()||'pt-BR',{maximumFractionDigits:1}).format(value);
   function metric(label,value,unit,icon){
     const box=node('div','agrion-reading');const title=node('span','agrion-reading-label',label);
     const glyph=node('span','agrion-reading-icon');glyph.setAttribute('aria-hidden','true');
@@ -13,12 +14,12 @@
   function humidity(value,label='Umidade relativa do ar'){
     if(!Number.isFinite(value)||value<0||value>100)return metric(label,null,'%','droplet');
     const box=metric(label,value,'%','droplet'),ring=node('div','agrion-humidity-ring');
-    ring.style.setProperty('--reading',`${value}%`);ring.setAttribute('role','meter');ring.setAttribute('aria-label',label);ring.setAttribute('aria-valuemin','0');ring.setAttribute('aria-valuemax','100');ring.setAttribute('aria-valuenow',String(value));
+    ring.style.setProperty('--reading',`${value}%`);ring.setAttribute('role','meter');ring.setAttribute('aria-label',T(label));ring.setAttribute('aria-valuemin','0');ring.setAttribute('aria-valuemax','100');ring.setAttribute('aria-valuenow',String(value));
     ring.append(node('span','',`${number(value)}%`));box.querySelector('.agrion-reading-value').replaceWith(ring);return box;
   }
   const phases=[['soil_preparation','Preparo'],['planting','Plantio'],['growing','Crescimento'],['flowering','Floração'],['fruiting','Frutificação'],['harvesting','Colheita'],['post_harvest','Pós-colheita']];
   const normalize=text=>String(text||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
-  const aliases={preparo:'soil_preparation','preparo do solo':'soil_preparation',plantio:'planting',crescimento:'growing','crescimento vegetativo':'growing',vegetativo:'growing',floracao:'flowering',frutificacao:'fruiting',colheita:'harvesting','pos-colheita':'post_harvest'};
+  const aliases={preparo:'soil_preparation','preparo do solo':'soil_preparation',plantio:'planting',crescimento:'growing','crescimento vegetativo':'growing',vegetativo:'growing',floracao:'flowering',frutificacao:'fruiting',colheita:'harvesting','pos-colheita':'post_harvest',preparation:'soil_preparation','soil preparation':'soil_preparation',planting:'planting',growth:'growing',growing:'growing',flowering:'flowering',fruiting:'fruiting',harvest:'harvesting',harvesting:'harvesting','post-harvest':'post_harvest'};
   function phase(estimate,declared,compact=false){
     const box=node('div','agrion-phase');const estimated=typeof estimate==='string'&&estimate.trim();
     const known=estimated?aliases[normalize(estimate)]:declared?.status==='confirmed'?declared.value?.stage:null;
@@ -26,7 +27,7 @@
     const label=estimated?estimate:phases.find(([id])=>id===known)?.[1]||extras[known]||'Fase a confirmar';
     box.append(node('small','agrion-dashboard-source',estimated?'Fase estimada pela IA':known?'Fase informada na entrevista':'Desenvolvimento da cultura'),node('strong','agrion-phase-current',label));
     if(!compact&&phases.some(([id])=>id===known)){
-      const list=node('ol','agrion-phase-track');list.setAttribute('aria-label','Etapas de referência do cultivo');
+      const list=node('ol','agrion-phase-track');list.setAttribute('aria-label',T('Etapas de referência do cultivo'));
       for(const [id,title] of phases){const item=node('li',id===known?'is-current':'',title);if(id===known)item.setAttribute('aria-current','step');list.append(item);}box.append(list,node('small','agrion-dashboard-source','Etapas de referência; o ciclo varia conforme a cultura.'));
     }
     return box;
@@ -37,7 +38,7 @@
     const duration=m=>Date.parse(m.period_end)-Date.parse(m.period_start);
     if(!Number.isFinite(duration(items[0]))||duration(items[0])<0||items.some(m=>duration(m)!==duration(items[0])))return null;
     const max=Math.max(...items.map(m=>m.value));const box=node('div','agrion-rain-bars');box.append(node('p','agrion-dashboard-muted','Acumulados em períodos de mesma duração'));
-    for(const m of items){const row=node('div','agrion-rain-row');row.append(node('span','',`${m.label}: ${number(m.value)} mm`));const bar=node('div','agrion-rain-track'),fill=node('span');fill.style.width=`${max?m.value/max*100:0}%`;bar.setAttribute('aria-hidden','true');bar.append(fill);row.append(bar,node('small','agrion-dashboard-source',`${m.period_start} a ${m.period_end}`));box.append(row);}return box;
+    for(const m of items){const row=node('div','agrion-rain-row');row.append(node('span','',`${T(m.label)}: ${number(m.value)} mm`));const bar=node('div','agrion-rain-track'),fill=node('span');fill.style.width=`${max?m.value/max*100:0}%`;bar.setAttribute('aria-hidden','true');bar.append(fill);row.append(bar,node('small','agrion-dashboard-source',`${m.period_start} ${window.AgrionLocale?.get()==='en-US'?'to':'a'} ${m.period_end}`));box.append(row);}return box;
   }
   window.AgrionIndicators={metric,humidity,phase,rainfall};
 })();

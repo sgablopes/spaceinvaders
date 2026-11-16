@@ -70,6 +70,8 @@ class PlanningTest(unittest.TestCase):
         self.assertIn('pesquise na internet', prompts[0])
         self.assertIn('baixa confiança nunca', prompts[0])
         self.assertNotIn('até três frases', prompts[0])
+        engine.run('Plan crops', context={'ui_language': 'en-US'}, mode='planning')
+        self.assertIn('Responda no idioma en-US', prompts[-1])
 
     @patch('app.api.planning.analyze')
     def test_endpoint_validates_and_keeps_property_identity(self, analysis):
