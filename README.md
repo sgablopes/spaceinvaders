@@ -1,81 +1,155 @@
-# Agrion V0.1
+AGRION
+From Earth observation to smarter agricultural decisions
+NASA Space Apps Challenge 2026 · Agricultural Decision Support · Earth Data & AI
 
-O Agrion é uma proposta da equipe Space Invaders para o NASA Space Apps Challenge 2026. A aplicação pretende apoiar decisões sobre cultivos, rotação, conservação do solo e rentabilidade com dados ambientais, conhecimento agrícola e IA. Nesta versão, a interface é um protótipo demonstrativo: os dados agrícolas não são recomendações reais, e NASA, IA e serviços meteorológicos ainda não estão conectados.
+Explore AGRION · NASA POWER · Project Submission Guide
+</div>Overview
+AGRION is an agricultural decision-support project that seeks to make scientific and environmental information easier to use in everyday farming decisions. It brings together NASA weather data, agronomic references, crop simulation, artificial intelligence, and an experimental, ESP32-based weather station.
 
-## Funcionalidades atuais e previstas
+Rather than presenting a single generic recommendation, AGRION is designed to help farmers explore their location, investigate crop options, understand relevant conditions, and compare planting strategies with clearer scientific context.
 
-O protótipo permite cadastro demonstrativo de propriedade, descoberta de culturas, comparação de cenários, mapa ilustrativo, diário de safra, registros locais e interface de assistente sem respostas de IA. Ele usa localStorage e IndexedDB do navegador; não há contas nem sincronização. Estão previstos dados NASA, fontes agrícolas verificadas, IA e persistência PostgreSQL/PostGIS.
+Public website: https://agrion.earth/
+Prototype disclosure: AGRION is a hackathon prototype. Its web experience, scientific backend, and hardware demonstration are at different stages of integration. Results should be interpreted as decision-support information, not guaranteed harvest forecasts or substitutes for field measurements and agronomic advice.
 
-O primeiro acesso funcional agora permite informar nome, localizar uma propriedade com GPS ou busca MapTiler, desenhar um único perímetro sobre satélite e guardar o GeoJSON neste navegador. O fluxo não cria conta e não sincroniza dados.
+The problem
+Choosing what to plant and when to plant it involves many interacting factors: temperature, rainfall, water availability, soil characteristics, crop requirements, previous crops, and economic context. The information needed to evaluate these factors often lives in different platforms, datasets, and scientific publications.
 
-## Tecnologias e estrutura
+AGRION's goal is to bring those sources closer to the farmer through an accessible experience while preserving a distinction between observed data, modeled results, research evidence, and future capabilities.
+What AGRION brings together
+Area	Purpose
+My Property	A location-centered experience for agricultural property information and crop planning.
+Agricultural discovery	Explore agricultural questions through guided interactions, including a voice-enabled AI discovery experience.
+Crop information	Consult crop requirements and relevant agronomic references.
+Crop and rotation comparison	Support the comparison of potential crop choices and crop sequences using documented evidence.
+Weather and climate	Combine historical climate information with weather forecast services where available.
+Crop simulation	Model crop development and water balance in explicit scenarios using AquaCrop-OSPy.
+Experimental weather station	Capture local environmental readings using an ESP32-based physical prototype.
 
-HTML5, JavaScript e CSS Tailwind v4 já compilado no protótipo; Python/Flask com Blueprints; Gunicorn; Docker Compose. `app/` contém servidor e interface, `tests/` os testes, `references/` os arquivos originais preservados e `docs/` as decisões técnicas e visuais.
 
-## Execução local
+These are the project's product areas and technical building blocks; their presence in this table does not mean every feature is already connected end to end in the public interface.
+How it works
+AGRION is organized around three complementary layers:
+Farmer / Web Experience
+  |
+  +-- Property and geographic context
+  +-- Agricultural discovery (form / voice-assisted interaction)
+  +-- Crop information, comparisons, and planning views
+  |
+Scientific and Data Services
+  |
+  +-- NASA POWER historical weather data
+  +-- Weather forecast providers
+  +-- Agronomic knowledge and crop requirements
+  +-- FAO methodologies and crop simulation
+  +-- Economic and geographic reference data
+  |
+Physical Demonstrator
+  |
+  +-- ESP32 weather station
+      +-- Temperature and humidity
+      +-- Rain detection
+      +-- Wind-driven DC motor signal
+      +-- Local readings and optional telemetry
+Application architecture
+- Flask web application: user-facing experience and agricultural discovery flow (development service on port 8000).
+- FastAPI scientific backend: catalogs, climate and agricultural indicators, economic information, and crop simulation endpoints (development service on port 8001).
+- Vertex AI: AI-enabled discovery and access to external research/search capabilities within the project design.
+- Map and location services: MapTiler is used for satellite-map imagery and address search.
+- Browser-side data: some prototype registration and discovery information is handled locally in the browser.
+Integration status: the documented development snapshot did not yet have a complete Flask/assistant-to-FastAPI integration. Backend functionality should not be assumed to be available through every public-facing screen.
+NASA data: an essential part of AGRION
+NASA POWER — integrated
+AGRION uses NASA POWER historical meteorological information to provide a climate-data foundation for agricultural indicators and crop simulation. Historical weather series are processed into the variables and inputs required by the scientific pipeline, including reference evapotranspiration calculations using the FAO-56 methodology.
+- NASA POWER documentation
+- NASA POWER API documentation
+Other NASA resources — research or future integration
+Additional Earth-observation resources such as SMAP, GPM, HLS, and GEOS-FP have been evaluated or identified as potential complements. They should not be described as fully operational AGRION integrations in the 2026 prototype. In the documented development snapshot, GEOS-FP had an access proof of concept only.
+Scientific and external data sources
+Source / technology	Role in the project
+NASA POWER	Historical weather data for climate analysis and simulation inputs.
+FAO-56	Reference evapotranspiration methodology.
+ECOCROP	Crop environmental requirements and suitability references.
+GAEZ	Agroecological suitability and geographic reference layers; targeted consultations.
+FAOSTAT	Agricultural statistics and historical national producer-price context.
+AquaCrop-OSPy	Python crop-growth and water-balance simulation.
+FAO AquaCrop	Scientific basis of the AquaCrop modeling family; distinct from AquaCrop-OSPy and the official FAO 7.3 Python implementation.
+Open-Meteo	Weather-forecast fallback provider.
+Meteomatics	Weather forecast provider in the weather-data workflow.
+MapTiler	Basemap/satellite imagery and location search.
+Google Vertex AI	AI-assisted agricultural discovery and search-related capabilities.
 
-```bash
-python -m venv .venv
-# Ative .venv conforme seu sistema
-pip install -r requirements.txt
-flask --app 'app:create_app' run --debug
-```
 
-Acesse `http://127.0.0.1:5000/` e `http://127.0.0.1:5000/api/health`.
+A structured agronomic knowledge library complements these sources with scientific publications, crop information, evidence records, and crop-rotation relationships. Not every reference is an automatically updated or live data integration.
+Soil-data note
+The Harmonized World Soil Database (HWSD v2.2) was researched and downloaded as a candidate soil reference. Its existence in the project's research materials does not imply that measured local soil conditions or a complete HWSD-driven soil simulation are already implemented.
+Crop simulation: reproducible scenarios, not promises
+The scientific backend has executed a maize scenario using AquaCrop-OSPy 3.0.12, NASA historical climate data, and FAO-56 reference evapotranspiration processing.
 
-Para habilitar o mapa, defina `MAPTILER_API_KEY` no ambiente antes de iniciar o Flask. Use uma chave de navegador do MapTiler; sem ela, a interface informa que o mapa não está configurado. A chave é enviada ao navegador e deve ter origens autorizadas no painel do MapTiler, incluindo `http://127.0.0.1:5000`, `http://127.0.0.1:8000` e `https://agrion.earth` conforme o ambiente usado. Não versione a chave.
+One documented test completed 132 simulated days and produced 14.37098 t/ha of simulated dry yield, with a closed water balance and reproducible results for the same explicit weather series. These numbers describe one modeled test scenario, not a real-world prediction for a named farm.
 
-## Docker
+The scenario used declared assumptions for generic soil, initial water, CO₂, and management. Local calibration, measured soil inputs, irrigation scenarios, and additional crop validation remain development work. The project's documented implementation also distinguishes its functioning AquaCrop-OSPy route from the official FAO AquaCrop 7.3 Python distribution, which remained unresolved in that snapshot.
+AGRION weather station — physical prototype
+The project also includes a physical mini weather-station demonstrator based on an ESP32 DevKit with ESP32-WROOM-32.
 
-```bash
-docker compose up -d --build
-docker compose ps
-```
+Measured or detected signals:
+- Temperature and relative humidity: DHT22 sensor.
+- Rain presence: FC-37 rain sensor with YL-38-compatible interface.
+- Wind-related signal: DC motor rotated by a wind-driven propeller, used as an experimental electrical signal rather than a certified or calibrated wind-speed instrument.
+The station includes a breadboard, wiring, and 3D-printed parts developed or adapted for component mounting and the anemometer assembly. Some of these parts originated from a third-party 3D model, which should be credited with its original URL and license in the hardware documentation.
 
-Acesse `http://127.0.0.1:8000/`. O Compose publica somente no loopback. Logs: `docker compose logs app`.
+The ESP32 exposes measurements on the local network. When configured with the station key, its firmware is designed to send telemetry to AGRION at five-second intervals.
+Hardware note: the physical sensor prototype demonstrates data acquisition. It is not represented as a calibrated meteorological instrument, and production-side telemetry behavior depends on the final deployed configuration.
 
-Para o Compose, copie `.env.example` para `.env` e preencha `MAPTILER_API_KEY`. O arquivo `.env` é ignorado pelo Git. Na VM, configure a mesma variável no diretório do projeto antes de executar `docker compose up -d --build`.
+Current status and limitations
+AGRION is a working research and hackathon prototype, not a production-grade agronomic advisory service.
 
-## Mini Estação Meteorológica
+Documented technical progress
+- NASA POWER historical data integration.
+- Weather forecasting workflow using Meteomatics with Open-Meteo fallback.
+- Selected backend environmental/agricultural indicators.
+- Crop simulation execution with AquaCrop-OSPy.
+- Agronomic research and knowledge-base organization.
+- Experimental ESP32 weather-station hardware.
+Known limitations and development work
+- Complete connectivity between the Flask interface, AI assistant, and FastAPI backend.
+- End-to-end validation of all proposed crop-comparison and planning screens.
+- Farm-specific soil measurements, calibration, and model validation.
+- Additional crops, irrigation configurations, and broader scenario coverage.
+- Operational integration of further NASA satellite products.
+- Robust deployment, monitoring, authentication, and data-handling practices for production use.
+Try AGRION
+Live project: agrion.earth
 
-O endpoint `POST /api/v1/stations/telemetry` recebe leituras do ESP32. `agrion-demo-001` pode enviar sem chave enquanto não houver uma configurada; outras estações exigem `X-Station-Key`. Configure `AGRION_STATION_KEYS` no `.env` da VM para proteger o envio e mantenha o volume Docker `station-data` para preservar o SQLite. A tela do menu abre inicialmente `agrion-demo-001` e consulta a leitura mais recente a cada cinco segundos. Consulte [o contrato e as limitações](docs/ESTACAO_METEOROLOGICA.md).
+For the challenge, visit the public website to explore the presented experience. Certain scientific capabilities described in this README are implemented in separate development services and may not yet be exposed through the public interface.
+Development access
+The documented development layout uses:
+Service	Local address
+Flask web application	http://127.0.0.1:8000
+FastAPI scientific API	http://127.0.0.1:8001
+AquaCrop simulation endpoint	POST http://127.0.0.1:8001/v1/simulations/aquacrop
 
-## Testes
 
-O menu Planejamento oferece análise de culturas e rotações, comparação qualitativa e plano local com cronograma e checklist. Usa o Core e pesquisa complementar, mantendo a tela acessível em caso de falha. Contrato e limitações: [Planejamento de Cultivos](docs/PLANEJAMENTO_CULTIVOS.md).
+Setup instructions: the precise commands, environment variables, dependency files, and repository layout should be documented from the actual published source tree. Credentials and station keys must not be committed to version control. No unverified installation commands are provided here.
+Demonstration and project materials
+- Live experience: https://agrion.earth/
+- NASA Space Apps project demo: Add the final public video URL.
+- Project screenshots: Add screenshots or GIFs from the actual deployed system.
+- Hardware, 3D models, and assembly: Add the public folder or repository subdirectory and third-party model attribution.
+AI use and transparency
+AGRION incorporates AI-related functionality as a part of its agricultural discovery concept, including Vertex AI. AI tools have also supported development and documentation workflows.
 
-```bash
-python -m unittest discover -s tests -v
-```
+AI-generated code, assets, audio, or other materials must be identified in the corresponding source comments, descriptions, metadata, or visible labels as applicable. Any AI-generated images or video used in the NASA Space Apps submission should be visibly labeled. NASA branding must not be reproduced or modified in AI-generated content.
 
-Execute após instalar as dependências.
+AI output is not treated as a substitute for scientific validation, field data, or documented source evidence.
+Credits, licensing, and acknowledgments
+AGRION was developed as a project for the NASA Space Apps Challenge 2026.
 
-Para revisar a interface em português e inglês no Chrome instalado localmente, execute `python tests/full_locale_e2e.py`. O roteiro usa respostas externas simuladas e cobre as telas ativas em uma largura móvel. Consulte [idioma da interface e limites da revisão](docs/IDIOMA_INTERFACE.md).
+The team acknowledges the publicly available research, methods, datasets, and services described above, including NASA POWER, FAO, the AquaCrop-OSPy maintainers, and the relevant weather, mapping, and AI service providers.
 
-## Deploy na VM
+Third-party assets: every externally sourced image, sound, code component, 3D design, and dataset should retain attribution and be used under its applicable license. In particular, include the original author, source URL, and license for the third-party anemometer 3D model.
 
-No Debian 13, em `/home/sgablopes/projects/agrion`, sincronize a versão pelo GitHub com `git pull --ff-only`, execute `docker compose up -d --build` e confirme `curl -f http://127.0.0.1:8000/api/health`. Antes de mudar Nginx, inspecione `sudo nginx -T`, identifique domínio e virtual host, faça backup do arquivo específico e adicione o proxy para `http://127.0.0.1:8000`. Valide com `sudo nginx -t` antes de `sudo systemctl reload nginx`. Preserve a configuração HTTPS existente. Não há configuração de domínio ou certificado fornecida nesta versão.
+Team: Add the official team name and member names.
+Challenge: Add the exact official 2026 challenge title.
+License for original AGRION code: Specify only after selecting a repository license.
 
-## Estado
-
-Backend e empacotamento iniciais concluídos. O protótipo mantém suas interações locais. MapTiler está integrado ao primeiro acesso local; publicação na VM, integrações NASA/IA, banco de dados e autenticação seguem pendentes.
-
-O cadastro geográfico usa `localStorage` na chave `agrion-property-v1`, separada do armazenamento demonstrativo legado. O registro contém versão, nomes, polígono GeoJSON em WGS84 (`[longitude, latitude]`), área em m² e hectares, localidade selecionada quando disponível e data do cadastro. Alterar de navegador ou limpar os dados locais remove o cadastro. A área é uma estimativa do contorno desenhado. A busca, imagens e GPS dependem de rede, permissões e configuração da chave. O botão **Continuar** da propriedade salva apenas sinaliza a próxima etapa.
-# Agrion Discovery (em desenvolvimento)
-
-Atualização do fluxo: apenas cultura atual e anterior; o formulário permite continuar com dados parciais e sem quantidade ou valor de colheita. O idioma inicial vem da preferência salva ou do navegador, com português e inglês selecionáveis antes da primeira resposta. Consulte [validação, idioma e compatibilidade](docs/DISCOVERY_VALIDACAO_IDIOMA.md).
-
-Após cadastrar o perímetro, o agricultor pode iniciar a entrevista por voz ou preencher o formulário manual. O perfil estruturado fica no IndexedDB do navegador e usa campos e categorias canônicos, independentemente do idioma escolhido (pt-BR ou en-US). A conexão Live passa pelo Flask; o navegador não recebe credenciais Google.
-O Discovery organiza dez tópicos ativos, incluindo cultura atual e anterior, preferência de plantio e fase da safra atual. Informações ausentes podem acompanhar uma análise preliminar. A ausência explícita de cultivo anterior resolve também a ausência de resultado daquela colheita. Esta revisão preserva o banco existente e os registros legados, sem limpeza do IndexedDB.
-A entrevista ocupa uma tela inteira, com nome da pessoa, propriedade e retrato do Agrion. A voz inicia após um breve intervalo: Orus em português e a voz padrão em inglês. A pessoa pode mudar o idioma antes da primeira resposta; a troca reinicia a sessão. Mudar para o formulário encerra a sessão de voz e preserva fatos já registrados. A interface mostra o progresso e, ao concluir, abre a dashboard com os atalhos do menu.
-A transcrição de entrada é recebida do Vertex AI e enviada, por turno finalizado, ao endpoint de extração; o perfil só muda depois da validação dos fatos. O formulário manual grava os mesmos campos canônicos diretamente no IndexedDB, com revisões e origem `user_edit`.
-
-Ao recarregar, o aplicativo consulta a propriedade e a entrevista salvas neste navegador: entrevistas concluídas abrem a visão inicial, enquanto entrevistas incompletas retomam o Discovery. No menu, **Minha propriedade** abre a edição do perímetro; confirmar ou voltar retorna à visão inicial.
-
-Configure `GOOGLE_CLOUD_PROJECT=space-invaders-514718`, `GOOGLE_CLOUD_LOCATION=us-central1` para o modelo Live e `GOOGLE_CLOUD_EXTRACTION_LOCATION=us` para `gemini-3.5-flash-lite`. O container usa Application Default Credentials da service account vinculada à Compute Engine. A API Vertex AI deve estar habilitada e a conta precisa de `aiplatform.endpoints.predict` (por exemplo, `roles/aiplatform.user`). Não crie chave Gemini e não use AI Studio. A configuração de proxy reverso precisa encaminhar o upgrade WebSocket para `/api/interview/live-session`.
-Na extração, `us` e `eu` usam os endpoints multirregionais `aiplatform.us.rep.googleapis.com` e `aiplatform.eu.rep.googleapis.com`; o SDK não deve formar `us-aiplatform.googleapis.com`.
-O esquema de geração limita `field` aos IDs agrícolas canônicos e `status` a `confirmed`, `uncertain` ou `unknown`; o servidor valida novamente os valores e a evidência literal antes de atualizar o perfil.
-A pergunta anterior e até 40 turnos ordenados da conversa acompanham a extração como contexto temporário. Cada patch deve apontar para a fala do agricultor que contém sua evidência literal; o texto integral da conversa não é persistido sem consentimento. Uma resposta pode atualizar vários campos e complementar o mesmo campo no mesmo turno. Depois da extração inicial, uma segunda análise direcionada confere as lacunas ainda pendentes; antes de aceitar uma conclusão prematura, o aplicativo pode reanalisar o histórico em memória. Respostas curtas e valores incompletos passam por recuperação específica. O resultado qualitativo da colheita basta para resolver esse campo; valores e quantidades explicitamente fornecidos continuam preservados, sem conversoes ou inferencias.
-Na entrevista Live, o Agrion primeiro se apresenta e pergunta se a pessoa está bem; após a resposta, convida um relato livre sobre a lavoura. O navegador envia estados canônicos do checklist quando mudam. A ferramenta de conclusão recebe os campos ainda pendentes, sem exigir estimativa numerica da colheita. Uma despedida prematura com pendências provoca reanálise e retomada da pergunta; uma pausa prolongada com pendências também provoca uma retomada limitada. Um campo incerto exige uma pergunta de confirmação e uma nova resposta do agricultor antes da conclusão; reanálises não contam como essa resposta. O fechamento espera o fim do turno e da fila de áudio, com limites para confirmação ou despedida sem resposta.
-
-O endpoint de token efêmero descrito na especificação original foi substituído por esse relay WebSocket porque Vertex AI com service account usa autenticação servidor a servidor. O endpoint `/api/interview/extract` usa o modelo textual do Vertex AI e retorna erros explícitos se o serviço não estiver configurado ou estiver indisponível. A abertura, a sincronização de estado e a despedida desta revisão ainda precisam ser validadas em uma conversa real no domínio HTTPS da VM; não houve deploy remoto nesta etapa.
+Disclaimer: AGRION is an independent hackathon project. References to NASA and other data providers do not imply their sponsorship, endorsement, or certification of the project's agricultural recommendations.
