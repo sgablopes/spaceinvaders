@@ -30,6 +30,8 @@
 .discovery-field{border-top:1px solid #E6EBDF;padding:19px 0 3px}
 .discovery-field small{display:block;color:#596451;margin:-3px 0 10px}
 .discovery-field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.discovery-language{max-width:650px;margin:0 auto 16px;text-align:left}.discovery-language label{display:block;font-weight:700;color:#29452b;margin-bottom:7px}.discovery-language select{width:100%;padding:11px 12px;border:1px solid #cbd6c5;border-radius:12px;background:#fff;color:#242c20;font:inherit}.discovery-language small{display:block;margin-top:5px;color:#596451;font-size:12px}.discovery-language select:disabled{opacity:.75}
+.discovery-harvest-details{margin:14px 0;padding:12px;border:1px solid #e6ebdf;border-radius:12px;background:#f8faf2}.discovery-harvest-details summary{cursor:pointer;font-weight:700;color:#385c39}
 .discovery-inline{display:flex;align-items:center;gap:9px;color:#385C39;font-size:13px;font-weight:600;margin:10px 0;cursor:pointer}
 .discovery-inline input{width:17px;height:17px;accent-color:#385C39;flex:none}
 .discovery-never{background:#EAF0DA;border-radius:13px;padding:12px;margin-bottom:8px}

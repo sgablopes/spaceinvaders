@@ -1,11 +1,11 @@
 (function () {
   'use strict';
-  const ESSENTIAL = ['last_crop','previous_crop','last_harvest_result','main_difficulties','irrigation','mechanization','primary_goal','next_crop_preference','current_crop','planting_date','current_season_stage'];
+  const ESSENTIAL = ['last_crop','last_harvest_result','main_difficulties','irrigation','mechanization','primary_goal','next_crop_preference','current_crop','planting_date','current_season_stage'];
   const OPTIONAL = ['fertilization','soil_management','cover_crops','other_crops','water_access','budget_constraints','technical_resources'];
   const envelope = () => ({value:null,status:'pending',source:'farmer_report',evidence:[],confidence:null,unknown_reason:null,updated_at:null,revision:0});
   function ensureFields(profile){for(const id of ESSENTIAL)if(!profile.fields[id])profile.fields[id]=envelope();return profile;}
   function create(property) {
-    return {schema_version:'1.1.0',profile_id:crypto.randomUUID(),property_id:property.propertyId,person:{display_name:property.personName},property:{name:property.propertyName,area_hectares:property.areaHectares,geometry_source:'existing_property_registration'},fields:Object.fromEntries(ESSENTIAL.map(id=>[id,envelope()])),additional_fields:{},interview_history:[],revision:0,updated_at:new Date().toISOString()};
+    return {schema_version:'1.2.0',profile_id:crypto.randomUUID(),property_id:property.propertyId,person:{display_name:property.personName},property:{name:property.propertyName,area_hectares:property.areaHectares,geometry_source:'existing_property_registration'},fields:Object.fromEntries(ESSENTIAL.map(id=>[id,envelope()])),additional_fields:{},interview_history:[],revision:0,updated_at:new Date().toISOString()};
   }
   function apply(profile, response, transcript, history=[]) {
     if (response.base_profile_revision !== profile.revision) return {profile, applied:[]};
@@ -32,8 +32,10 @@
     return {profile:next,applied};
   }
   function analysisInput(profile, property) {
-    return {schema_version:'1.1.0',property_id:property.propertyId,geometry:property.geometry,area_hectares:property.areaHectares,agricultural_profile:{...profile.fields,...profile.additional_fields},data_quality:{pending_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='pending'),uncertain_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='uncertain'),unknown_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='unknown')}};
+    return {schema_version:'1.2.0',property_id:property.propertyId,geometry:property.geometry,area_hectares:property.areaHectares,agricultural_profile:activeFields(profile),data_quality:{pending_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='pending'),uncertain_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='uncertain'),unknown_fields:ESSENTIAL.filter(x=>profile.fields[x].status==='unknown')}};
   }
+  function activeFields(profile){return Object.fromEntries(Object.entries({...profile.fields,...profile.additional_fields}).filter(([key])=>key!=='previous_crop'));}
+  function ready(profile){return ESSENTIAL.every(id=>['confirmed','unknown'].includes(profile.fields[id]?.status));}
   function applyManual(profile, entries) {
     const next=structuredClone(profile),applied=[];
     for(const entry of entries){
@@ -42,12 +44,13 @@
       const value=entry.status==='unknown'?null:entry.value;
       if(entry.status==='confirmed'&&(!value||typeof value!=='object'))continue;
       if(old.status===entry.status&&JSON.stringify(old.value)===JSON.stringify(value))continue;
+      if(old.status==='uncertain'&&entry.status==='confirmed'&&JSON.stringify(old.value)===JSON.stringify(value))continue;
       const turnId=crypto.randomUUID();
-      next.fields[entry.field]={value,status:entry.status,source:'user_edit',evidence:[...old.evidence,{turn_id:turnId,excerpt:'Preenchimento manual'}].slice(-5),confidence:'high',unknown_reason:entry.status==='unknown'?'does_not_know':null,updated_at:new Date().toISOString(),revision:old.revision+1};
+      next.fields[entry.field]={value,status:entry.status,source:'user_edit',evidence:[...old.evidence,{turn_id:turnId,excerpt:'Preenchimento manual'}].slice(-5),confidence:'high',unknown_reason:entry.status==='unknown'?(entry.unknown_reason||'does_not_know'):null,updated_at:new Date().toISOString(),revision:old.revision+1};
       applied.push({field:entry.field,before:old,after:next.fields[entry.field],turn_id:turnId});
     }
     if(applied.length){next.revision++;next.updated_at=new Date().toISOString();}
     return {profile:next,applied};
   }
-  window.AgrionProfile={ESSENTIAL,create,ensureFields,apply,applyManual,analysisInput};
+  window.AgrionProfile={ESSENTIAL,create,ensureFields,apply,applyManual,analysisInput,activeFields,ready};
 })();

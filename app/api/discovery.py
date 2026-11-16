@@ -25,12 +25,21 @@ discovery_blueprint = Blueprint("discovery", __name__)
 sock = Sock()
 _hits = defaultdict(deque)
 _hit_lock = threading.Lock()
-FIELDS = {"last_crop", "previous_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal", "next_crop_preference", "current_season_stage", "fertilization", "soil_management", "cover_crops", "other_crops", "water_access", "budget_constraints", "technical_resources"}
+FIELDS = {"last_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal", "next_crop_preference", "current_season_stage", "fertilization", "soil_management", "cover_crops", "other_crops", "water_access", "budget_constraints", "technical_resources"}
 FIELDS.update({"current_crop", "planting_date"})
 DIFFICULTIES = {"drought", "excess_rain", "pests", "diseases", "soil", "input_costs", "labor", "machinery", "market", "other"}
 GOALS = {"maximize_profit", "increase_yield", "restore_soil", "reduce_risk", "reduce_costs", "diversify", "other"}
-LANGUAGES = {"pt-BR", "en-US", "es-US"}
-ESSENTIAL_FIELDS = ("last_crop", "previous_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal", "next_crop_preference", "current_crop", "planting_date", "current_season_stage")
+LANGUAGES = {"pt-BR", "en-US"}
+ESSENTIAL_FIELDS = ("last_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal", "next_crop_preference", "current_crop", "planting_date", "current_season_stage")
+
+
+def _speech_config(language):
+    if language not in LANGUAGES:
+        raise ValueError('unsupported_language')
+    config = {"languageCode": language}
+    if language == 'pt-BR':
+        config['voiceConfig'] = {'prebuiltVoiceConfig': {'voiceName': 'Orus'}}
+    return config
 
 
 def _live_state_instruction(base, state):
@@ -47,7 +56,6 @@ def _live_state_instruction(base, state):
     clarify = state.get("clarify") is True
     confirmation_attempted = state.get("confirmation_attempted") is True
     intro_stage = state.get("intro_stage", 0)
-    harvest_estimate_pending = state.get("harvest_estimate_pending") is True
     first_cultivation = state.get("first_cultivation") is True
     if closing:
         guidance = "Encerramento solicitado. Agradeça, explique que as informações foram salvas e despeça-se agora sem outra pergunta."
@@ -57,12 +65,10 @@ def _live_state_instruction(base, state):
         guidance = "Explique brevemente que conhecerá a área para ajudar no planejamento. Convide a pessoa a contar livremente o último plantio, a colheita e dificuldades; depois pergunte só o que faltar."
     elif clarify:
         guidance = "A última resposta não resolveu a pergunta: reformule-a uma vez, com simplicidade; depois avance se continuar sem resposta. Não repita campo unknown. Nunca anuncie conclusão antes da autorização da ferramenta."
-    elif harvest_estimate_pending:
-        guidance = "O resultado qualitativo da colheita já foi salvo. Peça uma estimativa em sacas, toneladas ou valor financeiro, conforme a pessoa souber. Não invente unidade ou valor; se ela não souber, registre isso e avance."
     elif uncertain and not pending and not confirmation_attempted:
         guidance = "Confirme brevemente uma informação incerta antes de concluir; não repita a confirmação."
     elif first_cultivation and pending:
-        guidance = "Esta área terá o primeiro cultivo. Não pergunte sobre uma colheita passada. Se faltar o registro de ausência de cultivo anterior, confirme isso brevemente. Pergunte sobre preferência de plantio, fase atual, recursos, objetivo e dificuldades para começar conforme as lacunas."
+        guidance = "Não houve cultivo anterior nesta área. Não pergunte sobre uma colheita passada. Confirme a cultura atual e a fase somente se ainda faltarem; o primeiro cultivo pode já estar plantado. Pergunte sobre recursos e objetivos conforme as lacunas."
     else:
         guidance = "Pergunte sobre um pendente por vez. Não repita campo unknown. Nunca anuncie conclusão antes da autorização da ferramenta."
     return (base + "\nEstado atual do aplicativo: "
@@ -98,14 +104,14 @@ class Extraction(BaseModel):
 
 
 class GenerationPatch(Patch):
-    field: Literal["last_crop", "previous_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal", "next_crop_preference", "current_crop", "planting_date", "current_season_stage", "fertilization", "soil_management", "cover_crops", "other_crops", "water_access", "budget_constraints", "technical_resources"] = Field(
-        description="Agrion field ID. last_crop is the most recent crop; previous_crop is immediately before it; last_harvest_result is the last harvest outcome; main_difficulties are farming problems; primary_goal is the next-season goal; next_crop_preference is the farmer's preferred next crop; current_season_stage is the current season stage."
+    field: Literal["last_crop", "last_harvest_result", "main_difficulties", "irrigation", "mechanization", "primary_goal", "next_crop_preference", "current_crop", "planting_date", "current_season_stage", "fertilization", "soil_management", "cover_crops", "other_crops", "water_access", "budget_constraints", "technical_resources"] = Field(
+        description="Agrion field ID. current_crop is the crop currently planted; last_crop is the immediately preceding crop (or the most recent completed crop if none is planted now); last_harvest_result is the last harvest outcome; main_difficulties are farming problems; primary_goal is the next-season goal; next_crop_preference is the farmer's preferred next crop; current_season_stage is the current season stage."
     )
     operation: Literal["set", "merge"] = Field(description="Use set for a new or corrected fact; merge only to add details to an existing fact.")
     value: dict | None = Field(description=(
         "Canonical object for the selected field; unknown answers use null. "
-        "last_crop and previous_crop use crop as a string; if the area was never cultivated, last_crop uses never_cultivated=true and previous_crop uses no_previous_cultivation=true, both with crop=null. "
-        "last_harvest_result uses qualitative_result (good, average, poor, no_harvest, not_applicable), explicit quantity and unit, or financial_amount and currency. not_applicable means the farmer never cultivated the area. financial_kind identifies revenue or profit only if explicit. estimate_unavailable is true only if the farmer explicitly cannot give an estimate. "
+        "last_crop uses crop as a string, or crop=null with no_previous_cultivation=true if no preceding crop. current_crop uses crop as a string, or crop=null and not_planted=true if nothing is planted now. never_cultivated=true is also accepted for last_crop when explicitly stated. Do not ask about a third crop. "
+        "last_harvest_result uses qualitative_result (good, average, poor, no_harvest, not_applicable), optional explicit quantity and unit, or optional financial_amount and currency. not_applicable means there is no preceding crop to evaluate. financial_kind identifies revenue or profit only if explicit. estimate_unavailable is true only if the farmer explicitly cannot give an estimate. "
         "main_difficulties uses categories (drought, excess_rain, pests, diseases, soil, input_costs, labor, machinery, market, other) and free_text as a list. "
         "irrigation uses water_regime (rainfed, irrigated, mixed, unknown), irrigation_method (none, manual, drip, sprinkler, center_pivot, furrow, other, unknown), and automated (true, false, null). "
         "mechanization uses work_mode (manual, mixed, mechanized, automated, unknown), equipment as a list, and automation_level (none, partial, high, unknown). "
@@ -131,6 +137,7 @@ class CropValue(BaseModel):
     period_label: str | None = None
     no_previous_cultivation: bool | None = None
     never_cultivated: bool | None = None
+    not_planted: bool | None = None
 
 
 class HarvestValue(BaseModel):
@@ -191,7 +198,7 @@ class UnknownReason(BaseModel):
     reason: Literal["does_not_know", "does_not_remember", "declined", "none"]
 
 
-RECOVERY_SCHEMAS = {"last_crop": CropValue, "previous_crop": CropValue, "last_harvest_result": HarvestValue, "main_difficulties": DifficultiesValue, "irrigation": IrrigationValue, "mechanization": MechanizationValue, "primary_goal": GoalValue, "next_crop_preference": CropPreferenceValue, "current_season_stage": SeasonStageValue}
+RECOVERY_SCHEMAS = {"last_crop": CropValue, "last_harvest_result": HarvestValue, "main_difficulties": DifficultiesValue, "irrigation": IrrigationValue, "mechanization": MechanizationValue, "primary_goal": GoalValue, "next_crop_preference": CropPreferenceValue, "current_season_stage": SeasonStageValue}
 RECOVERY_SCHEMAS.update({"current_crop": CropValue, "planting_date": PlantingDateValue})
 
 
@@ -251,7 +258,8 @@ def _validate_value(patch):
     if patch.unknown_reason is not None or not isinstance(value, dict):
         return False
     if patch.field == "current_crop":
-        return set(value) == {"crop"} and isinstance(value["crop"], str) and bool(value["crop"].strip())
+        return (set(value) == {"crop"} and isinstance(value["crop"], str) and bool(value["crop"].strip())
+            or set(value) <= {"crop", "not_planted"} and value.get("crop") is None and value.get("not_planted") is True)
     if patch.field == "planting_date":
         if not set(value) <= {"date", "not_planted"}:
             return False
@@ -266,14 +274,13 @@ def _validate_value(patch):
             return True
         except ValueError:
             return False
-    if patch.field in {"last_crop", "previous_crop"}:
+    if patch.field == "last_crop":
         if not set(value) <= {"crop", "period_label", "no_previous_cultivation", "never_cultivated"}:
             return False
         crop = value.get("crop")
         if isinstance(crop, str) and crop.strip():
             return value.get("never_cultivated") is not True and value.get("no_previous_cultivation") is not True
-        return crop is None and (patch.field == "last_crop" and value.get("never_cultivated") is True
-            or patch.field == "previous_crop" and value.get("no_previous_cultivation") is True)
+        return crop is None and (value.get("never_cultivated") is True or value.get("no_previous_cultivation") is True)
     if patch.field == "last_harvest_result":
         return (set(value) <= {"crop", "quantity", "unit", "bag_weight_kg", "qualitative_result", "notes", "financial_amount", "currency", "financial_kind", "estimate_unavailable", "basis"}
             and value.get("qualitative_result") in {None, "good", "average", "poor", "no_harvest", "not_applicable"}
@@ -329,13 +336,16 @@ def extract():
         client = genai.Client(**client_options)
         model = os.getenv("GEMINI_EXTRACTION_MODEL", "gemini-3.5-flash-lite")
         context = body.get("assistant_context", "")
-        contents = json.dumps({"current_turn_id": body["turn_id"], "farmer_transcript": body["transcript"], "previous_assistant_question": context, "ordered_history": history, "profile_snapshot": body["profile_snapshot"]}, ensure_ascii=False)
+        snapshot = dict(body['profile_snapshot'])
+        if isinstance(snapshot.get('fields'), dict):
+            snapshot['fields'] = {key: value for key, value in snapshot['fields'].items() if key in FIELDS}
+        contents = json.dumps({"current_turn_id": body["turn_id"], "farmer_transcript": body["transcript"], "previous_assistant_question": context, "ordered_history": history, "profile_snapshot": snapshot}, ensure_ascii=False)
         instruction = ("Extraia somente fatos agrícolas explicitamente relatados pelo agricultor, em qualquer idioma. "
             "A pergunta anterior e o histórico ordenado esclarecem respostas curtas. Reexamine falas anteriores do agricultor quando um campo ainda está pendente. "
             "Cada patch deve trazer evidence_turn_id da fala do agricultor que contém a evidência; falas do Agrion nunca são evidência. "
-            "Se o agricultor disser que nunca cultivou esta área, registre last_crop.never_cultivated=true, previous_crop.no_previous_cultivation=true e last_harvest_result.qualitative_result=not_applicable, todos confirmados com evidência literal da fala. Não invente resultado nem dificuldades de safra passada. "
+            "Se o agricultor disser que nunca cultivou esta área, registre last_crop.never_cultivated=true e last_harvest_result.qualitative_result=not_applicable, todos confirmados com evidência literal da fala. Não invente resultado nem dificuldades de safra passada. "
             "Se a pessoa disser que vai começar agora, registre current_season_stage=not_started ou planning conforme o que foi dito; não presuma uma cultura. "
-            "Registre current_crop apenas para a cultura que está plantada atualmente. Registre planting_date na precisão explicitamente informada (ano, mês ou dia); não invente componentes nem converta referência relativa sem data de referência. Se ainda não plantou, registre planting_date.not_planted=true e current_crop unknown com motivo does_not_know, usando a declaração como evidência. "
+            "Registre current_crop apenas para a cultura que está plantada atualmente. last_crop é somente a cultura imediatamente anterior, ou a última encerrada se não houver cultivo atual. Não registre nem solicite uma terceira safra. Quantidade e valor de colheita são opcionais; um resultado qualitativo já é suficiente. Registre planting_date na precisão explicitamente informada (ano, mês ou dia); não invente componentes nem converta referência relativa sem data de referência. Se ainda não plantou, registre planting_date.not_planted=true e current_crop={crop:null,not_planted:true} confirmado, usando a declaração como evidência. "
             "Registre next_crop_preference somente quando houver cultura preferida ou declaração explícita de nenhuma preferência. "
             "Não repita fatos já confirmados, exceto correção explícita. Para colheita, registre resultado qualitativo e também quantidade/unidade ou valor monetário/moeda quando ditos. "
             "Se a pessoa explicitamente não souber estimar depois de informar um resultado qualitativo, use estimate_unavailable=true preservando o resultado. "
@@ -399,13 +409,6 @@ def extract():
         covered = {patch.field for patch in patches if patch.status in {"confirmed", "unknown"}}
         targets = [field for field in ESSENTIAL_FIELDS if isinstance(snapshot_fields.get(field), dict)
             and snapshot_fields[field].get("status") in {"pending", "uncertain"} and field not in covered]
-        harvest = next((patch.value for patch in reversed(patches) if patch.field == "last_harvest_result" and patch.value),
-            snapshot_fields.get("last_harvest_result", {}).get("value") if isinstance(snapshot_fields.get("last_harvest_result"), dict) else None)
-        if ("last_harvest_result" in snapshot_fields and isinstance(harvest, dict)
-            and harvest.get("qualitative_result") not in {None, "no_harvest"}
-            and harvest.get("quantity") is None and harvest.get("financial_amount") is None
-            and harvest.get("estimate_unavailable") is not True and "last_harvest_result" not in targets):
-            targets.append("last_harvest_result")
         if targets:
             try:
                 audit_config = types.GenerateContentConfig(
@@ -421,11 +424,10 @@ def extract():
                 current_app.logger.warning("Discovery extraction audit failure (%s)", type(error).__name__)
         first_cultivation = next((patch for patch in patches if patch.field == "last_crop"
             and patch.status == "confirmed" and isinstance(patch.value, dict)
-            and patch.value.get("never_cultivated") is True), None)
+            and (patch.value.get("never_cultivated") is True or patch.value.get("no_previous_cultivation") is True)), None)
         if first_cultivation:
-            patches = [patch for patch in patches if patch.field not in {"previous_crop", "last_harvest_result"}]
-            for field, value in (("previous_crop", {"crop": None, "no_previous_cultivation": True}),
-                                 ("last_harvest_result", {"qualitative_result": "not_applicable"})):
+            patches = [patch for patch in patches if patch.field not in {"last_harvest_result"}]
+            for field, value in (("last_harvest_result", {"qualitative_result": "not_applicable"}),):
                 patches.append(Patch(field=field, operation="set", value=value, status="confirmed",
                     confidence=first_cultivation.confidence, evidence_excerpt=first_cultivation.evidence_excerpt,
                     evidence_turn_id=first_cultivation.evidence_turn_id))
@@ -467,7 +469,6 @@ def register_socket(app):
                 ws.send(json.dumps({"error": "invalid_request"}))
                 return
             language = first.get("language", "pt-BR")
-            voice = "Orus"
             if language not in LANGUAGES or not _uuid(first.get("interview_id")) or not _uuid(first.get("property_id")):
                 ws.send(json.dumps({"error": "invalid_request"}))
                 return
@@ -483,18 +484,16 @@ def register_socket(app):
                 instruction = (f"Você é Agrion. Converse em {language}, em linguagem simples e acolhedora, uma pergunta por vez. "
                     f"Pessoa: {name}. Propriedade: {property_name}. Comece com uma frase curta: apresente-se e pergunte se a pessoa está bem. "
                     "Depois da resposta, explique brevemente o objetivo e convide um relato livre sobre plantio, colheita e dificuldades. Acolha informações agrícolas oferecidas espontaneamente. "
-                    "Converse naturalmente, sem roteiro rígido. Conheça última cultura, cultura imediatamente anterior, resultado da colheita, dificuldades, irrigação, mecanização, objetivo, preferência de plantio para a próxima safra e fase da safra atual. "
+                    "Converse naturalmente, sem roteiro rígido. Conheça a cultura atual e apenas a imediatamente anterior, resultado da colheita anterior, dificuldades, irrigação, mecanização, objetivo, preferência de plantio para a próxima safra e fase da safra atual. "
                     "Pergunte qual é a cultura plantada atualmente e, logo depois, quando foi plantada, caso ainda não tenha sido informado. Se não houver plantio atual, aceite isso e não peça uma data de plantio. "
                     "Se a pessoa nunca cultivou essa área, aceite isso como resposta válida sobre culturas e colheita anteriores; pergunte sobre dificuldades para começar, recursos, preferência e estágio do planejamento. Não invente uma safra passada. "
-                    "Use o estado do aplicativo para escolher lacunas; se uma resposta não resolver a pergunta, reformule uma vez, sem insistir. "
+                    "Quantidade e valor financeiro são opcionais. Aceite um resultado qualitativo da colheita como resposta suficiente; não exija estimativas numéricas. Aceite desconhecimento ou recusa e avance. Use o estado do aplicativo para escolher lacunas; se uma resposta não resolver a pergunta, reformule uma vez, sem insistir. "
                     "Não repita campo marcado unknown. Não invente dados nem recomendações. Seja breve. "
                     "Antes de dizer que a entrevista terminou, chame complete_initial_interview e aguarde autorização. Se recusada, pergunte sobre um campo pendente. "
                     "Se receber CLOSE_REQUESTED, agradeça e despeça-se sem nova pergunta. Nunca cite JSON, ferramentas ou estados internos. "
                     "Após uma resposta de ferramenta recusada, faça uma pergunta ao agricultor antes de chamar outra ferramenta. "
                     "Não faça mais de duas chamadas consecutivas de ferramentas sem falar com o agricultor.")
-                speech_config = {"languageCode": language}
-                if voice:
-                    speech_config["voiceConfig"] = {"prebuiltVoiceConfig": {"voiceName": voice}}
+                speech_config = _speech_config(language)
                 upstream.send(json.dumps({"setup": {"model": f"projects/{project}/locations/{location}/publishers/google/models/{os.getenv('GEMINI_LIVE_MODEL', 'gemini-3.8-live')}", "generationConfig": {"responseModalities": ["AUDIO"], "speechConfig": speech_config}, "systemInstruction": {"parts": [{"text": instruction}]}, "inputAudioTranscription": {}, "outputAudioTranscription": {}, "tools": [{"functionDeclarations": [{"name": "complete_initial_interview", "description": "Request interview completion when essential facts are resolved or farmer asks to stop", "parameters": {"type": "OBJECT", "properties": {"reason": {"type": "STRING"}}}}, {"name": "get_interview_state", "description": "Read the current validated agricultural checklist before choosing the next question", "parameters": {"type": "OBJECT", "properties": {}}}]}]}}))
                 stop = threading.Event()
 

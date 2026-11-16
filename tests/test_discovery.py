@@ -4,7 +4,7 @@ from unittest.mock import patch
 from types import SimpleNamespace
 
 from app import create_app
-from app.api.discovery import FIELDS, GenerationExtraction, GenerationPatch, Patch, _live_state_instruction, _live_text_frame, _origin_ok, _validate_value
+from app.api.discovery import ESSENTIAL_FIELDS, _speech_config, FIELDS, GenerationExtraction, GenerationPatch, Patch, _live_state_instruction, _live_text_frame, _origin_ok, _validate_value
 
 
 class DiscoveryTests(unittest.TestCase):
@@ -85,7 +85,7 @@ class DiscoveryTests(unittest.TestCase):
     def test_first_cultivation_and_new_fields_have_canonical_values(self):
         base = {'operation': 'set', 'status': 'confirmed', 'evidence_excerpt': 'Nunca plantei aqui'}
         self.assertTrue(_validate_value(Patch(**base, field='last_crop', value={'crop': None, 'never_cultivated': True})))
-        self.assertTrue(_validate_value(Patch(**base, field='previous_crop', value={'crop': None, 'no_previous_cultivation': True})))
+        self.assertTrue(_validate_value(Patch(**base, field='last_crop', value={'crop': None, 'no_previous_cultivation': True})))
         self.assertTrue(_validate_value(Patch(**base, field='last_harvest_result', value={'qualitative_result': 'not_applicable'})))
         self.assertTrue(_validate_value(Patch(**base, field='next_crop_preference', value={'crop': None, 'no_preference': True})))
         self.assertTrue(_validate_value(Patch(**base, field='current_season_stage', value={'stage': 'not_started'})))
@@ -104,7 +104,7 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         values = {item['field']: item['value'] for item in response.json['patches']}
         self.assertEqual(values['last_crop']['never_cultivated'], True)
-        self.assertEqual(values['previous_crop']['no_previous_cultivation'], True)
+        self.assertNotIn('previous_crop', values)
         self.assertEqual(values['last_harvest_result']['qualitative_result'], 'not_applicable')
 
     def test_missing_vertex_configuration_is_explicit(self):
@@ -138,7 +138,7 @@ class DiscoveryTests(unittest.TestCase):
         import json
         examples = [
             ('last_crop', 'Foi banana.', {'crop': 'banana'}),
-            ('previous_crop', 'Era cebola.', {'crop': 'cebola'}),
+            ('current_crop', 'Agora tenho cebola.', {'crop': 'cebola'}),
             ('last_harvest_result', 'A colheita foi ruim.', {'qualitative_result': 'poor'}),
             ('main_difficulties', 'Faltou chuva.', {'categories': ['drought']}),
             ('irrigation', 'Não tenho irrigação.', {'water_regime': 'rainfed', 'irrigation_method': 'none'}),
@@ -181,7 +181,7 @@ class DiscoveryTests(unittest.TestCase):
         import json
         self.body['transcript'] = 'Não lembro.'
         self.body['assistant_context'] = 'O que você plantou antes?'
-        generated = {'patches': [{'field': 'previous_crop', 'operation': 'set', 'value': {}, 'status': 'unknown', 'evidence_excerpt': 'Não lembro'}], 'warnings': []}
+        generated = {'patches': [{'field': 'last_crop', 'operation': 'set', 'value': {}, 'status': 'unknown', 'evidence_excerpt': 'Não lembro'}], 'warnings': []}
         replies = iter([generated, {'reason': 'does_not_remember'}])
         fake = SimpleNamespace(models=SimpleNamespace(generate_content=lambda **_: SimpleNamespace(text=json.dumps(next(replies)))))
         with patch.dict(os.environ, {'GOOGLE_CLOUD_PROJECT': 'test-project', 'GOOGLE_CLOUD_LOCATION': 'us-central1'}), patch('app.api.discovery.genai.Client', return_value=fake):
@@ -193,8 +193,8 @@ class DiscoveryTests(unittest.TestCase):
     def test_multiple_provider_patches_are_filtered_to_explicit_valid_facts(self):
         self.body['transcript'] = 'Plantei milho, antes soja, faltou chuva, não tenho irrigação e tenho trator pequeno.'
         patches = [
-            {"field": "last_crop", "operation": "set", "value": {"crop": "milho"}, "status": "confirmed", "confidence": "high", "evidence_excerpt": "Plantei milho"},
-            {"field": "previous_crop", "operation": "set", "value": {"crop": "soja"}, "status": "confirmed", "confidence": "high", "evidence_excerpt": "antes soja"},
+            {"field": "current_crop", "operation": "set", "value": {"crop": "milho"}, "status": "confirmed", "confidence": "high", "evidence_excerpt": "Plantei milho"},
+            {"field": "last_crop", "operation": "set", "value": {"crop": "soja"}, "status": "confirmed", "confidence": "high", "evidence_excerpt": "antes soja"},
             {"field": "main_difficulties", "operation": "set", "value": {"categories": ["drought"], "free_text": ["faltou chuva"]}, "status": "confirmed", "confidence": "high", "evidence_excerpt": "faltou chuva"},
             {"field": "irrigation", "operation": "set", "value": {"water_regime": "rainfed", "irrigation_method": "none", "automated": False}, "status": "confirmed", "confidence": "high", "evidence_excerpt": "não tenho irrigação"},
             {"field": "mechanization", "operation": "merge", "value": {"work_mode": "unknown", "equipment": ["trator pequeno"], "automation_level": "unknown"}, "status": "uncertain", "confidence": "medium", "evidence_excerpt": "tenho trator pequeno"},
@@ -222,12 +222,12 @@ class DiscoveryTests(unittest.TestCase):
         import json
         self.body['transcript'] = 'Plantei milho, antes tinha soja.'
         self.body['profile_snapshot'] = {'fields': {
+            'current_crop': {'status': 'pending', 'value': None},
             'last_crop': {'status': 'pending', 'value': None},
-            'previous_crop': {'status': 'pending', 'value': None},
         }}
-        first = {'patches': [{'field': 'last_crop', 'operation': 'set', 'value': {'crop': 'milho'},
+        first = {'patches': [{'field': 'current_crop', 'operation': 'set', 'value': {'crop': 'milho'},
             'status': 'confirmed', 'evidence_excerpt': 'Plantei milho'}]}
-        audit = {'patches': [{'field': 'previous_crop', 'operation': 'set', 'value': {'crop': 'soja'},
+        audit = {'patches': [{'field': 'last_crop', 'operation': 'set', 'value': {'crop': 'soja'},
             'status': 'confirmed', 'evidence_excerpt': 'antes tinha soja'}]}
         replies = iter([first, audit])
         calls = []
@@ -238,17 +238,17 @@ class DiscoveryTests(unittest.TestCase):
         with patch.dict(os.environ, {'GOOGLE_CLOUD_PROJECT': 'test-project', 'GOOGLE_CLOUD_LOCATION': 'us-central1'}), patch('app.api.discovery.genai.Client', return_value=fake):
             response = self.client.post('/api/interview/extract', json=self.body)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual({item['field'] for item in response.json['patches']}, {'last_crop', 'previous_crop'})
+        self.assertEqual({item['field'] for item in response.json['patches']}, {'current_crop', 'last_crop'})
         self.assertEqual(len(calls), 2)
 
     def test_audit_failure_preserves_first_pass(self):
         import json
         self.body['transcript'] = 'Plantei milho.'
         self.body['profile_snapshot'] = {'fields': {
+            'current_crop': {'status': 'pending', 'value': None},
             'last_crop': {'status': 'pending', 'value': None},
-            'previous_crop': {'status': 'pending', 'value': None},
         }}
-        first = {'patches': [{'field': 'last_crop', 'operation': 'set', 'value': {'crop': 'milho'},
+        first = {'patches': [{'field': 'current_crop', 'operation': 'set', 'value': {'crop': 'milho'},
             'status': 'confirmed', 'evidence_excerpt': 'Plantei milho'}]}
         calls = 0
         def generate_content(**_):
@@ -261,8 +261,37 @@ class DiscoveryTests(unittest.TestCase):
         with patch.dict(os.environ, {'GOOGLE_CLOUD_PROJECT': 'test-project', 'GOOGLE_CLOUD_LOCATION': 'us-central1'}), patch('app.api.discovery.genai.Client', return_value=fake):
             response = self.client.post('/api/interview/extract', json=self.body)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual([item['field'] for item in response.json['patches']], ['last_crop'])
+        self.assertEqual([item['field'] for item in response.json['patches']], ['current_crop'])
 
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_active_contract_and_voice_configuration(self):
+        import re
+        from pathlib import Path
+        js = (Path(__file__).resolve().parents[1] / 'app/static/discovery-profile.js').read_text(encoding='utf-8')
+        fields = re.search(r"const ESSENTIAL = \[(.*?)\]", js).group(1)
+        self.assertEqual(set(re.findall(r"'([^']+)'", fields)), set(ESSENTIAL_FIELDS))
+        self.assertNotIn('previous_crop', FIELDS)
+        self.assertEqual(_speech_config('pt-BR')['voiceConfig']['prebuiltVoiceConfig']['voiceName'], 'Orus')
+        self.assertEqual(_speech_config('en-US'), {'languageCode': 'en-US'})
+        with self.assertRaises(ValueError):
+            _speech_config('es-US')
+
+    def test_no_current_crop_is_known_absence_not_unknown(self):
+        base = {'field': 'current_crop', 'operation': 'set', 'status': 'confirmed', 'evidence_excerpt': 'Nothing planted'}
+        self.assertTrue(_validate_value(Patch(**base, value={'crop': None, 'not_planted': True})))
+        self.assertFalse(_validate_value(Patch(**base, value={'crop': 'corn', 'not_planted': True})))
+
+    def test_qualitative_harvest_does_not_trigger_estimate_audit(self):
+        import json
+        self.body['transcript'] = 'The harvest was good.'
+        self.body['profile_snapshot'] = {'fields': {'last_harvest_result': {'status': 'pending', 'value': None}}}
+        generated = {'patches': [{'field': 'last_harvest_result', 'operation': 'set', 'status': 'confirmed',
+            'value': {'qualitative_result': 'good'}, 'evidence_excerpt': 'harvest was good'}]}
+        with patch.dict(os.environ, {'GOOGLE_CLOUD_PROJECT': 'test', 'GOOGLE_CLOUD_LOCATION': 'us-central1'}), patch('app.api.discovery.genai.Client') as factory:
+            factory.return_value.models.generate_content.return_value = SimpleNamespace(text=json.dumps(generated))
+            response = self.client.post('/api/interview/extract', json=self.body)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(factory.return_value.models.generate_content.call_count, 1)
+        states = {field: 'confirmed' for field in ESSENTIAL_FIELDS}
+        prompt = _live_state_instruction('Agrion', {'fields': states, 'intro_stage': 2, 'harvest_estimate_pending': True})
+        self.assertNotIn('sacas', prompt)

@@ -6,6 +6,7 @@
     if(profile&&profile.property_id!==property.propertyId)throw new Error('O perfil pertence a outra propriedade.');
     const fields={};
     for(const [id,entry] of Object.entries({...profile?.fields,...profile?.additional_fields})){
+      if(id==='previous_crop')continue;
       fields[id]={value:entry.value??null,status:entry.status??'pending',source:entry.source??null,confidence:entry.confidence??null,unknown_reason:entry.unknown_reason??null,updated_at:entry.updated_at??null};
     }
     for(const id of window.AgrionProfile.ESSENTIAL){if(!fields[id])fields[id]={value:null,status:'pending',source:null,confidence:null,unknown_reason:null,updated_at:null};}
