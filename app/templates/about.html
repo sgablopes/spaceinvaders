@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Conheça o AGRION: dados ambientais, conhecimento agronômico e inteligência artificial para apoiar decisões no campo. Assista ao pitch e explore o código do projeto.">
+  <meta name="theme-color" content="#385C39">
+  <title>AGRION — Inteligência para cultivar o futuro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='presentation/styles.css') }}">
+  <script src="{{ url_for('static', filename='presentation/config.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='presentation/player.js') }}" defer></script>
+</head>
+<body data-page="about">
+  <a class="skip-link" href="#sobre">Ir para o conteúdo</a>
+  <header class="site-header wrap">
+    <a class="brand" href="#sobre" aria-label="AGRION, início">
+      <svg class="brand-icon" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect width="36" height="36" rx="12" fill="currentColor"/><path d="M18 27V17m0 4C10 21 9 16 9 12c7 0 10 2 9 9Zm0-4c0-6 3-9 10-9 0 6-3 10-10 10" stroke="#D8E889" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Agrion<span class="brand-dot">.</span></span>
+    </a>
+    <span class="presentation-language"><label for="agrionGlobalLanguage">Idioma / Language</label><select id="agrionGlobalLanguage" aria-label="Idioma da interface / Interface language"><option value="pt-BR">Português (Brasil)</option><option value="en-US">English</option></select></span>
+    <nav aria-label="Navegação da apresentação">
+      <a class="button button-primary nav-return" href="/">Voltar para o site <span aria-hidden="true">↗</span></a>
+      <a href="#sobre">O projeto</a>
+      <a href="#pitch">Nosso pitch</a>
+      <a class="nav-code" href="#codigo">Repositório GitHub <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="sobre" class="hero wrap" aria-labelledby="project-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> DA INFORMAÇÃO À DECISÃO NO CAMPO</p>
+        <h1 id="project-title">Inteligência para <span>cultivar o futuro.</span></h1>
+        <p class="intro">O AGRION busca conectar dados ambientais, conhecimento agronômico e inteligência artificial para ajudar agricultores a conhecer sua propriedade e explorar cenários de cultivo.</p>
+        <p class="hero-detail">Do clima ao planejamento, traduzimos informações complexas em uma conversa mais simples sobre o campo.</p>
+        <a class="button button-primary" href="#pitch">Conheça nossa proposta <span aria-hidden="true">↓</span></a>
+        <div class="hero-signature"><span class="small-sprout" aria-hidden="true">✳</span><span>Uma iniciativa da equipe <strong>Space Invaders</strong><br><span class="muted">NASA Space Apps Challenge 2026</span></span></div>
+      </div>
+      <div class="hero-visual">
+        <picture>
+          <source media="(max-width: 600px)" srcset="{{ url_for('static', filename='presentation/assets/field-mobile.jpg') }}">
+          <img src="{{ url_for('static', filename='presentation/assets/field-desktop.jpg') }}" alt="Paisagem agrícola ilustrativa, com uma lavoura iluminada pelo nascer do sol" width="1920" height="1080" fetchpriority="high">
+        </picture>
+        <div class="visual-label"><span aria-hidden="true">↗</span> Dados que aproximam.<br><strong>Decisões que cultivam.</strong></div>
+        <div class="visual-tag"><span aria-hidden="true">✧</span> Tecnologia com os pés no campo</div>
+      </div>
+    </section>
+
+    <div class="pillars wrap" aria-label="Pilares do projeto">
+      <span><span aria-hidden="true">01</span> Dados ambientais</span>
+      <span><span aria-hidden="true">02</span> Conhecimento agronômico</span>
+      <span><span aria-hidden="true">03</span> Inteligência artificial</span>
+    </div>
+
+    <section id="pitch" class="pitch-section wrap" aria-labelledby="pitch-title">
+      <div class="section-heading"><div><p class="eyebrow">CONHEÇA A IDEIA</p><h2 id="pitch-title">Nosso pitch<span class="brand-dot">.</span></h2></div><p>O desafio, a proposta e o que queremos<br class="desktop-break"> construir para o futuro da agricultura.</p></div>
+      <div id="pitch-player" class="video-frame">
+        <img class="video-poster" src="{{ url_for('static', filename='presentation/assets/field-desktop.jpg') }}" alt="" loading="lazy" width="1920" height="1080">
+        <div class="video-shade"></div>
+        <div class="video-topline"><span class="video-brand">Agrion<span>.</span></span><span>APRESENTAÇÃO DO PROJETO</span></div>
+        <div class="video-center">
+          <button id="pitch-play" class="play-button" type="button" aria-label="Assistir ao vídeo pitch do AGRION" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 11 7-11 7Z" fill="currentColor"/></svg></button>
+          <p id="pitch-pending" class="video-pending">Nosso vídeo pitch estará disponível aqui em breve.</p>
+        </div>
+        <div class="video-bottomline"><span>Inteligência para cultivar o futuro.</span><span>SPACE INVADERS</span></div>
+      </div>
+      <div class="video-caption"><span>Uma ideia que nasce do campo e olha para o futuro.</span><a id="pitch-external" target="_blank" rel="noopener noreferrer" hidden>Abrir vídeo em outra aba <span aria-hidden="true">↗</span></a></div>
+      <noscript><p class="no-script">Ative o JavaScript para exibir o vídeo incorporado. O repositório abaixo continua disponível.</p></noscript>
+    </section>
+
+    <section id="codigo" class="code-section wrap" aria-labelledby="code-title">
+      <div class="section-heading"><div><p class="eyebrow">DA PROPOSTA À IMPLEMENTAÇÃO</p><h2 id="code-title">Código do projeto<span class="brand-dot">.</span></h2></div><p>Código-fonte e arquitetura do AGRION<br class="desktop-break"> para avaliação técnica da proposta.</p></div>
+      <div class="repo-grid">
+        <a class="repo-card repo-main" href="https://github.com/sgablopes/spaceinvaders" target="_blank" rel="noopener noreferrer">
+          <div class="repo-card-top"><span class="repo-type">REPOSITÓRIO PRINCIPAL</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></div>
+          <svg class="github-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .8a11.2 11.2 0 0 0-3.54 21.82c.56.1.77-.24.77-.54v-2.09c-3.14.68-3.8-1.33-3.8-1.33-.51-1.3-1.25-1.64-1.25-1.64-1.03-.7.08-.69.08-.69 1.14.08 1.73 1.17 1.73 1.17 1.01 1.73 2.65 1.23 3.3.94.1-.73.4-1.23.72-1.51-2.51-.29-5.15-1.25-5.15-5.58 0-1.23.44-2.23 1.16-3.01-.12-.28-.5-1.43.11-2.97 0 0 .95-.3 3.08 1.15a10.6 10.6 0 0 1 5.6 0c2.13-1.45 3.08-1.15 3.08-1.15.61 1.54.23 2.69.11 2.97a4.34 4.34 0 0 1 1.16 3.01c0 4.34-2.64 5.29-5.16 5.57.41.35.77 1.04.77 2.1v3.06c0 .3.2.65.78.54A11.2 11.2 0 0 0 12 .8Z"/></svg>
+          <h3>AGRION / Space Invaders</h3><p>Código-fonte da aplicação e documentação da experiência do agricultor.</p>
+          <span class="repo-url">github.com/sgablopes/spaceinvaders</span><span class="repo-action">Ver código no GitHub <span aria-hidden="true">↗</span></span>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer wrap"><div><span class="footer-brand">Agrion<span class="brand-dot">.</span></span><p>Inteligência para cultivar o futuro.</p></div><div class="footer-team">Desenvolvido pela equipe <strong>Space Invaders</strong><span>NASA Space Apps Challenge 2026</span></div></footer>
+  <script src="{{ url_for('static', filename='agrion-locale.js') }}"></script>
+  <script src="{{ url_for('static', filename='presentation/language.js') }}"></script>
+</body>
+</html>

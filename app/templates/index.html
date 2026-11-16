@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en-US">
 <head>
   <meta charset="UTF-8"/>
@@ -1227,6 +1227,10 @@
   .welcome-actions { display: grid; gap: 10px; }
   .welcome-actions .btn { width: 100%; border-radius: 16px; font-size: 14px; }
   .welcome-actions .btn-secondary { border-color: #385C39; background: transparent; }
+  .welcome-about { margin-top: 24px; padding-bottom: 24px; text-align: center; color: #596451; font-size: 12px; line-height: 1.5; }
+  .welcome-about a { color: #29452B; font-size: 13px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+  .welcome-about a:hover, .welcome-about a:focus-visible { color: #385C39; }
+  .welcome-about p { margin-top: 5px; }
   @media (min-width: 768px) {
     .welcome-layout { display: grid; grid-template-columns: minmax(390px, 46%) minmax(0, 54%); min-height: 100vh; align-items: stretch; }
     .welcome-visual { grid-column: 2; grid-row: 1; height: auto; min-height: 100vh; }
@@ -1500,7 +1504,7 @@
   const meta={home:'Início',onboarding:'Cadastro',discover:'Descobrir culturas',plan:'Planejamento',map:'Minha propriedade',record:'Novo registro',recordDetail:'Detalhe do registro',safra:'Minha Safra',intelligence:'Inteligência',article:'Detalhe da informação',assistant:'Assistente'};
   function mainPage(){return ({home, onboarding, discover, plan, map:mapPage, record:recordPage,recordDetail,safra,intelligence,article:articlePage,assistant})[state.page]?.()||home()}
   function welcome(){
-    const copy={hero:['O futuro da sua lavoura começa com uma conversa.','The future of your farm starts with a conversation.'],subtitle:['Dados da NASA, conhecimento agrícola e inteligência artificial trabalhando juntos para ajudar você a tomar decisões melhores.','NASA data, agricultural knowledge and artificial intelligence working together to help you make better decisions.'],talk:['Conte sobre sua lavoura','Tell us about your farm'],talkDetail:['O que você plantou, como foi a colheita e quais são seus objetivos.','What you planted, how the harvest went and what you hope to achieve.'],discover:['Descubra o que plantar','Discover what to plant'],discoverDetail:['Explore culturas e rotações considerando clima, solo e histórico da sua região.','Explore crops and rotations with your region’s climate, soil and history in mind.'],decide:['Decida com mais confiança','Make decisions with more confidence'],decideDetail:['Compare riscos, oportunidades e potencial de retorno para sua próxima safra.','Compare risks, opportunities and potential returns for your next season.'],enter:['Entrar','Get started'],photo:['Lavoura ao nascer do sol','Field at sunrise']};
+    const copy={hero:['O futuro da sua lavoura começa com uma conversa.','The future of your farm starts with a conversation.'],subtitle:['Dados da NASA, conhecimento agrícola e inteligência artificial trabalhando juntos para ajudar você a tomar decisões melhores.','NASA data, agricultural knowledge and artificial intelligence working together to help you make better decisions.'],talk:['Conte sobre sua lavoura','Tell us about your farm'],talkDetail:['O que você plantou, como foi a colheita e quais são seus objetivos.','What you planted, how the harvest went and what you hope to achieve.'],discover:['Descubra o que plantar','Discover what to plant'],discoverDetail:['Explore culturas e rotações considerando clima, solo e histórico da sua região.','Explore crops and rotations with your region’s climate, soil and history in mind.'],decide:['Decida com mais confiança','Make decisions with more confidence'],decideDetail:['Compare riscos, oportunidades e potencial de retorno para sua próxima safra.','Compare risks, opportunities and potential returns for your next season.'],enter:['Entrar','Get started'],about:['Conheça a história por trás do Agrion','Discover the story behind Agrion'],aboutDetail:['Projeto desenvolvido no NASA Space Apps Challenge 2026','A project developed for NASA Space Apps Challenge 2026'],photo:['Lavoura ao nascer do sol','Field at sunrise']};
     const w=id=>copy[id][AgrionLocale.get()==='en-US'?1:0];
     return `<main class="welcome-page"><div class="welcome-layout">
       <div class="welcome-visual"><picture><source media="(min-width: 768px)" srcset="{{ url_for('static', filename='agrion-hero-desktop.jpg') }}"><img src="{{ url_for('static', filename='agrion-hero-mobile.jpg') }}" alt="${w('photo')}" fetchpriority="high"></picture></div>
@@ -1510,7 +1514,7 @@
           <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('chat',27)}</span><div><h2>${w('talk')}</h2><p>${w('talkDetail')}</p></div></div>
           <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('sprout',28)}</span><div><h2>${w('discover')}</h2><p>${w('discoverDetail')}</p></div></div>
           <div class="welcome-benefit"><span class="welcome-benefit-icon">${icon('chart',27)}</span><div><h2>${w('decide')}</h2><p>${w('decideDetail')}</p></div></div>
-        </div><div class="welcome-actions"><button type="button" class="btn btn-primary" data-action="propertyEnter">${w('enter')} ${icon('arrow',18)}</button></div>
+        </div><div class="welcome-actions"><button type="button" class="btn btn-primary" data-action="propertyEnter">${w('enter')} ${icon('arrow',18)}</button><div class="welcome-about"><a href="/sobre">${w('about')}</a><p>${w('aboutDetail')}</p></div></div>
       </div></div></main><div id="toastMount" aria-live="polite"></div>`;
   }
   function render(){const navs=[['home','Início','home'],['plan','Planejar','compare'],['map','Mapa','map'],['safra','Safra','journal']];

@@ -49,6 +49,10 @@ def create_app(test_config=None):
             "absolute": seconds("AGRION_INTERVIEW_ABSOLUTE_SECONDS", 300),
         })
 
+    @app.get("/sobre")
+    def about():
+        return render_template("about.html")
+
     @app.errorhandler(404)
     def not_found(error):
         return jsonify(error="not_found"), 404

@@ -9,11 +9,14 @@
 
   function apply() {
     document.documentElement.lang = language;
-    document.title = language === 'pt-BR' ? 'Agrion | Planejamento agrícola' : 'Agrion | Agricultural planning';
+    const about = document.body?.dataset.page === 'about';
+    document.title = about
+      ? (language === 'pt-BR' ? 'Agrion | Apresentação do projeto' : 'Agrion | Project presentation')
+      : (language === 'pt-BR' ? 'Agrion | Planejamento agrícola' : 'Agrion | Agricultural planning');
     const description = document.querySelector('meta[name="description"]');
-    if (description) description.content = language === 'pt-BR'
-      ? 'O Agrion ajuda agricultores a explorar culturas, planejar rotações, acompanhar o clima e entender sua propriedade.'
-      : 'Agrion helps farmers explore crops, plan rotations, monitor weather and understand their property.';
+    if (description) description.content = about
+      ? (language === 'pt-BR' ? 'Conheça a proposta do Agrion, assista ao pitch quando disponível e explore o código do projeto da equipe Space Invaders.' : 'Explore Agrion, watch the pitch when available, and view the Space Invaders project repository.')
+      : (language === 'pt-BR' ? 'O Agrion ajuda agricultores a explorar culturas, planejar rotações, acompanhar o clima e entender sua propriedade.' : 'Agrion helps farmers explore crops, plan rotations, monitor weather and understand their property.');
     const select = document.getElementById('agrionGlobalLanguage');
     if (select) select.value = language;
   }
