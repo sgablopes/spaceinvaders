@@ -22,7 +22,7 @@ let fail=false;
 window.fetch=async url=>{const section=url.split('/').pop();calls.push(section);if(fail)throw Error('fixture failure');return {ok:true,json:async()=>({property_id:testContext.property.id,result:{status:'ready',headline:'Resumo fictício para teste',summary:{text:'Detalhe fictício'},recommendations:[{headline:'Recomendação de teste',text:'Detalhe'}],metrics:[{key:'temperature',label:'Temperatura',value:25,unit:'°C'}],phase:'Fase de teste',reason:'Dados fictícios',harvest_window:'A confirmar',items:[],search_entry_points:[]}})}};
 window.render=()=>{document.getElementById('app').innerHTML=window.AgrionHome.markup(window.AgrionPropertyStore.read());window.AgrionHome.afterRender()};
 '''
-scripts='\n'.join((root/'app/static'/n).read_text(encoding='utf-8') for n in ['agrion-dashboard.js','discovery-home.js'])
+scripts='\n'.join((root/'app/static'/n).read_text(encoding='utf-8') for n in ['agrion-indicators.js','agrion-dashboard.js','discovery-home.js'])
 test=r'''
 function check(ok,m){if(!ok)throw Error(m)}
 async function settle(){await new Promise(r=>setTimeout(r,50))}

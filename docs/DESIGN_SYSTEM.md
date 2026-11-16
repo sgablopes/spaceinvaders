@@ -45,4 +45,6 @@ Planejamento também abre em tela inteira, com o mesmo cabeçalho e Voltar. Usa 
 
 ## Dashboard e telas por assunto
 
+Os indicadores compartilham cartões claros com ícones de termômetro, vento e gota. Umidade relativa usa gauge de 0–100%, com valor textual e sem classificação agronômica por cor. Minha safra destaca a etapa reconhecida, sem percentual de avanço. A miniestação ocupa uma grade de quatro leituras no desktop e duas colunas no celular, com ID e atualização visíveis. Pesquisas nos blocos compactos usam altura ajustada ao conteúdo; explicações adicionais ficam em Veja mais. O planejamento conserva seu modo de apresentação.
+
 A organização atual está documentada em [Dashboard](DASHBOARD_ORGANIZACAO.md). A visão geral concentra propriedade, resumo diário e indicadores compactos com ícones; clima, safra, análises, mercado, medições e cadastro têm telas próprias com cabeçalho e Voltar. Cartões claros, verde e marfim seguem os componentes existentes. O planejamento mantém seu layout aprovado.

@@ -38,15 +38,34 @@
     box.append(details,element('small','agrion-dashboard-source',`Análise por IA · ${dateLabel(result.generated_at)}`));
     if(result.recommendations?.length){for(const item of result.recommendations){const detail=expandable(item.headline||'Ver recomendação');detail.append(element('p','agrion-dashboard-muted',item.text));recommendations.append(detail);}}
     else recommendations.append(element('p','agrion-dashboard-muted','Nenhuma recomendação fundamentada disponível.'));
-    window.AgrionSearchSuggestions.append(box,result.search_entry_points);
+    window.AgrionSearchSuggestions.append(box,result.search_entry_points,{compact:true});
     if(staleAt){staleNote(box,staleAt);staleNote(recommendations,staleAt);}
   }
   function showGdd(box,gdd){if(!gdd){box.append(element('small','agrion-dashboard-source','Graus-dia: indisponível sem temperatura-base fundamentada.'));return;}box.append(element('p','agrion-dashboard-detail',`Graus-dia acumulados: ${new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2}).format(gdd.value)} °C dia`),element('small','agrion-dashboard-source',`NASA POWER · temperatura-base ${gdd.base_temperature_c} °C · referência: ${gdd.base_temperature_reference}`));}
-  function renderSection(section,result){const box=document.getElementById(`agrionDashboard-${section}`);if(!box)return;const title={forecast:'Clima e previsão',rainfall:'Chuva acumulada',stage:'Desenvolvimento da cultura'}[section];box.replaceChildren(element('h2','',title));if(section==='stage'){const fields=currentContext?.agricultural_profile?.fields||{};box.classList.add('agrion-crop-card');const heading=element('div','agrion-crop-heading');heading.append(pictogram('sprout'));const headingText=element('div');headingText.append(element('small','agrion-crop-eyebrow','CULTURA ATUAL'),element('p','agrion-dashboard-value',value('current_crop',fields.current_crop)));heading.append(headingText);box.append(heading);}if(result?.status!=='ready'){box.append(element('p','agrion-dashboard-muted',result?.note||'Informação indisponível no momento.'));if(section==='stage')showGdd(box,result?.gdd);return;}
-    if(section==='stage'){if(result.phase){cropRow(box,'sprout','Fase estimada',result.phase);confidence(box,result.phase_confidence);}cropRow(box,'info','O que foi considerado',result.reason);if(result.harvest_window){cropRow(box,'calendar','Janela estimada de colheita',result.harvest_window);confidence(box,result.harvest_confidence);}box.append(element('small','agrion-dashboard-source',`Estimativa por IA · ${dateLabel(result.generated_at)}`));showGdd(box,result.gdd);window.AgrionSearchSuggestions.append(box,result.search_entry_points);return;}
-    for(const metric of result.metrics||[]){const row=element('div','agrion-dashboard-metric');const label=element('span','agrion-metric-label');label.append(pictogram(metric.key==='relative_humidity'||metric.key==='precipitation'||metric.key.startsWith('rain_')?'droplet':metric.key==='temperature'?'sun':'chart'),element('span','',metric.label));row.append(label,element('strong','',`${new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2}).format(metric.value)} ${metric.unit}`));if(metric.unit==='%'&&Number.isFinite(metric.value)&&metric.value>=0&&metric.value<=100){const bar=element('progress','agrion-metric-progress');bar.max=100;bar.value=metric.value;bar.setAttribute('aria-label',metric.label);row.append(bar);}if(metric.forecast_for)row.append(element('small','agrion-dashboard-source',`Previsto para ${dateLabel(metric.forecast_for)}${metric.interval_start?' · intervalo desde '+dateLabel(metric.interval_start):''}`));if(metric.period_start&&metric.period_end)row.append(element('small','agrion-dashboard-source',`Período: ${metric.period_start} a ${metric.period_end} · UTC`));box.append(row);}
-    box.append(element('small','agrion-dashboard-source',`${result.source||''}${result.source_accessed_at?' · Fonte consultada em '+dateLabel(result.source_accessed_at):''} · ${result.note||''}`));if(result.source_url){try{const url=new URL(result.source_url);if(['http:','https:'].includes(url.protocol)){const link=element('a','agrion-dashboard-link','Ver fonte');link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';box.append(link);}}catch(_){}}
+  function renderSection(section,result){const box=document.getElementById(`agrionDashboard-${section}`);if(!box)return;const title={forecast:'Clima e previsão',rainfall:'Chuva acumulada',stage:'Desenvolvimento da cultura'}[section];box.replaceChildren(element('h2','',title));if(section==='stage'){const fields=currentContext?.agricultural_profile?.fields||{};box.classList.add('agrion-crop-card');const heading=element('div','agrion-crop-heading');heading.append(pictogram('sprout'));const headingText=element('div');headingText.append(element('small','agrion-crop-eyebrow','CULTURA ATUAL'),element('p','agrion-dashboard-value',value('current_crop',fields.current_crop)));heading.append(headingText);box.append(heading);}if(result?.status!=='ready'){box.append(element('p','agrion-dashboard-muted',result?.note||'Informação indisponível no momento.'));if(section==='stage'){box.append(window.AgrionIndicators.phase(null,currentContext?.agricultural_profile?.fields?.current_season_stage));showGdd(box,result?.gdd);}return;}
+    if(section==='stage'){
+      box.append(window.AgrionIndicators.phase(result.phase,currentContext?.agricultural_profile?.fields?.current_season_stage));
+      if(result.harvest_window)cropRow(box,'calendar','Janela estimada de colheita',result.harvest_window);
+      const more=expandable('Veja mais · estimativa e referências');
+      cropRow(more,'info','O que foi considerado',result.reason);confidence(more,result.phase_confidence);confidence(more,result.harvest_confidence);showGdd(more,result.gdd);box.append(more);
+      box.append(element('small','agrion-dashboard-source',`Estimativa por IA · ${dateLabel(result.generated_at)}`));
+      window.AgrionSearchSuggestions.append(box,result.search_entry_points,{compact:true});return;
+    }
+
+    const metrics=element('div','agrion-weather-values');box.append(metrics);
+    const more=expandable('Veja mais · períodos e fontes');
+    for(const metric of result.metrics||[]){
+      const ui=window.AgrionIndicators,humidity=metric.key==='relative_humidity'&&metric.unit==='%';
+      metrics.append(humidity?ui.humidity(metric.value,'Umidade prevista do ar'):ui.metric(metric.label,metric.value,metric.unit,metric.key==='temperature'?'thermometer':metric.key==='wind_speed'?'wind':'droplet'));
+      if(metric.forecast_for)more.append(element('small','agrion-dashboard-source',`${metric.label}: previsto para ${dateLabel(metric.forecast_for)}${metric.interval_start?' · desde '+dateLabel(metric.interval_start):''}`));
+      if(metric.period_start&&metric.period_end)more.append(element('small','agrion-dashboard-source',`${metric.label}: ${metric.period_start} a ${metric.period_end} · UTC`));
+    }
+    if(section==='rainfall'){const chart=window.AgrionIndicators.rainfall(result.metrics);if(chart)box.append(chart);}
+    box.append(element('small','agrion-dashboard-source',`${result.source||''} · ${section==='forecast'?'Previsão, não medição no terreno':'Estimativa regional histórica'}`));
+    more.append(element('small','agrion-dashboard-source',`${result.source_accessed_at?'Fonte consultada em '+dateLabel(result.source_accessed_at):''} · ${result.note||''}`));
+    addSources(more,result.source_url?[result.source_url]:[]);box.append(more);
   }
+
   function displaySection(section,result,staleAt=null){
     if(view==='home'&&['daily','forecast','stage'].includes(section)){if(section==='stage'){const harvest=document.getElementById('agrionOverviewHarvest');if(harvest)harvest.textContent=result?.harvest_window||'Indisponível';}renderCompact(section,result,staleAt);return;}
     if(section==='daily'){renderDaily(result,staleAt);return;}
@@ -56,7 +75,7 @@
       if(result?.status!=='ready')box.append(element('p','agrion-dashboard-muted',result?.note||'Notícias indisponíveis.'));
       else{
         for(const item of result.items||[]){const article=element('article','agrion-dashboard-observation'),details=expandable(item.title);details.append(element('p','agrion-dashboard-muted',item.summary));if(item.date)details.append(element('small','agrion-dashboard-source',item.date));article.append(details);box.append(article);}
-        window.AgrionSearchSuggestions.append(box,result.search_entry_points);
+        window.AgrionSearchSuggestions.append(box,result.search_entry_points,{compact:true});
       }
       if(staleAt)staleNote(box,staleAt);return;
     }
@@ -71,6 +90,7 @@
   async function updateSection(section,context,id){const previous=await cached(context,section);if(id!==generation)return;if(previous){displaySection(section,previous.result,fresh(previous,section)?null:previous.saved_at);if(fresh(previous,section))return;}try{const result=await request(context,section);if(result?.status!=='ready'){if(id===generation){if(previous)displaySection(section,previous.result,previous.saved_at);else displaySection(section,result);}return;}await persist(context,section,result);if(id===generation)displaySection(section,result);}catch(_){if(id===generation){if(previous)displaySection(section,previous.result,previous.saved_at);else displaySection(section,{status:'error',note:'Não foi possível atualizar esta seção.'});}}}
   function show(context,result,error,staleAt=null){const root=document.getElementById('agrionDashboard');const loading=document.getElementById('agrionHomeLoading');if(!root||!loading)return;const current=window.AgrionPropertyStore.read();if(current?.propertyId!==context.property.id)return;currentContext=context;
     root.replaceChildren();const fields=context.agricultural_profile.fields;const overview=element('section','agrion-property-overview');overview.setAttribute('aria-label','Visão da propriedade');const map=element('div','agrion-overview-map');map.id='agrionOverviewMap';const mapStatus=element('span','agrion-overview-map-status','Carregando mapa…');mapStatus.id='agrionOverviewMapStatus';const overlay=element('div','agrion-overview-overlay');overlay.append(element('h2','',context.property.name||'Sua propriedade'),element('p','',context.property.location_label||'Localização não informada'));const grid=element('div','agrion-overview-grid');for(const id of ['current_crop','planting_date','primary_goal']){const item=element('div','agrion-overview-item');const fieldValue=element('strong','',value(id,fields[id]));item.append(element('small','',labels[id]),fieldValue);grid.append(item);}const item=element('div','agrion-overview-item');const harvestDisplay=element('strong','','Consultando…');harvestDisplay.id='agrionOverviewHarvest';item.append(element('small','','Colheita estimada'),harvestDisplay);grid.append(item);overlay.append(grid);overview.append(map,mapStatus,overlay);root.append(overview);
+    const station=element('section','agrion-dashboard-card agrion-station-live');station.id='agrionDashboard-station';root.append(station);window.AgrionStation.attachSummary?.(station);
     addSection(root,'daily','Resumo do dia');
     const indicators=element('div','agrion-home-indicators');root.append(indicators);
     addSection(indicators,'forecast','Clima');addSection(indicators,'stage','Minha safra');
@@ -81,20 +101,19 @@
   function navigateButton(box,label,page){const button=element('button','agrion-section-link',label+' →');button.type='button';button.onclick=()=>window.AgrionHome.openPage(page);box.append(button);}
   function renderCompact(section,result,staleAt){
     const box=document.getElementById(`agrionDashboard-${section}`);if(!box)return;
-    const config={daily:['Resumo do dia','brain','analysis'],forecast:['Clima','sun','climate'],stage:['Minha safra','sprout','season']}[section];
+    const config={daily:['Resumo do dia','brain','analysis'],forecast:['Clima previsto','sun','climate'],stage:['Minha safra','sprout','season']}[section];
     box.replaceChildren(pictogram(config[1]),element('h2','',config[0]));
     if(result?.status!=='ready')box.append(element('p','agrion-dashboard-muted','Informação ainda não disponível. Consulte os detalhes para atualizar.'));
     else if(section==='daily'){
       box.append(element('p','agrion-summary-headline',result.headline||result.summary?.headline||'Análise do dia disponível'));
       const list=element('ul','agrion-summary-list');for(const item of (result.recommendations||[]).slice(0,3)){if(item.headline)list.append(element('li','',item.headline));}box.append(list);
-      window.AgrionSearchSuggestions.append(box,result.search_entry_points);
+      window.AgrionSearchSuggestions.append(box,result.search_entry_points,{compact:true});
     }else if(section==='forecast'){
       for(const metric of (result.metrics||[]).slice(0,2))cropRow(box,metric.key==='temperature'?'sun':'droplet',metric.label,`${new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1}).format(metric.value)} ${metric.unit}`);
       if(result.source)box.append(element('small','agrion-dashboard-source',result.source));
     }else{
-      cropRow(box,'sprout',value('current_crop',currentContext.agricultural_profile.fields.current_crop),result.phase||'Fase a confirmar');
-      box.append(element('small','agrion-dashboard-source','Estimativa por IA'));
-      window.AgrionSearchSuggestions.append(box,result.search_entry_points);
+      box.append(window.AgrionIndicators.phase(result.phase,currentContext.agricultural_profile.fields.current_season_stage,true));
+      window.AgrionSearchSuggestions.append(box,result.search_entry_points,{compact:true});
     }
     if(staleAt)staleNote(box,staleAt);navigateButton(box,'Ver detalhes',config[2]);
   }
@@ -143,6 +162,6 @@
   }
 
   async function start(){reset();view='home';const id=generation;try{const context=await window.AgrionContext.load();if(id!==generation)return;show(context,null,false);}catch(_){if(id!==generation)return;const loading=document.getElementById('agrionHomeLoading');if(loading){loading.querySelector('.agrion-home-spinner').hidden=true;document.getElementById('agrionHomeLoadingText').textContent='Não foi possível carregar os dados da propriedade.';document.getElementById('agrionDashboardRetry').hidden=false;}}}
-  function reset(){generation++;window.AgrionPropertyOverview.reset();window.AgrionMarket.reset();}
+  function reset(){generation++;window.AgrionStation.close();window.AgrionPropertyOverview.reset();window.AgrionMarket.reset();}
   window.AgrionDashboard={start,reset,attachPage};
 })();
